@@ -1,0 +1,145 @@
+# .gitignore for AI Contract Risk Analyzer
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+coverage.xml
+*.lcov
+
+# Node.js / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+.next/
+out/
+.turbo/
+dist/
+build/
+*.tgz
+.pnpm-debug.log*
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+nohup.out
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+dump.rdb
+
+# Temporary files
+.tmp/
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Database migrations (generated)
+migrations/versions/*.py
+
+# Generated files
+frontend/.next/
+frontend/out/
+backend/alembic/versions/
+
+# CI/CD
+.github/workflows/*.log
+
+# IDE settings (local)
+.vscode/settings.json
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/tasks.xml
+.idea/shelf/
+
+# Secrets (NEVER commit these)
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+client_secret*.json

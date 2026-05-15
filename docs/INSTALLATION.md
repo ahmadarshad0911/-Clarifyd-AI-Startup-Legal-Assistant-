@@ -17,7 +17,7 @@
 - **Git** 2.20+
 - **Docker** 20.10+ and **Docker Compose** 1.29+ (for Docker setup)
 - OR **Python** 3.11+ and **Node.js** 18+ (for manual setup)
-- **OpenAI API key** (free tier okay for testing)
+- **Reasoning API key** (OpenAI or Kimi)
 
 ### System Requirements
 - **Disk Space:** 5 GB minimum
@@ -48,7 +48,8 @@ cp .env.example .env
 ### 3. Configure Environment
 Edit `.env` file and set:
 ```env
-OPENAI_API_KEY=sk-...  # Your OpenAI API key
+REASONING_PROVIDER=openai  # openai or kimi
+REASONING_API_KEY=...      # Your provider API key
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/contract_analyzer
 REDIS_URL=redis://localhost:6379/0
 ```
@@ -292,12 +293,13 @@ sudo dpkg -i elasticsearch-8.5.0-amd64.deb
 
 ### API Keys
 
-#### OpenAI API Key
-1. Go to https://platform.openai.com/api-keys
-2. Create new API key
-3. Add to `.env`:
+#### Reasoning API Key (OpenAI or Kimi)
+1. Create an API key from your chosen provider.
+2. Add provider settings to `.env`:
 ```env
-OPENAI_API_KEY=sk-...
+REASONING_PROVIDER=openai   # or kimi
+REASONING_API_KEY=...
+REASONING_MODEL=gpt-4o      # set provider-compatible model
 ```
 
 #### AWS S3 (Optional - for file storage)
@@ -455,13 +457,13 @@ psql $DATABASE_URL -c "SELECT 1"
 sudo systemctl status postgresql
 ```
 
-**Problem: "OpenAI API error"**
+**Problem: "Reasoning API error"**
 ```bash
 # Verify API key is set
-echo $OPENAI_API_KEY
+echo $REASONING_API_KEY
 
 # Test API key
-python -c "import openai; print(openai.__version__)"
+echo $REASONING_PROVIDER
 ```
 
 ---
@@ -492,7 +494,7 @@ npm install
 ### Performance Issues
 
 **Problem: "Slow contract analysis"**
-- Increase OpenAI model (gpt-4o is faster than gpt-4)
+- Use a faster provider/model pairing for lower latency
 - Enable caching: Make sure Redis is running
 - Check CPU usage: `top` or Docker dashboard
 

@@ -24,7 +24,7 @@ This roadmap outlines the evolution of AI Contract Risk Analyzer from MVP to ent
 - Next.js frontend
 - FastAPI backend
 - PostgreSQL database
-- OpenAI GPT API
+- OpenAI/Kimi reasoning API
 
 ---
 
@@ -123,11 +123,11 @@ This roadmap outlines the evolution of AI Contract Risk Analyzer from MVP to ent
 **Target:** Competitive differentiation
 
 ### Planned Features
-- 🧠 Fine-Tuned Models
-  - Train custom clause detection
-  - Industry-specific models
-  - Continuous model improvement
-  - A/B testing for models
+- 🧠 Reasoning Quality Optimization (No model training)
+  - Prompt and policy refinement for clause detection
+  - Provider/model benchmarking (OpenAI vs Kimi)
+  - Response quality evaluation and guardrails
+  - A/B testing for prompt strategies
   
 - 🔄 Multi-Document Comparison
   - Side-by-side clause comparison
@@ -156,8 +156,8 @@ This roadmap outlines the evolution of AI Contract Risk Analyzer from MVP to ent
   - Risk delta between versions
 
 ### Tech Changes
-- Add fine-tuning infrastructure
-- Add MLops pipeline
+- Add provider abstraction and model routing
+- Add prompt/version evaluation pipeline
 - Add benchmarking database (anonymized)
 - Add advanced NLP models
 

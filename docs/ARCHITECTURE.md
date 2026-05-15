@@ -71,7 +71,7 @@ The AI Contract Risk Analyzer is a **production-grade SaaS platform** built with
 │  ┌────────────────────────────────────────────────────┐   │
 │  │ Analysis Service (AI Pipeline)                     │   │
 │  │ • Multi-pass validation orchestration             │   │
-│  │ • OpenAI GPT-4o API calls                        │   │
+│  │ • Reasoning API calls (OpenAI/Kimi)              │   │
 │  │ • Confidence scoring & validation                │   │
 │  │ • Hallucination prevention                       │   │
 │  └────────────────────────────────────────────────────┘   │
@@ -108,7 +108,7 @@ The AI Contract Risk Analyzer is a **production-grade SaaS platform** built with
 ┌──────────────────────┐   ┌──────────────┐   ┌─────────────┐
 │  Data Layer          │   │ Job Queue    │   │ LLM APIs    │
 │                      │   │ (Celery      │   │ (OpenAI,    │
-│ - PostgreSQL DB      │   │  + Redis)    │   │  Anthropic) │
+│ - PostgreSQL DB      │   │  + Redis)    │   │  Kimi)      │
 │ - Redis Cache        │   │              │   │             │
 │ - Elasticsearch      │   │ Workers:     │   └─────────────┘
 │ - S3/GCS Storage     │   │ - Extract    │
@@ -187,7 +187,7 @@ The AI Contract Risk Analyzer is a **production-grade SaaS platform** built with
 ### 3. Analysis Service
 **Purpose:** Execute the AI pipeline for contract risk analysis
 
-**Technologies:** FastAPI + OpenAI SDK + Celery + Redis
+**Technologies:** FastAPI + provider API client (OpenAI/Kimi) + Celery + Redis
 
 **Three-Pass Analysis Pipeline:**
 

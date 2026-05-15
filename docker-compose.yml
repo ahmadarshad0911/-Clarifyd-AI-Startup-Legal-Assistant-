@@ -1,198 +1,41 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # Frontend - Next.js React App
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: contract_analyzer_frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_APP_ENVIRONMENT=development
-    depends_on:
-      - backend
-    networks:
-      - contract_analyzer_network
-    command: npm run dev
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-
-  # Backend - FastAPI Server
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: contract_analyzer_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
     environment:
       - ENVIRONMENT=development
       - DEBUG=True
       - LOG_LEVEL=INFO
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/contract_analyzer
-      - REDIS_URL=redis://redis:6379/0
-      - ELASTICSEARCH_HOST=elasticsearch
-      - ELASTICSEARCH_PORT=9200
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - JWT_ALGORITHM=HS256
-      - JWT_EXPIRATION_HOURS=24
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
-    depends_on:
-      - postgres
-      - redis
-      - elasticsearch
-    networks:
-      - contract_analyzer_network
-    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-    volumes:
-      - ./backend:/app
-      - /app/__pycache__
-      - /app/.pytest_cache
+      - ALLOWED_FILE_TYPES=.pdf,.docx
+      - MAX_UPLOAD_FILE_SIZE=26214400
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: contract_analyzer_postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=contract_analyzer
-    ports:
-      - "5432:5432"
-    networks:
-      - contract_analyzer_network
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 20s
       timeout: 5s
       retries: 5
 
-  # pgAdmin - PostgreSQL Web UI
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: contract_analyzer_pgadmin
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@example.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-    ports:
-      - "5050:80"
-    networks:
-      - contract_analyzer_network
-    depends_on:
-      - postgres
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-
-  # Redis - Cache & Job Queue
-  redis:
-    image: redis:7-alpine
-    container_name: contract_analyzer_redis
-    ports:
-      - "6379:6379"
-    networks:
-      - contract_analyzer_network
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Elasticsearch - Full-Text Search
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
-    container_name: contract_analyzer_elasticsearch
-    environment:
-      - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - xpack.security.enabled=false
-    ports:
-      - "9200:9200"
-    networks:
-      - contract_analyzer_network
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  # Celery Worker - Background Job Processing
-  celery_worker:
+  frontend:
     build:
-      context: ./backend
+      context: ./frontend
       dockerfile: Dockerfile
-    container_name: contract_analyzer_celery
-    environment:
-      - ENVIRONMENT=development
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/contract_analyzer
-      - REDIS_URL=redis://redis:6379/0
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
-    depends_on:
-      - postgres
-      - redis
-      - elasticsearch
-    networks:
-      - contract_analyzer_network
-    command: >
-      celery -A app.celery_app worker 
-      --loglevel=info 
-      --concurrency=4
+    container_name: contract_analyzer_frontend
+    command: npm run dev
+    ports:
+      - "3000:3000"
     volumes:
-      - ./backend:/app
-
-  # Celery Beat - Scheduled Tasks
-  celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: contract_analyzer_celery_beat
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
     environment:
-      - ENVIRONMENT=development
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/contract_analyzer
-      - REDIS_URL=redis://redis:6379/0
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
-      - postgres
-      - redis
-    networks:
-      - contract_analyzer_network
-    command: >
-      celery -A app.celery_app beat 
-      --loglevel=info 
-      --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    volumes:
-      - ./backend:/app
-
-networks:
-  contract_analyzer_network:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  pgadmin_data:
-  redis_data:
-  elasticsearch_data:
+      - backend

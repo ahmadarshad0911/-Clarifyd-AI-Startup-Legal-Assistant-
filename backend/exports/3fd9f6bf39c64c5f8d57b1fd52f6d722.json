@@ -1,0 +1,49 @@
+{
+  "audit_chain_break_at": null,
+  "audit_chain_intact": true,
+  "audit_trail": [
+    {
+      "action": "upload.created",
+      "actor_id": "5822f18a330a4227960932d8d407b40d",
+      "event_id": "3046a4e9b6004000b8b524ed1f966b58",
+      "hash": "742bf23cc6e3a0b7e9a5f1dbcba63d79c1d71cebc96113d46966bdb26b15b422",
+      "payload": {
+        "findings": 1,
+        "queued_for_review": 1,
+        "sha256": "a61eceee8e106878b3aee0712c92430f940dd62acf950bbb9202c50167eb3547",
+        "size": 316
+      },
+      "prev_hash": "4711382b2f22a84e2b4063e8fa0748b9f0af329c03d6215b903a1a5cd1dd9c04",
+      "request_id": "3b112779854744cf8a8965f858c8d328",
+      "target_id": "1ff1629fe4bd40aa89c24142fb274632",
+      "target_type": "contract_draft",
+      "ts": "2026-05-12T12:41:57.354981"
+    }
+  ],
+  "draft": {
+    "deleted_at": null,
+    "file_name": "contract.docx",
+    "file_size_bytes": 316,
+    "id": "1ff1629fe4bd40aa89c24142fb274632",
+    "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "owner_id": "5822f18a330a4227960932d8d407b40d",
+    "sha256": "a61eceee8e106878b3aee0712c92430f940dd62acf950bbb9202c50167eb3547",
+    "status": "ready_for_processing",
+    "uploaded_at": "2026-05-12T12:41:57"
+  },
+  "findings": [
+    {
+      "clause_name": "liability",
+      "confidence": 0.94,
+      "excerpt": "Provider has unlimited liability for all damages.",
+      "explanation": "Clause contains highly one-sided legal exposure with no practical safeguards.",
+      "finding_id": "finding-1",
+      "injection_suspected": false,
+      "risk_level": "critical",
+      "risk_score": 10
+    }
+  ],
+  "generated_at": "2026-05-12T12:41:57.379377+00:00",
+  "not_legal_advice": true,
+  "review_actions": []
+}

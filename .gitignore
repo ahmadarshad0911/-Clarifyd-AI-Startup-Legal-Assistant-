@@ -71,6 +71,7 @@ out/
 dist/
 build/
 *.tgz
+*.tsbuildinfo
 .pnpm-debug.log*
 
 # Environment Variables
@@ -143,3 +144,10 @@ backend/alembic/versions/
 *.crt
 *.cer
 client_secret*.json
+
+# Claude Code local agent state (memory, skills, scratch)
+.claude/
+
+# Sample contracts used for ad-hoc local testing
+sample-*.docx
+sample-*.pdf

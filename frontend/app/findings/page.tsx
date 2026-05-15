@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "../../components/shell/app-shell";
 import { OrbitalLoader } from "../../components/common/orbital-loader";
@@ -57,6 +57,15 @@ const RISK_META: Record<
 };
 
 export default function FindingsPage() {
+  // useSearchParams() requires a Suspense boundary in Next 14 App Router.
+  return (
+    <Suspense fallback={<OrbitalLoader fullscreen />}>
+      <FindingsPageInner />
+    </Suspense>
+  );
+}
+
+function FindingsPageInner() {
   const { client } = useAuth();
   const { push } = useToast();
   const params = useSearchParams();

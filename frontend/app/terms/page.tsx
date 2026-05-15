@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { AuroraBackground } from "../../components/common/aurora-background";
 import { ScrollReveal } from "../../components/common/scroll-reveal";
@@ -164,6 +164,15 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 export default function TermsPage() {
+  // useSearchParams() requires a Suspense boundary in Next 14 App Router.
+  return (
+    <Suspense fallback={<div className="min-h-screen"><AuroraBackground /></div>}>
+      <TermsPageInner />
+    </Suspense>
+  );
+}
+
+function TermsPageInner() {
   const { token } = useAuth();
   const { push } = useToast();
   const router = useRouter();

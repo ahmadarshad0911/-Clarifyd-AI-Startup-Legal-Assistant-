@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { AuroraBackground } from "../../../components/common/aurora-background";
 import { OrbitalLoader } from "../../../components/common/orbital-loader";
@@ -10,6 +10,15 @@ const TOKEN_KEY = "clarifyd.token";
 const ROLE_KEY = "clarifyd.role";
 
 export default function OAuthCallbackPage() {
+  // useSearchParams() requires a Suspense boundary in Next 14 App Router.
+  return (
+    <Suspense fallback={<div className="min-h-screen"><AuroraBackground /><OrbitalLoader fullscreen /></div>}>
+      <OAuthCallbackInner />
+    </Suspense>
+  );
+}
+
+function OAuthCallbackInner() {
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);

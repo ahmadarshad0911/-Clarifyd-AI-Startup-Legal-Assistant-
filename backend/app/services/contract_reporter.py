@@ -215,10 +215,13 @@ class ContractReporter:
             "seed": _LLM_SEED,
             "frequency_penalty": 0,
             "presence_penalty": 0,
-            # Capping output is the single biggest latency knob on NIM. Real
-            # responses for a typical contract fit in ~1.6 K tokens; 2048
-            # gives 25 % headroom and roughly halves p50 latency.
-            "max_tokens": 2048,
+            # Capping output is the single biggest latency knob on NIM.
+            # Telemetry shows real reporter outputs land in 1100-1500 tokens
+            # for typical contracts; 1536 still fits ~95 % without truncation
+            # and shaves another ~15 % off cold-path p50 latency. The
+            # suggestion validator will catch any truncation symptom (short
+            # suggestions, missing fields) so over-tight caps surface fast.
+            "max_tokens": 1536,
             "response_format": {"type": "json_object"},
         }
         url = f"{self._base_url}/chat/completions"

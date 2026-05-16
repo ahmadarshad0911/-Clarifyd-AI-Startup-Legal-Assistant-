@@ -84,13 +84,35 @@ class AsyncContractAnalysisService:
         }
 
         # Parallel per-clause LLM calls. Bounded concurrency keeps NIM happy.
+        # Each task is read-only against the DB (cache lookup) and against the
+        # provider (assess_clause). The cache *write* happens once, serially,
+        # after gather() returns — this is the fix for the pre-existing
+        # "Failed to write clause cache row" warning, which was caused by
+        # concurrent `session.add()` calls landing while the session was
+        # mid-flush (async SQLAlchemy sessions are not coroutine-safe for
+        # concurrent writes).
         sem = asyncio.Semaphore(8)
 
-        async def _run(clause: ExtractedClause) -> ClauseAssessment:
+        async def _run(
+            clause: ExtractedClause,
+        ) -> tuple[ClauseAssessment, str, bool]:
             async with sem:
-                return await self._cached_assessment(clause, session=session)
+                return await self._lookup_or_compute(clause, session=session)
 
-        assessments = await asyncio.gather(*[_run(c) for c in clauses])
+        results = await asyncio.gather(*[_run(c) for c in clauses])
+        assessments = [r[0] for r in results]
+
+        # Serial post-gather cache write. Dedupe by sha so two identical
+        # clauses in the same contract don't double-insert. Each row is
+        # flushed individually so a PK conflict from a concurrent request
+        # writing the same clause text doesn't kill the whole batch.
+        new_rows: dict[str, ClauseAssessment] = {}
+        for assessment, sha, was_cached in results:
+            if not was_cached and sha not in new_rows:
+                new_rows[sha] = assessment
+        if new_rows:
+            await self._write_cache_rows(session, new_rows)
+
         findings = [
             a.to_finding(c, injection_suspected=injection_flags[c.clause_id])
             for a, c in zip(assessments, clauses)
@@ -100,9 +122,10 @@ class AsyncContractAnalysisService:
         result = ContractAnalysisResult(clauses=clauses, findings=findings, summary=summary)
         return AnalysisResultWithFlags(result=result, injection_flags=injection_flags)
 
-    async def _cached_assessment(
+    async def _lookup_or_compute(
         self, clause: ExtractedClause, *, session: AsyncSession
-    ) -> ClauseAssessment:
+    ) -> tuple[ClauseAssessment, str, bool]:
+        """Return (assessment, clause_sha, was_cached). No DB writes here."""
         sha = _clause_hash(clause.text)
         provider_name = self._provider.name
         model = self._provider.model
@@ -118,29 +141,49 @@ class AsyncContractAnalysisService:
         ).scalar_one_or_none()
         if cached is not None:
             try:
-                return ClauseAssessment.model_validate_json(cached.body_json)
+                return ClauseAssessment.model_validate_json(cached.body_json), sha, True
             except Exception:  # pragma: no cover — corrupt cache row, fall through
-                logger.warning("Corrupt clause cache row for %s/%s/%s", provider_name, model, sha)
-
-        try:
-            assessment = await self._provider.assess_clause(clause)
-        except ProviderError:
-            raise
-
-        # Best-effort cache write; failures must not break the request.
-        try:
-            session.add(
-                ClauseCache(
-                    provider=provider_name,
-                    model=model,
-                    clause_sha256=sha,
-                    body_json=assessment.model_dump_json(),
+                logger.warning(
+                    "Corrupt clause cache row for %s/%s/%s", provider_name, model, sha
                 )
-            )
-            await session.flush()
-        except Exception:  # pragma: no cover
-            logger.warning("Failed to write clause cache row.")
-        return assessment
+
+        assessment = await self._provider.assess_clause(clause)
+        return assessment, sha, False
+
+    async def _write_cache_rows(
+        self, session: AsyncSession, new_rows: dict[str, ClauseAssessment]
+    ) -> None:
+        """Serial best-effort batch insert. Per-row try/except so a PK
+        conflict from a concurrent request for the same clause text doesn't
+        abort the whole batch.
+        """
+        provider_name = self._provider.name
+        model = self._provider.model
+        for sha, assessment in new_rows.items():
+            try:
+                session.add(
+                    ClauseCache(
+                        provider=provider_name,
+                        model=model,
+                        clause_sha256=sha,
+                        body_json=assessment.model_dump_json(),
+                    )
+                )
+                await session.flush()
+            except Exception:
+                # Most common cause: another concurrent request wrote the same
+                # row first. Rollback the per-row state and continue.
+                logger.info(
+                    "ClauseCache row already exists or insert raced for "
+                    "%s/%s/%s — skipping.",
+                    provider_name,
+                    model,
+                    sha[:12],
+                )
+                try:
+                    await session.rollback()
+                except Exception:  # pragma: no cover
+                    pass
 
     @staticmethod
     def _summarize(findings: list[ClauseRiskFinding]) -> AnalysisSummary:

@@ -559,9 +559,23 @@ async def _analyze_and_persist(
     )
     await session.commit()
 
+    # Skip the full-contract reporter when rules-based scoring found nothing
+    # high or critical. The reporter exists to find loopholes; on a clean
+    # NDA / SOW it has nothing to add and just costs ~15 s of LLM time.
+    # Surfaces the optimisation in the audit log so we can measure how often
+    # it fires.
+    has_serious = any(
+        (row.risk_level or "").lower() in {"high", "critical"}
+        for row in finding_rows
+    )
     report = None
     reporter = get_contract_reporter()
-    if reporter is not None:
+    if reporter is not None and not has_serious:
+        logger.info(
+            "Skipping reporter — rules found 0 high/critical findings on draft %s.",
+            draft_row.id,
+        )
+    elif reporter is not None:
         try:
             # Hard cap so a slow Kimi call can't 504 the whole upload —
             # frontend still gets the draft + rules-based findings, and

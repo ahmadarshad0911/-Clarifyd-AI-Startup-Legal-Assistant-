@@ -562,7 +562,14 @@ async def _analyze_and_persist(
     reporter = get_contract_reporter()
     if reporter is not None:
         try:
-            report = await reporter.generate(contract_text)
+            # Hard cap so a slow Kimi call can't 504 the whole upload —
+            # frontend still gets the draft + rules-based findings, and
+            # the user can re-trigger reasoning later from the Findings tab.
+            import asyncio
+            report = await asyncio.wait_for(reporter.generate(contract_text), timeout=120.0)
+        except asyncio.TimeoutError:
+            logger.warning("Reporter timed out after 120s — returning rules-only response.")
+            report = None
         except Exception:  # pragma: no cover — never block the response
             logger.exception("Contract report generation failed.")
             report = None

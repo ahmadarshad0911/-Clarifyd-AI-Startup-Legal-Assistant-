@@ -79,17 +79,57 @@ _contract_reporter: ContractReporter | None = None
 _copilot_advisor: CopilotAdvisor | None = None
 
 
+def _ensure_runtime() -> None:
+    """Lazy-init the httpx client + reasoning services.
+
+    Vercel's ASGI adapter doesn't fire `lifespan`, so the originals
+    initialized there stayed None on serverless cold start. First call
+    after cold start hits this path and builds them; subsequent calls
+    re-use the module-scope singletons within the same container's
+    lifetime.
+    """
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor
+    if _http_client is not None and _async_analysis is not None:
+        return
+    timeout = httpx.Timeout(
+        connect=5.0,
+        read=settings.reasoning_timeout_seconds,
+        write=10.0,
+        pool=5.0,
+    )
+    _http_client = httpx.AsyncClient(timeout=timeout)
+    _async_analysis = AsyncContractAnalysisService(
+        provider=_build_provider_chain(_http_client)
+    )
+    _contract_reporter = ContractReporter(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=180.0,
+    )
+    _copilot_advisor = CopilotAdvisor(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=120.0,
+    )
+
+
 def get_async_analysis() -> AsyncContractAnalysisService:
-    if _async_analysis is None:
-        raise RuntimeError("Async analysis service not initialized.")
+    _ensure_runtime()
+    assert _async_analysis is not None
     return _async_analysis
 
 
 def get_contract_reporter() -> ContractReporter | None:
+    _ensure_runtime()
     return _contract_reporter
 
 
 def get_copilot_advisor() -> CopilotAdvisor | None:
+    _ensure_runtime()
     return _copilot_advisor
 
 

@@ -567,7 +567,13 @@ async def _analyze_and_persist(
             # frontend still gets the draft + rules-based findings, and
             # the user can re-trigger reasoning later from the Findings tab.
             import asyncio
-            report = await asyncio.wait_for(reporter.generate(contract_text), timeout=120.0)
+            # Pass `session` so the reporter can hit the report_cache layer for
+            # deterministic replay on repeat uploads (same contract sha → same
+            # JSON bytes, no NIM call).
+            report = await asyncio.wait_for(
+                reporter.generate(contract_text, session=session),
+                timeout=120.0,
+            )
         except asyncio.TimeoutError:
             logger.warning("Reporter timed out after 120s — returning rules-only response.")
             report = None

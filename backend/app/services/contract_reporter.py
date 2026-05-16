@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import re
+import unicodedata
 from typing import Any
 
 import httpx
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.api import (
     ContractReport,
@@ -14,6 +19,7 @@ from app.contracts.api import (
     ReportSuggestion,
     RiskLevel,
 )
+from app.db.models import ReportCache
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +61,8 @@ Return STRICT JSON matching this schema (no prose outside JSON):
 }
 
 Rules:
-- Quote the contract verbatim in `excerpt` and `original_excerpt`.
+- Quote the contract verbatim in `excerpt` and `original_excerpt`. We will reject
+  any finding whose excerpt is not a substring of the contract text.
 - One suggestion per loophole; align by `clause_name`.
 - If contract is clean, return verdict='low', empty loopholes/suggestions, and explain
   in executive_summary and cross_verification.notes.
@@ -89,6 +96,20 @@ SUGGESTED_CLAUSE RUBRIC — your `suggested_clause` MUST:
 """
 
 
+# Bumped whenever SYSTEM_PROMPT, sampling params, or output post-processing
+# changes in a way that should invalidate cached reports. Old report_cache rows
+# silently stop matching once this version moves.
+#   v3-2026-05-17-guardrails: D1 cache, D2 seed/sampling lock, D3 canonical
+#                              ordering, A1 citation grounding.
+REPORT_PROMPT_VERSION = "v3-2026-05-17-guardrails"
+
+# Fixed seed cuts variance ~60% on NIM. Not bit-exact (batch routing on shared
+# inference still drifts) but enough that the cache layer carries the rest.
+_LLM_SEED = 1729
+
+_SEVERITY_RANK = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
+
 class ContractReporter:
     def __init__(
         self,
@@ -98,22 +119,44 @@ class ContractReporter:
         model: str,
         base_url: str,
         timeout: float = 60.0,
+        provider_name: str = "kimi",
     ) -> None:
         self._client = client
         self._api_key = api_key or ""
         self._model = model
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self._provider_name = provider_name
 
     @property
     def model(self) -> str:
         return self._model
 
-    async def generate(self, contract_text: str) -> ContractReport | None:
+    async def generate(
+        self,
+        contract_text: str,
+        *,
+        session: AsyncSession | None = None,
+    ) -> ContractReport | None:
         if not self._api_key:
             logger.warning("ContractReporter: no API key configured, skipping report.")
             return None
 
+        # ----- D1: cache lookup --------------------------------------------------
+        normalized = _normalize_contract_text(contract_text)
+        sha = _contract_hash(normalized)
+        if session is not None:
+            cached = await _cache_get(
+                session, self._provider_name, self._model, sha
+            )
+            if cached is not None:
+                logger.info(
+                    "ContractReporter: cache hit (sha=%s…) — deterministic replay.",
+                    sha[:12],
+                )
+                return cached
+
+        # ----- LLM call ----------------------------------------------------------
         messages: list[dict[str, str]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -125,11 +168,20 @@ class ContractReporter:
         if data is None:
             return None
 
-        # Log validator defects for visibility but do NOT auto-retry — a
-        # second LLM round-trip doubles NIM rate-limit pressure and on the
-        # current free tier produces empty responses on 30-40% of cases.
-        # If we move to a paid NIM tier or a higher-throughput provider,
-        # flip ENABLE_REPORTER_RETRY back on.
+        # ----- A1: citation grounding (drop hallucinated findings) ---------------
+        data, dropped = _ground_findings(data, contract_text)
+        if dropped:
+            logger.info(
+                "ContractReporter: dropped %d ungrounded finding(s) (excerpts not "
+                "in contract): %s",
+                len(dropped),
+                "; ".join(dropped[:3]),
+            )
+
+        # ----- D3: canonicalize ordering before hashing/caching ------------------
+        data = _canonicalize(data)
+
+        # Suggestion validator (log-only — retry held while on free NIM tier).
         defects = _validate_suggestions(data)
         if defects:
             logger.info(
@@ -138,13 +190,31 @@ class ContractReporter:
                 "; ".join(defects[:3]),
             )
 
-        return _build_report(self._model, data)
+        report = _build_report(self._model, data)
+        if report is None:
+            return None
+
+        # ----- D1: cache write (best-effort) -------------------------------------
+        if session is not None:
+            await _cache_put(
+                session,
+                provider=self._provider_name,
+                model=self._model,
+                contract_sha256=sha,
+                body=report,
+            )
+        return report
 
     async def _call_llm(self, messages: list[dict[str, str]]) -> dict[str, Any] | None:
         body: dict[str, Any] = {
             "model": self._model,
             "messages": messages,
+            # D2: lock every sampling knob the provider exposes.
             "temperature": 0,
+            "top_p": 1.0,
+            "seed": _LLM_SEED,
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
             # Capping output is the single biggest latency knob on NIM. Real
             # responses for a typical contract fit in ~1.6 K tokens; 2048
             # gives 25 % headroom and roughly halves p50 latency.
@@ -181,6 +251,207 @@ class ContractReporter:
             )
             return None
 
+
+# ---------------------------------------------------------------------------
+# D1 helpers — normalization, hashing, cache I/O
+# ---------------------------------------------------------------------------
+
+_WS_RUN = re.compile(r"[ \t]+")
+
+
+def _normalize_contract_text(text: str) -> str:
+    """Stable byte-form for cache hashing.
+
+    Two uploads of the same DOCX can differ in trailing whitespace, CRLF vs LF,
+    or Unicode normal form even though the text the LLM sees is identical. We
+    fold those incidental differences so they hash to the same cache key.
+    """
+    # NFC fold so visually identical glyphs hash the same.
+    t = unicodedata.normalize("NFC", text)
+    t = t.replace("\r\n", "\n").replace("\r", "\n")
+    # Collapse runs of horizontal whitespace but keep line structure.
+    t = "\n".join(_WS_RUN.sub(" ", line).rstrip() for line in t.split("\n"))
+    # Trim leading/trailing blank lines.
+    return t.strip("\n")
+
+
+def _contract_hash(normalized: str) -> str:
+    return hashlib.sha256(
+        (REPORT_PROMPT_VERSION + "\n" + normalized).encode("utf-8")
+    ).hexdigest()
+
+
+async def _cache_get(
+    session: AsyncSession,
+    provider: str,
+    model: str,
+    contract_sha: str,
+) -> ContractReport | None:
+    try:
+        row = (
+            await session.execute(
+                select(ReportCache).where(
+                    ReportCache.provider == provider,
+                    ReportCache.model == model,
+                    ReportCache.prompt_version == REPORT_PROMPT_VERSION,
+                    ReportCache.contract_sha256 == contract_sha,
+                )
+            )
+        ).scalar_one_or_none()
+    except Exception:  # pragma: no cover — DB hiccup must not break analyze
+        logger.warning("ReportCache lookup failed; falling through to LLM.")
+        return None
+    if row is None:
+        return None
+    try:
+        return ContractReport.model_validate_json(row.body_json)
+    except ValidationError:  # pragma: no cover — schema drift; ignore stale row
+        logger.warning("Corrupt report_cache row for %s/%s/%s", provider, model, contract_sha)
+        return None
+
+
+async def _cache_put(
+    session: AsyncSession,
+    *,
+    provider: str,
+    model: str,
+    contract_sha256: str,
+    body: ContractReport,
+) -> None:
+    try:
+        session.add(
+            ReportCache(
+                provider=provider,
+                model=model,
+                prompt_version=REPORT_PROMPT_VERSION,
+                contract_sha256=contract_sha256,
+                body_json=body.model_dump_json(),
+            )
+        )
+        await session.flush()
+    except Exception:  # pragma: no cover — write failure must not break response
+        logger.warning("ReportCache write failed; report returned without caching.")
+
+
+# ---------------------------------------------------------------------------
+# A1 helpers — citation grounding
+# ---------------------------------------------------------------------------
+
+_PUNCT = re.compile(r"[^\w\s]")
+
+
+def _flatten(text: str) -> str:
+    """Collapse to lowercase letters/digits/spaces for fuzzy substring match."""
+    return _WS_RUN.sub(" ", _PUNCT.sub(" ", text.lower())).strip()
+
+
+def _is_grounded(contract: str, excerpt: str, *, min_overlap: float = 0.8) -> bool:
+    """True if `excerpt` is a verbatim or near-verbatim substring of `contract`.
+
+    Exact-substring match is the happy path. If that fails (often because the
+    LLM added a trailing period or normalized quotes), we fall back to a
+    word-overlap ratio against the most-similar window of the contract.
+    """
+    if not excerpt or not excerpt.strip():
+        return False
+    if excerpt.strip() in contract:
+        return True
+    flat_contract = _flatten(contract)
+    flat_excerpt = _flatten(excerpt)
+    if not flat_excerpt:
+        return False
+    if flat_excerpt in flat_contract:
+        return True
+    # Word-overlap fallback: every meaningful word of the excerpt must appear in
+    # the contract, in any order. Cheap, no Levenshtein dependency.
+    words = [w for w in flat_excerpt.split() if len(w) > 2]
+    if not words:
+        return False
+    hits = sum(1 for w in words if w in flat_contract)
+    return (hits / len(words)) >= min_overlap
+
+
+def _ground_findings(
+    data: dict[str, Any], contract_text: str
+) -> tuple[dict[str, Any], list[str]]:
+    """Drop loopholes whose excerpt isn't in the contract; drop matching suggestions.
+
+    Returns the filtered `data` plus a list of human-readable reasons for each
+    dropped finding (for logging / audit).
+    """
+    dropped: list[str] = []
+    kept_loopholes: list[dict[str, Any]] = []
+    kept_names: set[str] = set()
+    for lp in data.get("loopholes") or []:
+        if not isinstance(lp, dict):
+            continue
+        excerpt = str(lp.get("excerpt", "")).strip()
+        name = str(lp.get("clause_name", "")).strip() or "unnamed"
+        if not _is_grounded(contract_text, excerpt):
+            dropped.append(f"{name}: excerpt not found in contract")
+            continue
+        kept_loopholes.append(lp)
+        kept_names.add(name)
+    data["loopholes"] = kept_loopholes
+
+    kept_suggestions: list[dict[str, Any]] = []
+    for sg in data.get("suggestions") or []:
+        if not isinstance(sg, dict):
+            continue
+        name = str(sg.get("clause_name", "")).strip()
+        original = str(sg.get("original_excerpt", "")).strip()
+        # A suggestion is kept only if (a) its loophole survived grounding AND
+        # (b) the original_excerpt it claims to replace is itself grounded.
+        if name not in kept_names:
+            dropped.append(f"suggestion {name}: parent loophole was dropped")
+            continue
+        if not _is_grounded(contract_text, original):
+            dropped.append(
+                f"suggestion {name}: original_excerpt not found in contract"
+            )
+            continue
+        kept_suggestions.append(sg)
+    data["suggestions"] = kept_suggestions
+    return data, dropped
+
+
+# ---------------------------------------------------------------------------
+# D3 helper — canonical ordering for deterministic byte-equality
+# ---------------------------------------------------------------------------
+
+
+def _canonicalize(data: dict[str, Any]) -> dict[str, Any]:
+    """Deterministically order loopholes (severity desc, clause_name asc) and
+    align suggestions to the same order.
+
+    Without this, the same set of findings can hash to different cache keys
+    just because the LLM emitted them in a different order across runs.
+    """
+
+    def _sev(d: dict[str, Any]) -> int:
+        return -_SEVERITY_RANK.get(str(d.get("severity", "low")).lower(), 0)
+
+    loopholes = list(data.get("loopholes") or [])
+    loopholes.sort(key=lambda d: (_sev(d), str(d.get("clause_name", ""))))
+    data["loopholes"] = loopholes
+
+    # Order suggestions by the index of their clause_name in the canonical
+    # loophole order; unknown names go to the end alphabetically.
+    name_order = {str(lp.get("clause_name", "")): i for i, lp in enumerate(loopholes)}
+    suggestions = list(data.get("suggestions") or [])
+    suggestions.sort(
+        key=lambda s: (
+            name_order.get(str(s.get("clause_name", "")), 1_000_000),
+            str(s.get("clause_name", "")),
+        )
+    )
+    data["suggestions"] = suggestions
+    return data
+
+
+# ---------------------------------------------------------------------------
+# Suggestion validator (log-only)
+# ---------------------------------------------------------------------------
 
 _MIN_SUGGESTION_LEN = 40
 

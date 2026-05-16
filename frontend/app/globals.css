@@ -1291,3 +1291,202 @@ button.danger {
     --mood-on: 56px;
   }
 }
+
+/* === Desktop collapsible rail (lg+) === */
+
+.rail-glass {
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.32) 100%);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 18px 40px -22px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+/* Hide scrollbar but keep scrollability */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Nav item — glow halo morphs in from the left on hover. */
+.rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: rgba(70, 69, 85, 0.85);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  transition:
+    color 0.25s ease,
+    background 0.3s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.rail-item:hover {
+  color: #1E3A8A;
+  transform: translateX(2px);
+}
+.rail-item-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(53, 37, 205, 0.0) 0%,
+    rgba(53, 37, 205, 0.12) 40%,
+    rgba(124, 58, 237, 0.12) 100%
+  );
+  opacity: 0;
+  transform: translateX(-12px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.rail-item:hover .rail-item-glow {
+  opacity: 1;
+  transform: translateX(0);
+}
+.rail-item-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  color: inherit;
+  transition: color 0.25s ease;
+}
+.rail-item-label {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail-item.is-active {
+  color: #3525cd;
+  background: linear-gradient(
+    90deg,
+    rgba(53, 37, 205, 0.14) 0%,
+    rgba(124, 58, 237, 0.08) 100%
+  );
+  box-shadow:
+    inset 2px 0 0 #3525cd,
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.rail-item.is-active .rail-item-icon { color: #3525cd; }
+.rail-item.is-active:hover { transform: translateX(0); }
+
+/* Plan card subtle pulse on enterprise/pro tone */
+@keyframes plan-shine {
+  0%, 100% { box-shadow: 0 6px 22px -10px rgba(124,58,237,0.55), inset 0 1px 0 rgba(255,255,255,0.3); }
+  50%      { box-shadow: 0 8px 28px -10px rgba(124,58,237,0.75), inset 0 1px 0 rgba(255,255,255,0.45); }
+}
+.plan-card-pro,
+.plan-card-enterprise {
+  animation: plan-shine 4.5s ease-in-out infinite;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.plan-card-pro:hover,
+.plan-card-enterprise:hover {
+  transform: translateY(-1px) scale(1.01);
+}
+.plan-card-free {
+  transition: background 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.plan-card-free:hover {
+  background: rgba(255, 255, 255, 0.75) !important;
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-item,
+  .rail-item-glow,
+  .plan-card-pro,
+  .plan-card-enterprise,
+  .plan-card-free {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* === Collapsed-state rail icon button === */
+.rail-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: rgba(70, 69, 85, 0.85);
+  text-decoration: none;
+  transition:
+    color 0.25s ease,
+    background 0.3s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.rail-icon-btn:hover {
+  color: #1E3A8A;
+  background: linear-gradient(135deg, rgba(53, 37, 205, 0.12), rgba(124, 58, 237, 0.10));
+  transform: translateY(-1px) scale(1.05);
+}
+.rail-icon-btn.is-active {
+  color: #3525cd;
+  background: linear-gradient(135deg, rgba(53, 37, 205, 0.18), rgba(124, 58, 237, 0.10));
+  box-shadow: inset 0 0 0 1px rgba(53, 37, 205, 0.25);
+}
+.rail-icon-btn.is-active:hover {
+  transform: scale(1.04);
+}
+
+/* Plan badge pulse (collapsed) */
+@keyframes plan-badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+.plan-badge-pulse {
+  animation: plan-badge-pulse 3.6s ease-in-out infinite;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.plan-badge-pulse:hover {
+  animation: none;
+  transform: scale(1.08);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-icon-btn,
+  .plan-badge-pulse { animation: none !important; transition: none !important; }
+}
+
+/* === Ghost mode for collapsed rail — invisible until hovered === */
+.rail-ghost {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.rail-ghost > * {
+  opacity: 0.42;
+  transition: opacity 0.3s ease;
+}
+.rail-ghost:hover {
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.32) 100%) !important;
+  backdrop-filter: blur(22px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 18px 40px -22px rgba(15, 23, 42, 0.25) !important;
+}
+.rail-ghost:hover > * {
+  opacity: 1;
+}

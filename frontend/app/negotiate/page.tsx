@@ -22,7 +22,6 @@ import { useToast } from "../../lib/toast";
 import {
   listAnalyses,
   markAnalysisNegotiated,
-  removeAnalysis,
   type StoredAnalysis,
 } from "../../lib/analyses";
 import { profileContextLine } from "../../lib/founder-profile";
@@ -161,23 +160,6 @@ function NegotiatePageInner() {
   const loopholes: ReportLoophole[] = active?.analysis.report?.loopholes ?? [];
   const suggestions: ReportSuggestion[] = active?.analysis.report?.suggestions ?? [];
   const activePicked = (active && picked[active.draft_id]) || new Set<number>();
-
-  async function deleteDoc(d: StoredAnalysis, e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!window.confirm(`Remove "${d.file_name}" from Negotiation? This can't be undone.`)) return;
-    removeAnalysis(d.draft_id);
-    setDocs((prev) => {
-      const next = prev.filter((x) => x.draft_id !== d.draft_id);
-      if (activeId === d.draft_id) setActiveId(next[0]?.draft_id ?? null);
-      return next;
-    });
-    try {
-      await client.softDeleteDraft(d.draft_id);
-      push("Removed", "success", d.file_name);
-    } catch {
-      push("Removed locally — server delete failed", "info");
-    }
-  }
 
   function ensureNegotiatedMark(draftId: string) {
     // Once per draft: tell backend (idempotent) + mirror locally so the
@@ -496,14 +478,15 @@ Return ONLY the full revised document text. No commentary.`;
             const selected = d.draft_id === activeId;
             const risk = d.analysis.summary.highest_risk;
             return (
-              <div
+              <button
                 key={d.draft_id}
-                className={`group relative flex items-center gap-3 px-4 py-3 pr-10 rounded-2xl border text-left transition-all cursor-pointer ${
+                type="button"
+                onClick={() => setActiveId(d.draft_id)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border text-left transition-all ${
                   selected
                     ? "bg-gradient-to-r from-primary to-accent-violet text-white border-transparent shadow-md"
                     : "bg-white/50 border-white/60 text-on-surface hover:bg-white/70"
                 }`}
-                onClick={() => setActiveId(d.draft_id)}
               >
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -521,20 +504,7 @@ Return ONLY the full revised document text. No commentary.`;
                     {d.analysis.summary.findings_count} findings · {risk} · {relTime(d.analyzed_at)}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  onClick={(e) => deleteDoc(d, e)}
-                  aria-label={`Remove ${d.file_name}`}
-                  title="Remove from Negotiation"
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full inline-flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 ${
-                    selected
-                      ? "bg-white/25 hover:bg-white/40 text-white"
-                      : "bg-status-danger/10 hover:bg-status-danger/20 text-status-danger"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">close</span>
-                </button>
-              </div>
+              </button>
             );
           })}
         </div>

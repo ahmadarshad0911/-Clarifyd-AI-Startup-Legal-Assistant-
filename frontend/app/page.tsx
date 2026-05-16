@@ -36,6 +36,7 @@ import {
 import { AuroraBackground } from "../components/common/aurora-background";
 import { PremiumCursor } from "../components/common/premium-cursor";
 import { ScrollReveal } from "../components/common/scroll-reveal";
+import { ContactForm } from "../components/contact/contact-form";
 import { useAuth } from "../lib/auth";
 
 function prefersReducedMotion(): boolean {
@@ -306,6 +307,7 @@ export default function LandingPage() {
           <a href="#how" className="hover:text-primary transition-colors">How</a>
           <a href="#features" className="hover:text-primary transition-colors">Features</a>
           <a href="#pricing" className="hover:text-primary transition-colors">Pricing</a>
+          <a href="#contact" className="hover:text-primary transition-colors">Contact</a>
           <Link href="/feedback" className="hover:text-primary transition-colors">Feedback</Link>
         </nav>
         <MagneticLink href={primaryHref} className="text-sm py-2 px-5">
@@ -736,6 +738,65 @@ Done. 2 critical · 3 high · 11 clean.   Total: 7.5s`}
         </div>
       </section>
 
+      {/* ============ CONTACT (embedded, public) ============ */}
+      <section id="contact" className="py-20 md:py-28 px-4 md:px-10">
+        <div className="max-w-container-max mx-auto grid lg:grid-cols-[1fr_1.1fr] gap-8 lg:gap-12 items-start">
+          <div className="lg:sticky lg:top-28">
+            <ScrollReveal>
+              <span className="font-label-caps text-label-caps uppercase tracking-widest text-primary">
+                Talk to a human
+              </span>
+              <h2 className="font-display-hero text-h1-mobile md:text-h1 text-onboarding-navy m-0 mt-2">
+                Skip the signup,<br />
+                <span className="bg-gradient-to-r from-primary to-accent-violet bg-clip-text text-transparent">
+                  message us first.
+                </span>
+              </h2>
+              <p className="text-on-surface-variant mt-4 max-w-md text-[15px] leading-relaxed">
+                Pricing questions, custom jurisdiction templates, enterprise SSO, demo bookings —
+                no account needed. Real reply within <strong>6 business hours</strong>.
+              </p>
+              <ul className="mt-6 flex flex-col gap-3 list-none p-0 m-0">
+                {[
+                  { icon: "mail",          v: "hello@clarifyd.com",      href: "mailto:hello@clarifyd.com" },
+                  { icon: "schedule",      v: "cal.com/clarifyd",        href: "https://cal.com/clarifyd" },
+                  { icon: "forum",         v: "discord.gg/clarifyd",     href: "https://discord.gg/clarifyd" },
+                ].map((c) => (
+                  <li key={c.v}>
+                    <a
+                      href={c.href}
+                      target={c.href.startsWith("http") ? "_blank" : undefined}
+                      rel={c.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                      className="inline-flex items-center gap-2 text-onboarding-navy hover:text-primary transition-colors font-semibold"
+                    >
+                      <span className="material-symbols-outlined text-primary text-[20px]">{c.icon}</span>
+                      {c.v}
+                      <span className="material-symbols-outlined text-[16px] opacity-60">arrow_outward</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[12px] text-on-surface-variant/70 mt-6 m-0">
+                Prefer the full layout? Open the{" "}
+                <Link href="/contact" className="text-primary font-semibold underline">
+                  dedicated contact page
+                </Link>.
+              </p>
+            </ScrollReveal>
+          </div>
+
+          <ScrollReveal>
+            <div className="crystal-glass rounded-3xl p-5 sm:p-7 md:p-8 relative overflow-hidden">
+              <ContactForm
+                compact
+                heading="Tell us what you need"
+                subheading="No credit card, no account — just the form."
+              />
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
       {/* ============ FINAL CTA — 3D ORB ============ */}
       <section className="py-24 md:py-32 px-4 md:px-10">
         <div className="max-w-container-max mx-auto crystal-glass rounded-[2.5rem] p-10 md:p-16 text-center relative overflow-hidden">
@@ -776,6 +837,7 @@ Done. 2 critical · 3 high · 11 clean.   Total: 7.5s`}
           <div className="flex gap-5">
             <Link href="/terms">Terms</Link>
             <Link href="/terms?tab=privacy">Privacy</Link>
+            <Link href="/contact">Contact</Link>
             <Link href="/feedback">Feedback</Link>
           </div>
         </div>

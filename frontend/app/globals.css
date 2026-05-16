@@ -1986,3 +1986,628 @@ button.danger {
   .bento-card { padding: 20px; }
   .bento-card h3 { font-size: 18px; }
 }
+
+/* === Landing: smooth in-page anchor scroll + header offset === */
+.landing-root { scroll-behavior: smooth; }
+/* Sticky header is ~70px tall; offset every section so its heading
+   isn't hidden under the header after an anchor jump. */
+.landing-root section[id] {
+  scroll-margin-top: 90px;
+}
+/* Ensure interactive landing elements always receive clicks even when
+   the magnetic transform is in motion. */
+.landing-root a,
+.landing-root button,
+.magnetic-btn {
+  position: relative;
+  z-index: 1;
+}
+
+/* ================================================================== */
+/* === Contact page — flip cards, parallax orbs, plane fly-off ====== */
+/* ================================================================== */
+
+.contact-root { perspective: 1200px; }
+
+/* --- Parallax orbs --- */
+.contact-stage { position: relative; isolation: isolate; }
+.contact-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(60px);
+  opacity: 0.55;
+  transform: translate3d(var(--ox, 0), var(--oy, 0), 0);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.contact-orb-1 {
+  top: 8%; left: -6%;
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, #3525cd 0%, transparent 70%);
+}
+.contact-orb-2 {
+  top: 40%; right: -8%;
+  width: 340px; height: 340px;
+  background: radial-gradient(circle, #7c3aed 0%, transparent 70%);
+}
+.contact-orb-3 {
+  bottom: -8%; left: 30%;
+  width: 240px; height: 240px;
+  background: radial-gradient(circle, #22d3ee 0%, transparent 70%);
+}
+
+/* --- Live status dot --- */
+.contact-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #059669;
+  box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.5);
+  animation: status-pulse 2s ease-out infinite;
+}
+@keyframes status-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.5); }
+  70%, 100% { box-shadow: 0 0 0 8px rgba(5, 150, 105, 0); }
+}
+
+/* --- Flip cards (channels) --- */
+.flip-card {
+  perspective: 1000px;
+  min-height: 170px;
+}
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 170px;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.flip-card:hover .flip-card-inner,
+.flip-card:focus-within .flip-card-inner {
+  transform: rotateY(180deg);
+}
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-card-front {
+  box-shadow: 0 14px 30px -20px rgba(15, 23, 42, 0.3);
+}
+.flip-card-back {
+  transform: rotateY(180deg);
+  color: #fff;
+  box-shadow: 0 16px 40px -16px var(--tone);
+}
+
+/* --- Send button → paper-airplane fly-off --- */
+.send-btn {
+  overflow: hidden;
+  cursor: pointer;
+}
+.send-btn .send-btn-label {
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+.send-btn .send-btn-plane {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transform: translate3d(-60px, 30px, 0) rotate(-25deg);
+  transition: transform 0.85s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+  pointer-events: none;
+}
+.send-btn.is-sending .send-btn-label {
+  transform: translateY(120%);
+  opacity: 0;
+}
+.send-btn.is-sending .send-btn-plane {
+  opacity: 1;
+  transform: translate3d(120px, -120px, 0) rotate(15deg);
+}
+
+/* --- Success card slide-up --- */
+.contact-success-card {
+  animation: success-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes success-pop {
+  0%   { opacity: 0; transform: translateY(30px) scale(0.92); }
+  60%  { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* --- FAQ accordion (grid-template-rows 0fr ↔ 1fr trick = real animatable) --- */
+.faq-body {
+  display: grid;
+  transition: grid-template-rows 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Mobile / tablet polish --- */
+@media (max-width: 640px) {
+  .flip-card { min-height: 160px; }
+  .flip-card-inner, .flip-card-face { min-height: 160px; }
+  .contact-orb { filter: blur(40px); opacity: 0.35; }
+  .contact-orb-1, .contact-orb-2, .contact-orb-3 {
+    width: 180px; height: 180px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-orb,
+  .contact-status-dot,
+  .flip-card-inner,
+  .send-btn .send-btn-label,
+  .send-btn .send-btn-plane,
+  .contact-success-card,
+  .faq-body {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* === Contact flip cards — premium upgrade ========================= */
+
+/* Container: scale + lift on hover for depth — independent of the flip. */
+.flip-card {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.flip-card:hover {
+  transform: translateY(-6px) scale(1.02);
+}
+
+/* Inner: smoother, longer flip with eased curve for "premium" feel. */
+.flip-card-inner {
+  transition: transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Front face — refined glass with prismatic edge highlight + soft halo
+   behind the icon. The ::before is masked with composite trick to render
+   only the border, which gradients per channel tone. */
+.flip-card-front {
+  position: relative;
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.5) 100%) !important;
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 18px 40px -22px rgba(15,23,42,0.25);
+  overflow: hidden;
+}
+.flip-card-front::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--tone, #3525cd), transparent 55%, var(--tone, #7c3aed));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.flip-card:hover .flip-card-front::before { opacity: 0.85; }
+
+/* Halo glow behind the icon tile — pulses up on hover. */
+.flip-card-front::after {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--tone, #3525cd) 0%, transparent 70%);
+  opacity: 0;
+  filter: blur(18px);
+  transform: scale(0.6);
+  transition:
+    opacity 0.45s ease,
+    transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.flip-card:hover .flip-card-front::after {
+  opacity: 0.45;
+  transform: scale(1.4);
+}
+
+/* Icon tile: floats up slightly on hover. */
+.flip-card-front > div:first-child {
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.flip-card:hover .flip-card-front > div:first-child {
+  transform: translateY(-2px) scale(1.06);
+}
+
+/* Back face — refined gradient, internal sweeping shine, inset highlight. */
+.flip-card-back {
+  position: relative;
+  background:
+    linear-gradient(135deg, var(--tone, #3525cd) 0%, color-mix(in srgb, var(--tone, #3525cd) 70%, #000) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.35),
+    inset 0 0 80px rgba(255,255,255,0.08),
+    0 24px 60px -22px var(--tone, #3525cd);
+  overflow: hidden;
+}
+.flip-card-back::before {
+  /* Soft top-right gloss */
+  content: "";
+  position: absolute;
+  top: -30%;
+  right: -30%;
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(255,255,255,0.45), transparent 65%);
+  filter: blur(20px);
+  pointer-events: none;
+  border-radius: 50%;
+}
+.flip-card-back::after {
+  /* Diagonal shine that sweeps across when revealed */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.9s ease 0.25s;
+  pointer-events: none;
+}
+.flip-card:hover .flip-card-back::after { left: 140%; }
+
+/* Buttons inside back face — slightly more premium chips. */
+.flip-card-back a,
+.flip-card-back button {
+  background: rgba(255,255,255,0.18) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.25);
+  transition: background 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.flip-card-back a:hover,
+.flip-card-back button:hover {
+  background: rgba(255,255,255,0.3) !important;
+  transform: translateY(-1px);
+}
+
+/* "Hover to reveal" mini-label — animated underline cue on hover. */
+.flip-card-front .text-on-surface-variant {
+  position: relative;
+}
+.flip-card-front .text-on-surface-variant::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 18px;
+  height: 1.5px;
+  background: var(--tone, #3525cd);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.flip-card:hover .flip-card-front .text-on-surface-variant::after {
+  transform: scaleX(2.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card,
+  .flip-card-inner,
+  .flip-card-front::before,
+  .flip-card-front::after,
+  .flip-card-back::after,
+  .flip-card-back a,
+  .flip-card-back button,
+  .flip-card-front > div:first-child,
+  .flip-card-front .text-on-surface-variant::after {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* === Fix: flip-card faces must stay absolute-positioned ============ */
+/* Earlier premium upgrade set `position: relative` on the front/back
+   faces, which clobbered the original `.flip-card-face` rule that
+   places both faces on top of each other via `position: absolute; inset: 0`.
+   With that gone the back face flowed in document order and appeared
+   BELOW the card instead of replacing the front. Restore absolute, then
+   use ::before/::after for the premium tricks (they're already absolute
+   inside an absolute parent so the layering is correct). */
+.flip-card-front,
+.flip-card-back {
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+/* === Form enhancements (landing + /contact) ======================= */
+
+/* Floating labels for glass-field-strong: the label sits inside the field
+   and lifts when focused or filled. Adds the high-end feel without a
+   layout refactor. */
+.glass-field-strong > input,
+.glass-field-strong > textarea,
+.glass-field-strong > select {
+  font-weight: 500;
+}
+.glass-field-strong > input::placeholder,
+.glass-field-strong > textarea::placeholder {
+  color: rgba(70, 69, 85, 0.5);
+  transition: color 0.25s ease;
+}
+.glass-field-strong:focus-within > input::placeholder,
+.glass-field-strong:focus-within > textarea::placeholder {
+  color: rgba(70, 69, 85, 0.35);
+}
+
+/* Filled state hint: subtle indigo tint on the border when the input
+   has content (uses :not(:placeholder-shown) trick). */
+.glass-field-strong > input:not(:placeholder-shown),
+.glass-field-strong > textarea:not(:placeholder-shown) {
+  /* parent's :focus-within already gives the focus style; this hooks
+     onto :has() so the parent reflects "filled" too. */
+}
+.glass-field-strong:has(input:not(:placeholder-shown)),
+.glass-field-strong:has(textarea:not(:placeholder-shown)) {
+  border-color: rgba(53, 37, 205, 0.28);
+}
+
+/* Send button: nicer focus + active states. */
+.send-btn {
+  cursor: pointer;
+}
+.send-btn:focus-visible {
+  outline: 2px solid rgba(124, 58, 237, 0.5);
+  outline-offset: 3px;
+}
+.send-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.send-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Field label gentle hover hint: the small uppercase caption brightens
+   when the field is focused, so the user can read where focus is. */
+label:has(.glass-field-strong:focus-within) > .font-label-caps {
+  color: #3525cd;
+  transition: color 0.25s ease;
+}
+
+/* ================================================================== */
+/* === Premium contact form ========================================= */
+/* ================================================================== */
+
+.premium-form { position: relative; }
+
+/* Progress meter — top of form, fills as required fields validate */
+.premium-progress {
+  height: 4px;
+  width: 100%;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+.premium-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3525cd, #7c3aed 50%, #22d3ee);
+  background-size: 200% 100%;
+  animation: progress-shimmer 2.6s linear infinite;
+  transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 14px rgba(124, 58, 237, 0.5);
+}
+@keyframes progress-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: 0 0; }
+}
+
+/* ------------------ Floating label glass field ------------------- */
+.float-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 56px;
+  border-radius: 16px;
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.28) 100%);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 4px 14px -8px rgba(15, 23, 42, 0.18);
+  cursor: text;
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.float-field:hover {
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.4) 100%);
+}
+.float-field:focus-within {
+  border-color: rgba(53, 37, 205, 0.55);
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.5) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 4px rgba(53, 37, 205, 0.15),
+    0 10px 28px -12px rgba(53, 37, 205, 0.3);
+  transform: translateY(-1px);
+}
+.float-field[data-valid="true"] {
+  border-color: rgba(5, 150, 105, 0.45);
+}
+.float-field[data-valid="false"] {
+  border-color: rgba(234, 88, 12, 0.55);
+}
+
+.float-field-icon {
+  color: #3525cd;
+  flex-shrink: 0;
+  transition: color 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.float-field:focus-within .float-field-icon {
+  transform: scale(1.1);
+}
+
+.float-field > input,
+.float-field > textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #0f172a;
+  font-weight: 500;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 18px 0 6px 0; /* leaves room for the floating label above */
+  resize: none;
+}
+
+.float-field-label {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(70, 69, 85, 0.7);
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
+  transition:
+    top 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    font-size 0.25s ease,
+    color 0.25s ease;
+}
+.float-field-icon ~ input ~ .float-field-label,
+.float-field-icon ~ textarea ~ .float-field-label {
+  left: 42px; /* offset for the icon */
+}
+.float-field:focus-within .float-field-label,
+.float-field[data-filled="true"] .float-field-label {
+  top: 8px;
+  transform: translateY(0);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3525cd;
+}
+
+.float-field-status {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Textarea variant — taller, label sits at the top-left */
+.float-field-area {
+  height: auto;
+  min-height: 140px;
+  align-items: flex-start;
+  padding: 18px 14px 10px;
+}
+.float-field-area > textarea {
+  padding: 16px 0 6px 0;
+  line-height: 1.55;
+}
+.float-field-area .float-field-label {
+  top: 16px;
+  transform: none;
+}
+.float-field-area:focus-within .float-field-label,
+.float-field-area[data-filled="true"] .float-field-label {
+  top: 8px;
+}
+.float-field-counter {
+  position: absolute;
+  right: 14px;
+  bottom: 6px;
+  font-size: 10px;
+  color: rgba(70, 69, 85, 0.7);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------ Topic chip group ----------------------------- */
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(70, 69, 85, 0.85);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease;
+  white-space: nowrap;
+}
+.topic-chip:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: translateY(-1px);
+}
+.topic-chip[data-selected="true"] {
+  background: linear-gradient(135deg, #3525cd, #7c3aed);
+  color: #fff;
+  border-color: transparent;
+  box-shadow:
+    0 8px 22px -8px rgba(124, 58, 237, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px) scale(1.04);
+}
+.topic-chip[data-selected="true"]:hover { filter: brightness(1.05); }
+.topic-chip:focus-visible {
+  outline: 2px solid rgba(53, 37, 205, 0.55);
+  outline-offset: 2px;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .premium-progress-bar,
+  .float-field,
+  .float-field-icon,
+  .float-field-label,
+  .topic-chip { transition: none !important; animation: none !important; transform: none !important; }
+}

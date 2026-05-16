@@ -2,6 +2,7 @@ from app.db.models.audit_event import AuditEvent
 from app.db.models.clause_cache import ClauseCache
 from app.db.models.clause_finding import ClauseFinding
 from app.db.models.comment import Comment
+from app.db.models.contact_message import ContactMessage
 from app.db.models.contract_draft import ContractDraft
 from app.db.models.export_job import ExportJob
 from app.db.models.feedback import Feedback
@@ -16,6 +17,7 @@ __all__ = [
     "ClauseCache",
     "ClauseFinding",
     "Comment",
+    "ContactMessage",
     "ContractDraft",
     "ExportJob",
     "Feedback",

@@ -166,3 +166,5 @@ backend/uploads/
 backend/_*.py
 
 backend/_tunnel.log*
+
+backend/_uv.*

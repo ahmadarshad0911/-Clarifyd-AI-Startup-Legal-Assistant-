@@ -163,6 +163,23 @@ export class ApiClient {
   /** Persisted analyses for the current user, newest first.
    *  Used by the Findings tab as a fallback when browser localStorage is empty
    *  (e.g. visiting from a different device or origin). */
+  /** POST /api/v1/contact — public contact form. Auth-optional. */
+  async submitContact(body: {
+    name?: string | null;
+    email: string;
+    company?: string | null;
+    topic: "general" | "sales" | "support" | "press" | "legal";
+    message: string;
+    page_path?: string | null;
+    website?: string | null; // honeypot
+  }): Promise<{ id: string; submitted_at: string }> {
+    return this.request("/api/v1/contact", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   /** POST /api/v1/feedback — submit a feedback entry. Auth-optional (anon ok). */
   async submitFeedback(body: {
     mood: number;

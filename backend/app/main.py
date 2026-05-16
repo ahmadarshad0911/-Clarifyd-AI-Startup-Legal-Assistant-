@@ -35,6 +35,7 @@ from app.logging_config import clear_request_id, configure_logging, get_request_
 from app.rate_limit import rate_limit
 from app.observability import render_prometheus
 from app.routes.admin import router as admin_router
+from app.routes.analyses import router as analyses_router
 from app.routes.auth import router as auth_router
 from app.routes.comments import router as comments_router
 from app.routes.compare import router as compare_router
@@ -179,6 +180,7 @@ if _cors_origins:
 app.include_router(auth_router)
 app.include_router(oauth_router)
 app.include_router(reviews_router)
+app.include_router(analyses_router)
 app.include_router(exports_router)
 app.include_router(admin_router)
 app.include_router(reasoning_router)
@@ -493,9 +495,18 @@ async def _analyze_and_persist(
             logger.exception("Contract report generation failed.")
             report = None
 
-    return _build_response(
+    response = _build_response(
         draft_row, finding_rows, report=report, extracted_text=contract_text
     )
+    # Persist the full response so the Findings tab can rehydrate it on any
+    # device or origin (browser localStorage is per-origin and ephemeral).
+    try:
+        draft_row.analysis_json = response.model_dump_json()
+        await session.commit()
+    except Exception:  # pragma: no cover — never block the response on storage
+        logger.exception("Failed to persist analysis_json for draft %s", draft_row.id)
+        await session.rollback()
+    return response
 
 
 class AnalyzeTextRequest(BaseModel):

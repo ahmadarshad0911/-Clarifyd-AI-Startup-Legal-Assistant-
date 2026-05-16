@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -28,3 +28,7 @@ class ContractDraft(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Full AnalyzeContractResponse JSON dump so the Findings tab can rehydrate
+    # the entire report (loopholes, suggestions, extracted_text) on any device
+    # or origin without relying on the user's localStorage.
+    analysis_json: Mapped[str | None] = mapped_column(Text, nullable=True)

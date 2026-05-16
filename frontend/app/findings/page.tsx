@@ -79,16 +79,49 @@ function FindingsPageInner() {
   const [exportedDoc, setExportedDoc] = useState<string | null>(null);
 
   useEffect(() => {
-    const all = listAnalyses();
-    setDocs(all);
-    const wanted = params.get("draft");
-    setActiveId(
-      (wanted && all.some((d) => d.draft_id === wanted) ? wanted : null) ??
-        all[0]?.draft_id ??
-        null
-    );
-    setLoaded(true);
-  }, [params]);
+    let cancelled = false;
+    const local = listAnalyses();
+
+    function settle(items: StoredAnalysis[]) {
+      if (cancelled) return;
+      setDocs(items);
+      const wanted = params.get("draft");
+      setActiveId(
+        (wanted && items.some((d) => d.draft_id === wanted) ? wanted : null) ??
+          items[0]?.draft_id ??
+          null
+      );
+      setLoaded(true);
+    }
+
+    // Always seed from local first for instant render.
+    settle(local);
+
+    // Then top-up from backend so analyses persisted from another origin /
+    // device show up here too (Vercel deploy ↔ localhost ↔ other browser).
+    client
+      .listStoredAnalyses()
+      .then((res) => {
+        if (cancelled) return;
+        const remote: StoredAnalysis[] = res.items.map((r) => ({
+          draft_id: r.draft_id,
+          file_name: r.file_name,
+          analyzed_at: r.analyzed_at,
+          analysis: r.analysis,
+        }));
+        // Merge by draft_id, prefer local (user may have unsaved tweaks).
+        const seen = new Set(local.map((d) => d.draft_id));
+        const merged = [...local, ...remote.filter((r) => !seen.has(r.draft_id))];
+        settle(merged);
+      })
+      .catch(() => {
+        /* offline or unauthorized — local-only is fine */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params, client]);
 
   const active = useMemo(
     () => docs.find((d) => d.draft_id === activeId) ?? null,

@@ -166,7 +166,35 @@ async def lifespan(app: FastAPI):
         await dispose_engine()
 
 
-app = FastAPI(title=settings.project_name, version="0.1.0-phase1", lifespan=lifespan)
+# Gate introspection in production — no /openapi.json, /docs, /redoc.
+_is_prod = settings.environment.lower() == "production"
+app = FastAPI(
+    title=settings.project_name,
+    version="0.1.0-phase1",
+    lifespan=lifespan,
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
+)
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    """Defense-in-depth response headers."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=()",
+    )
+    if _is_prod:
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=63072000; includeSubDomains; preload",
+        )
+    return response
 
 _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 if _cors_origins:

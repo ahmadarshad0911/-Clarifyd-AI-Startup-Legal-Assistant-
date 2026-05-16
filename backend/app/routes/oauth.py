@@ -75,7 +75,8 @@ def _provider_cfg(provider: Provider, settings: Settings) -> dict[str, str]:
 
 def _sign_state(settings: Settings, provider: Provider, nonce: str) -> str:
     payload = f"{provider}.{nonce}".encode()
-    sig = hmac.new(settings.jwt_secret.encode(), payload, hashlib.sha256).hexdigest()[:16]
+    # 32 hex chars = 128 bits of HMAC strength.
+    sig = hmac.new(settings.jwt_secret.encode(), payload, hashlib.sha256).hexdigest()[:32]
     return f"{provider}.{nonce}.{sig}"
 
 
@@ -88,7 +89,7 @@ def _verify_state(settings: Settings, provider: Provider, state: str) -> bool:
         return False
     expect = hmac.new(
         settings.jwt_secret.encode(), f"{p}.{nonce}".encode(), hashlib.sha256
-    ).hexdigest()[:16]
+    ).hexdigest()[:32]
     return hmac.compare_digest(sig, expect)
 
 

@@ -25,8 +25,10 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-only-change-me"
     jwt_algorithm: str = "HS256"
     jwt_access_ttl_minutes: int = 60
-    rate_limit_login_per_min: int = 60
+    rate_limit_login_per_min: int = 10
     rate_limit_analyze_per_min: int = 10
+    # Public POSTs (contact / feedback) — anti-spam.
+    rate_limit_public_post_per_min: int = 15
     review_confidence_threshold: float = 0.7
     review_auto_route_severities: str = "high,critical"
     export_dir: str = "./exports"

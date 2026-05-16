@@ -116,6 +116,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Defense-in-depth headers. CSP keeps localStorage-stored JWT
+            safe from drive-by XSS in third-party deps: scripts only from
+            self + the few CDNs we actually need (Tailwind, fonts). */}
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content={[
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com data:",
+            "img-src 'self' data: blob: https://graph.facebook.com https://lh3.googleusercontent.com",
+            "connect-src 'self' http://localhost:8000 https://*.trycloudflare.com https://*.onrender.com https://*.vercel.app",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+          ].join("; ")}
+        />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
         <link
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"

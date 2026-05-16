@@ -23,7 +23,10 @@ from app.auth.dependencies import (
 from app.db.models import ContactMessage
 from app.db.session import get_session
 from app.errors import AppError, ErrorCode
+from app.rate_limit import rate_limit
 from app.services.audit import append_audit_event
+
+_post_limiter = rate_limit("contact.post", limit_attr="rate_limit_public_post_per_min")
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/contact", tags=["contact"])
@@ -66,7 +69,12 @@ class ContactListResponse(BaseModel):
     items: list[ContactItem]
 
 
-@router.post("", response_model=ContactCreateResponse, status_code=201)
+@router.post(
+    "",
+    response_model=ContactCreateResponse,
+    status_code=201,
+    dependencies=[Depends(_post_limiter)],
+)
 async def submit_contact(
     body: ContactCreateRequest,
     request: Request,

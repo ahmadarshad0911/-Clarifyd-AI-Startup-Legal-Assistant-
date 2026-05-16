@@ -54,7 +54,8 @@ class MeResponse(BaseModel):
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(min_length=3, max_length=256)
-    password: str = Field(min_length=6, max_length=256)
+    # NIST SP 800-63B aligned: 12-char minimum. UI suggester gives 16.
+    password: str = Field(min_length=12, max_length=256)
 
 
 _login_limiter = rate_limit("auth.login", limit_attr="rate_limit_login_per_min")

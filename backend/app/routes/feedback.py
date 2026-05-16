@@ -23,7 +23,10 @@ from app.auth.dependencies import (
 from app.db.models import Feedback
 from app.db.session import get_session
 from app.errors import AppError, ErrorCode
+from app.rate_limit import rate_limit
 from app.services.audit import append_audit_event
+
+_post_limiter = rate_limit("feedback.post", limit_attr="rate_limit_public_post_per_min")
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/feedback", tags=["feedback"])
@@ -65,7 +68,12 @@ class FeedbackListResponse(BaseModel):
     items: list[FeedbackItem]
 
 
-@router.post("", response_model=FeedbackCreateResponse, status_code=201)
+@router.post(
+    "",
+    response_model=FeedbackCreateResponse,
+    status_code=201,
+    dependencies=[Depends(_post_limiter)],
+)
 async def submit_feedback(
     body: FeedbackCreateRequest,
     request: Request,

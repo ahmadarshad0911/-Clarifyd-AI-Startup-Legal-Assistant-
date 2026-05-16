@@ -10,6 +10,9 @@ export type StoredAnalysis = {
   draft_id: string;
   file_name: string;
   analyzed_at: string;
+  /** ISO timestamp set the first time the user acts in /negotiate.
+   *  NULL = belongs in the Findings tab; non-NULL = belongs in Negotiate. */
+  negotiated_at?: string | null;
   analysis: AnalyzeContractResponse;
 };
 
@@ -56,4 +59,15 @@ export function pushAnalysis(
 
 export function getAnalysis(draftId: string): StoredAnalysis | null {
   return read().find((a) => a.draft_id === draftId) ?? null;
+}
+
+/** Locally mark a draft as "negotiated". Used by /negotiate the first
+ *  time the user toggles a suggestion or generates a collaborator doc —
+ *  pairs with a backend POST /api/v1/analyses/{id}/negotiate. */
+export function markAnalysisNegotiated(draftId: string, atIso?: string): void {
+  const ts = atIso ?? new Date().toISOString();
+  const list = read().map((a) =>
+    a.draft_id === draftId && !a.negotiated_at ? { ...a, negotiated_at: ts } : a
+  );
+  write(list);
 }

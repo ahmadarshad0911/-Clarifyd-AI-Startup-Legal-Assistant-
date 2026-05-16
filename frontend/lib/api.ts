@@ -201,10 +201,20 @@ export class ApiClient {
       draft_id: string;
       file_name: string;
       analyzed_at: string;
+      negotiated_at: string | null;
       analysis: AnalyzeContractResponse;
     }>;
   }> {
     return this.request("/api/v1/analyses");
+  }
+
+  /** Flag a draft as actively negotiated. Idempotent on backend. */
+  async markAnalysisNegotiated(
+    draftId: string
+  ): Promise<{ draft_id: string; negotiated_at: string }> {
+    return this.request(`/api/v1/analyses/${encodeURIComponent(draftId)}/negotiate`, {
+      method: "POST",
+    });
   }
 
   async claimReview(itemId: string): Promise<{

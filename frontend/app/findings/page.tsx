@@ -46,11 +46,13 @@ function FindingsPageInner() {
 
     function settle(items: StoredAnalysis[]) {
       if (cancelled) return;
-      setDocs(items);
+      // Findings tab = drafts NOT yet negotiated.
+      const active = items.filter((d) => !d.negotiated_at);
+      setDocs(active);
       const wanted = params.get("draft");
       setActiveId(
-        (wanted && items.some((d) => d.draft_id === wanted) ? wanted : null) ??
-          items[0]?.draft_id ??
+        (wanted && active.some((d) => d.draft_id === wanted) ? wanted : null) ??
+          active[0]?.draft_id ??
           null
       );
       setLoaded(true);
@@ -66,6 +68,7 @@ function FindingsPageInner() {
           draft_id: r.draft_id,
           file_name: r.file_name,
           analyzed_at: r.analyzed_at,
+          negotiated_at: r.negotiated_at ?? null,
           analysis: r.analysis,
         }));
         const seen = new Set(local.map((d) => d.draft_id));
@@ -106,11 +109,12 @@ function FindingsPageInner() {
             description
           </span>
           <h2 className="font-display-hero text-h1-mobile lg:text-h1 text-onboarding-navy m-0">
-            No analysis yet
+            No pending findings
           </h2>
           <p className="text-on-surface-variant max-w-md">
-            Upload a contract on the dashboard — Kimi will analyze every clause
-            and the verdict will appear here.
+            Either you haven&rsquo;t uploaded a contract yet, or every analysis has
+            already moved to the Negotiation Lab. Upload another to start a
+            fresh review.
           </p>
           <Link href="/dashboard" className="btn-capsule btn-capsule-primary mt-2">
             <span className="material-symbols-outlined text-[18px]">upload_file</span>

@@ -19,7 +19,11 @@ import { VerdictCard } from "../../components/findings/verdict-card";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
-import { listAnalyses, type StoredAnalysis } from "../../lib/analyses";
+import {
+  listAnalyses,
+  markAnalysisNegotiated,
+  type StoredAnalysis,
+} from "../../lib/analyses";
 import { profileContextLine } from "../../lib/founder-profile";
 import type { ReportLoophole, ReportSuggestion, RiskLevel } from "../../lib/contracts";
 
@@ -92,11 +96,20 @@ function NegotiatePageInner() {
 
     function settle(items: StoredAnalysis[]) {
       if (cancelled) return;
-      setDocs(items);
       const wanted = params.get("draft");
+      // Negotiation tab = drafts already negotiated. Plus: if the user
+      // jumps here from Findings via ?draft=<id>, include that draft even
+      // if not-yet-negotiated (it's about to be).
+      const negotiated = items.filter((d) => d.negotiated_at);
+      const focused = wanted ? items.find((d) => d.draft_id === wanted) : null;
+      const merged =
+        focused && !negotiated.some((d) => d.draft_id === focused.draft_id)
+          ? [focused, ...negotiated]
+          : negotiated;
+      setDocs(merged);
       setActiveId(
-        (wanted && items.some((d) => d.draft_id === wanted) ? wanted : null) ??
-          items[0]?.draft_id ??
+        (wanted && merged.some((d) => d.draft_id === wanted) ? wanted : null) ??
+          merged[0]?.draft_id ??
           null
       );
       setLoaded(true);
@@ -114,6 +127,7 @@ function NegotiatePageInner() {
           draft_id: r.draft_id,
           file_name: r.file_name,
           analyzed_at: r.analyzed_at,
+          negotiated_at: r.negotiated_at ?? null,
           analysis: r.analysis,
         }));
         const seen = new Set(local.map((d) => d.draft_id));
@@ -138,8 +152,27 @@ function NegotiatePageInner() {
   const suggestions: ReportSuggestion[] = active?.analysis.report?.suggestions ?? [];
   const activePicked = (active && picked[active.draft_id]) || new Set<number>();
 
+  function ensureNegotiatedMark(draftId: string) {
+    // Once per draft: tell backend (idempotent) + mirror locally so the
+    // Findings tab drops it next render.
+    const d = docs.find((x) => x.draft_id === draftId);
+    if (!d || d.negotiated_at) return;
+    markAnalysisNegotiated(draftId);
+    setDocs((prev) =>
+      prev.map((x) =>
+        x.draft_id === draftId
+          ? { ...x, negotiated_at: new Date().toISOString() }
+          : x
+      )
+    );
+    client.markAnalysisNegotiated(draftId).catch(() => {
+      /* network down — local mark survives, server will sync next visit */
+    });
+  }
+
   function togglePick(i: number) {
     if (!active) return;
+    ensureNegotiatedMark(active.draft_id);
     setPicked((prev) => {
       const set = new Set(prev[active.draft_id] ?? []);
       if (set.has(i)) set.delete(i);
@@ -151,6 +184,7 @@ function NegotiatePageInner() {
 
   function applyAll() {
     if (!active) return;
+    ensureNegotiatedMark(active.draft_id);
     setPicked((prev) => ({
       ...prev,
       [active.draft_id]: new Set(suggestions.map((_, i) => i)),
@@ -211,6 +245,7 @@ function NegotiatePageInner() {
       push("Pick at least one suggested clause to apply.", "info");
       return;
     }
+    ensureNegotiatedMark(active.draft_id);
     setExporting(true);
     try {
       // Path A — extracted_text present: splice locally so the rest of the
@@ -379,13 +414,17 @@ Return ONLY the full revised document text. No commentary.`;
             handshake
           </span>
           <h2 className="font-display-hero text-h1-mobile lg:text-h1 text-onboarding-navy m-0">
-            Nothing to negotiate yet
+            No negotiations yet
           </h2>
           <p className="text-on-surface-variant max-w-md">
-            Upload a contract on the dashboard — once Kimi analyzes the clauses,
-            you can negotiate risky language here and export an ultimate
-            collaborator document.
+            Open any draft from the Findings tab and accept a suggested clause
+            — that draft will move here, where you can keep negotiating and
+            export the ultimate collaborator document.
           </p>
+          <Link href="/findings" className="btn-capsule btn-capsule-primary mt-2">
+            <span className="material-symbols-outlined text-[18px]">description</span>
+            Open Findings
+          </Link>
           <Link href="/dashboard" className="btn-capsule btn-capsule-primary mt-2">
             <span className="material-symbols-outlined text-[18px]">upload_file</span>
             Upload a contract

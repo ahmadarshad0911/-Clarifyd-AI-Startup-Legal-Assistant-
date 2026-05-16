@@ -32,3 +32,10 @@ class ContractDraft(Base):
     # the entire report (loopholes, suggestions, extracted_text) on any device
     # or origin without relying on the user's localStorage.
     analysis_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Set the first time the user accepts a suggestion or generates a
+    # collaborator document in the Negotiation Lab. Used to bucket drafts
+    # between the Findings tab (NULL = still up for review) and the
+    # Negotiate tab (NOT NULL = actively negotiated).
+    negotiated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

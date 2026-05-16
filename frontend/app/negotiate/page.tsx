@@ -97,19 +97,28 @@ function NegotiatePageInner() {
     function settle(items: StoredAnalysis[]) {
       if (cancelled) return;
       const wanted = params.get("draft");
-      // Negotiation tab = drafts already negotiated. Plus: if the user
-      // jumps here from Findings via ?draft=<id>, include that draft even
-      // if not-yet-negotiated (it's about to be).
+
+      // If user jumped here from Findings with ?draft=<id> and that draft
+      // hasn't been negotiated yet, mark it immediately so it migrates out
+      // of Findings the same tick. Prevents the "doc in both tabs" bug.
+      if (wanted) {
+        const focused = items.find((d) => d.draft_id === wanted);
+        if (focused && !focused.negotiated_at) {
+          const stamp = new Date().toISOString();
+          focused.negotiated_at = stamp; // mutate in-place for this render
+          markAnalysisNegotiated(wanted, stamp); // local store
+          client.markAnalysisNegotiated(wanted).catch(() => {
+            /* offline — local mark survives, server syncs next visit */
+          });
+        }
+      }
+
+      // Negotiation tab shows ONLY truly-negotiated drafts. No focus-merge.
       const negotiated = items.filter((d) => d.negotiated_at);
-      const focused = wanted ? items.find((d) => d.draft_id === wanted) : null;
-      const merged =
-        focused && !negotiated.some((d) => d.draft_id === focused.draft_id)
-          ? [focused, ...negotiated]
-          : negotiated;
-      setDocs(merged);
+      setDocs(negotiated);
       setActiveId(
-        (wanted && merged.some((d) => d.draft_id === wanted) ? wanted : null) ??
-          merged[0]?.draft_id ??
+        (wanted && negotiated.some((d) => d.draft_id === wanted) ? wanted : null) ??
+          negotiated[0]?.draft_id ??
           null
       );
       setLoaded(true);

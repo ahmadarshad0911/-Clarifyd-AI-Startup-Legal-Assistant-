@@ -23,7 +23,10 @@ from app.contracts.api import (
     RiskLevel,
     RiskSummary,
 )
+import asyncio
+
 from app.db import create_engine_and_sessionmaker, dispose_engine, get_session
+from app.db.engine import get_sessionmaker
 from app.db.base import Base
 from app.db import models as _orm_models  # noqa: F401  (register tables on Base.metadata)
 from app.db.models import ClauseFinding as ClauseFindingRow
@@ -458,6 +461,54 @@ async def _analyze_and_persist(
         )
     ).scalar_one_or_none()
 
+    # ----- #2 parallel reporter --------------------------------------------
+    # Kick off the full-contract reporter NOW, in parallel with the per-clause
+    # analysis + every DB write below. Saves ~50 % cold-path latency because
+    # the reporter LLM call (~15 s) overlaps with the per-clause loop (~15 s)
+    # instead of running sequentially.
+    #
+    # The reporter gets its OWN AsyncSession from the sessionmaker — async
+    # SQLAlchemy sessions are not coroutine-safe for concurrent writes, and
+    # the main session is busy with finding/audit/draft writes throughout
+    # this handler. Reporter's own session handles ReportCache I/O and
+    # commits independently.
+    #
+    # If the rules-based pre-screen below finds no high/critical clauses
+    # (#3), we cancel the in-flight reporter task — the local httpx request
+    # is aborted, NIM may still complete server-side but we don't wait on it.
+    reporter = get_contract_reporter()
+    reporter_task: "asyncio.Task[ContractReport | None] | None" = None
+    if reporter is not None:
+        async def _run_reporter_isolated() -> ContractReport | None:
+            try:
+                sessionmaker = get_sessionmaker()
+            except Exception:  # pragma: no cover — DB not initialised
+                # Degrade to cache-bypass mode rather than fail the request.
+                return await asyncio.wait_for(
+                    reporter.generate(contract_text), timeout=120.0
+                )
+            try:
+                async with sessionmaker() as own_session:
+                    rep = await asyncio.wait_for(
+                        reporter.generate(contract_text, session=own_session),
+                        timeout=120.0,
+                    )
+                    try:
+                        await own_session.commit()
+                    except Exception:  # pragma: no cover — cache write race
+                        await own_session.rollback()
+                    return rep
+            except asyncio.TimeoutError:
+                logger.warning("Reporter timed out after 120s — rules-only response.")
+                return None
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # pragma: no cover — never block the response
+                logger.exception("Reporter task failed.")
+                return None
+
+        reporter_task = asyncio.create_task(_run_reporter_isolated())
+
     try:
         analysis_with_flags = await get_async_analysis().analyze(contract_text, session=session)
     except ValueError as exc:
@@ -559,41 +610,40 @@ async def _analyze_and_persist(
     )
     await session.commit()
 
-    # Skip the full-contract reporter when rules-based scoring found nothing
-    # high or critical. The reporter exists to find loopholes; on a clean
-    # NDA / SOW it has nothing to add and just costs ~15 s of LLM time.
-    # Surfaces the optimisation in the audit log so we can measure how often
-    # it fires.
+    # The reporter has been running in parallel since the top of this handler
+    # (#2). Decide whether to keep its result or cancel based on whether the
+    # rules pre-screen surfaced anything serious (#3).
     has_serious = any(
         (row.risk_level or "").lower() in {"high", "critical"}
         for row in finding_rows
     )
     report = None
-    reporter = get_contract_reporter()
-    if reporter is not None and not has_serious:
-        logger.info(
-            "Skipping reporter — rules found 0 high/critical findings on draft %s.",
-            draft_row.id,
-        )
-    elif reporter is not None:
-        try:
-            # Hard cap so a slow Kimi call can't 504 the whole upload —
-            # frontend still gets the draft + rules-based findings, and
-            # the user can re-trigger reasoning later from the Findings tab.
-            import asyncio
-            # Pass `session` so the reporter can hit the report_cache layer for
-            # deterministic replay on repeat uploads (same contract sha → same
-            # JSON bytes, no NIM call).
-            report = await asyncio.wait_for(
-                reporter.generate(contract_text, session=session),
-                timeout=120.0,
+    if reporter_task is not None:
+        if not has_serious:
+            # Rules-based pre-screen found nothing high/critical. The reporter
+            # has nothing to add on a clean NDA / SOW — cancel the in-flight
+            # task. The local httpx request is aborted; NIM may still complete
+            # server-side but we don't wait on it.
+            reporter_task.cancel()
+            try:
+                await reporter_task
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
+            logger.info(
+                "Skipping reporter (cancelled in-flight) — rules found 0 "
+                "high/critical findings on draft %s.",
+                draft_row.id,
             )
-        except asyncio.TimeoutError:
-            logger.warning("Reporter timed out after 120s — returning rules-only response.")
-            report = None
-        except Exception:  # pragma: no cover — never block the response
-            logger.exception("Contract report generation failed.")
-            report = None
+        else:
+            try:
+                # Reporter may already be complete (parallel kickoff), in
+                # which case this returns immediately. Otherwise we wait for
+                # the remaining LLM time minus whatever overlapped with the
+                # per-clause loop + DB writes.
+                report = await reporter_task
+            except Exception:  # pragma: no cover — never block the response
+                logger.exception("Awaiting reporter task failed.")
+                report = None
 
     response = _build_response(
         draft_row, finding_rows, report=report, extracted_text=contract_text

@@ -114,16 +114,30 @@ function FindingsPageInner() {
       .listStoredAnalyses()
       .then((res) => {
         if (cancelled) return;
-        const remote: StoredAnalysis[] = res.items.map((r) => ({
-          draft_id: r.draft_id,
-          file_name: r.file_name,
-          analyzed_at: r.analyzed_at,
-          negotiated_at: r.negotiated_at ?? null,
-          analysis: r.analysis,
-        }));
+        // Build a remote-indexed map so we can authoritatively override
+        // any local stale fields (e.g. negotiated_at after a server-side
+        // clear) instead of letting the local cache win.
+        const remoteById = new Map(res.items.map((r) => [r.draft_id, r]));
+        const reconciled: StoredAnalysis[] = local.map((d) => {
+          const r = remoteById.get(d.draft_id);
+          if (!r) return d;
+          return {
+            ...d,
+            negotiated_at: r.negotiated_at ?? null, // remote wins
+            analyzed_at: r.analyzed_at ?? d.analyzed_at,
+          };
+        });
         const seen = new Set(local.map((d) => d.draft_id));
-        const merged = [...local, ...remote.filter((r) => !seen.has(r.draft_id))];
-        settle(merged);
+        const fresh: StoredAnalysis[] = res.items
+          .filter((r) => !seen.has(r.draft_id))
+          .map((r) => ({
+            draft_id: r.draft_id,
+            file_name: r.file_name,
+            analyzed_at: r.analyzed_at,
+            negotiated_at: r.negotiated_at ?? null,
+            analysis: r.analysis,
+          }));
+        settle([...reconciled, ...fresh]);
       })
       .catch(() => { /* offline / unauthorized — local-only is fine */ });
 

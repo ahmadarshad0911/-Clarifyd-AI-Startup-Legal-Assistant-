@@ -80,17 +80,18 @@ _copilot_advisor: CopilotAdvisor | None = None
 
 
 def _ensure_runtime() -> None:
-    """Lazy-init the httpx client + reasoning services.
+    """(Re)init the httpx client + reasoning services for THIS request.
 
-    Vercel's ASGI adapter doesn't fire `lifespan`, so the originals
-    initialized there stayed None on serverless cold start. First call
-    after cold start hits this path and builds them; subsequent calls
-    re-use the module-scope singletons within the same container's
-    lifetime.
+    Vercel's ASGI adapter doesn't fire `lifespan`, AND each serverless
+    invocation may use a different asyncio event loop. A cached
+    `httpx.AsyncClient` from a prior invocation will be bound to a
+    closed loop -> `RuntimeError: Event loop is closed` when reused.
+
+    So: rebuild every call. httpx.AsyncClient init is cheap (~ms);
+    serverless containers don't benefit from cross-request caching here
+    anyway, and the previous client's network sockets close at scope end.
     """
     global _http_client, _async_analysis, _contract_reporter, _copilot_advisor
-    if _http_client is not None and _async_analysis is not None:
-        return
     timeout = httpx.Timeout(
         connect=5.0,
         read=settings.reasoning_timeout_seconds,

@@ -22,7 +22,7 @@ const PRIMARY_NAV: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/findings",  label: "Findings",  icon: "description" },
   { href: "/copilot",   label: "Co-Pilot",  icon: "auto_awesome" },
-  { href: "/negotiate", label: "Negotiate", icon: "handshake" },
+  { href: "/negotiation", label: "Negotiate", icon: "handshake" },
   { href: "/exports",   label: "Audit",     icon: "history_edu" },
   { href: "/feedback",  label: "Feedback",  icon: "rate_review" },
   { href: "/admin",     label: "Admin",     icon: "shield", adminOnly: true },

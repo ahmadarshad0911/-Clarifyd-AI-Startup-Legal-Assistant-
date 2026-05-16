@@ -1,10 +1,16 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import Link from "next/link";
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
 
 import { AppShell } from "../../components/shell/app-shell";
 import { OrbitalLoader } from "../../components/common/orbital-loader";
 import { ApiError } from "../../lib/api";
+import {
+  listAnalyses,
+  removeAnalysis,
+  type StoredAnalysis,
+} from "../../lib/analyses";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
 import type { AnalyzeContractResponse, ReportSuggestion } from "../../lib/contracts";
@@ -94,6 +100,47 @@ export default function NegotiationLabPage() {
 
   const [finalizing, setFinalizing] = useState(false);
   const [finalDoc, setFinalDoc] = useState<string | null>(null);
+
+  // Stored analyses (local + remote) with per-row delete.
+  const [stored, setStored] = useState<StoredAnalysis[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setStored(listAnalyses());
+    client
+      .listStoredAnalyses()
+      .then((res) => {
+        if (cancelled) return;
+        const local = listAnalyses();
+        const seen = new Set(local.map((d) => d.draft_id));
+        const merged: StoredAnalysis[] = [
+          ...local,
+          ...res.items
+            .filter((r) => !seen.has(r.draft_id))
+            .map((r) => ({
+              draft_id: r.draft_id,
+              file_name: r.file_name,
+              analyzed_at: r.analyzed_at,
+              negotiated_at: r.negotiated_at ?? null,
+              analysis: r.analysis,
+            })),
+        ];
+        setStored(merged);
+      })
+      .catch(() => { /* offline ok */ });
+    return () => { cancelled = true; };
+  }, [client]);
+
+  async function deleteStored(d: StoredAnalysis) {
+    if (!window.confirm(`Remove "${d.file_name}" from history?`)) return;
+    removeAnalysis(d.draft_id);
+    setStored((prev) => prev.filter((x) => x.draft_id !== d.draft_id));
+    try {
+      await client.softDeleteDraft(d.draft_id);
+      push("Removed", "success", d.file_name);
+    } catch {
+      push("Removed locally — server delete failed", "info");
+    }
+  }
 
   const report = analysis?.report ?? null;
   const loopholes = report?.loopholes ?? [];
@@ -482,6 +529,62 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
             Both parties should review every clause with counsel before signature. This is
             decision-support, not legal advice.
           </p>
+        </section>
+      ) : null}
+
+      {/* Stored analyses history — per-row delete */}
+      {stored.length > 0 ? (
+        <section className="crystal-glass rounded-3xl p-6 md:p-8">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+            <div>
+              <span className="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant">
+                Stored analyses
+              </span>
+              <h3 className="font-display-hero text-h3 text-onboarding-navy m-0">
+                Your negotiation history
+              </h3>
+            </div>
+            <span className="text-[11px] text-on-surface-variant/70">
+              {stored.length} doc{stored.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <ul className="flex flex-col gap-2 m-0 p-0 list-none">
+            {stored.map((d) => (
+              <li
+                key={d.draft_id}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/50 border border-white/60 hover:bg-white/70 transition-colors"
+              >
+                <span
+                  className="material-symbols-outlined text-primary"
+                  style={{ fontVariationSettings: d.negotiated_at ? "'FILL' 1" : "'FILL' 0" }}
+                  title={d.negotiated_at ? "Negotiated" : "Pending"}
+                >
+                  {d.negotiated_at ? "handshake" : "description"}
+                </span>
+                <Link
+                  href={`/negotiate?draft=${d.draft_id}`}
+                  className="flex-1 min-w-0 no-underline"
+                >
+                  <span className="block font-semibold text-on-surface text-body-sm truncate">
+                    {d.file_name}
+                  </span>
+                  <span className="block text-[11px] text-on-surface-variant">
+                    {d.analysis.summary.findings_count} findings · {d.analysis.summary.highest_risk}
+                    {d.negotiated_at ? " · negotiated" : " · pending"}
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => deleteStored(d)}
+                  aria-label={`Remove ${d.file_name}`}
+                  title="Remove from history"
+                  className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-status-danger/10 hover:bg-status-danger/20 text-status-danger transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
     </AppShell>

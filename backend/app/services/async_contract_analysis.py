@@ -42,8 +42,18 @@ class AnalysisResultWithFlags:
     injection_flags: dict[str, bool]
 
 
+# Bump this when the assessor prompt changes so the cache can't serve
+# answers calibrated on the prior rubric. The version string is mixed into
+# the per-clause sha256 so the cache key implicitly carries the prompt
+# generation. Last bump: 2026-05-16 — added severity + risk_score rubrics
+# + calibration examples to CLAUSE_SYSTEM_PROMPT.
+_CLAUSE_PROMPT_VERSION = "v2-2026-05-16-rubric"
+
+
 def _clause_hash(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        (_CLAUSE_PROMPT_VERSION + "\n" + text).encode("utf-8")
+    ).hexdigest()
 
 
 class AsyncContractAnalysisService:

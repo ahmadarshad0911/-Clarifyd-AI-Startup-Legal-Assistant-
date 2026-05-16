@@ -1,0 +1,104 @@
+# 10-clause Kimi quality benchmark — 5 legal, 5 financial.
+# Each case carries a ground-truth severity + fix-language keywords.
+# `keywords` are tokens that any acceptable suggested_clause should mention
+# (case-insensitive substring match — fuzzy on purpose).
+cases:
+  # === LEGAL ===
+  - id: L1
+    domain: legal
+    text: >-
+      The Company assigns all rights, title, and interest in any and all
+      intellectual property, including pre-existing IP and IP unrelated to the
+      services, to Vendor in perpetuity and irrevocably.
+    expected_severity: critical
+    keywords: [scope, work product, company-paid, limit, ringfence]
+
+  - id: L2
+    domain: legal
+    text: >-
+      In no event shall Vendor's aggregate liability to Company exceed one
+      hundred US dollars ($100), regardless of the form of action.
+    expected_severity: high
+    keywords: [fees paid, 12 months, twelve months, greater of, raise cap, increase]
+
+  - id: L3
+    domain: legal
+    text: >-
+      Company agrees not to engage, directly or indirectly, in any business
+      competitive with Vendor for a period of five (5) years following
+      termination, worldwide, in any capacity.
+    expected_severity: high
+    keywords: [12 months, twelve months, narrow, geography, shorten, reduce]
+
+  - id: L4
+    domain: legal
+    text: >-
+      Company shall indemnify, defend, and hold harmless Vendor from any and
+      all claims, including those arising from Vendor's own negligence or
+      willful misconduct.
+    expected_severity: critical
+    keywords: [mutual, carve out, exclude, own negligence, balance]
+
+  - id: L5
+    domain: legal
+    text: >-
+      This Agreement shall be governed by the laws of the Cayman Islands and
+      any disputes shall be resolved exclusively by binding arbitration in
+      Hong Kong, with each party bearing its own costs regardless of outcome.
+    expected_severity: medium
+    keywords: [delaware, neutral, prevailing party, venue, favorable jurisdiction]
+
+  # === FINANCIAL ===
+  - id: F1
+    domain: financial
+    text: >-
+      Net payment due thirty (30) days after invoice date. A late fee of
+      ten percent (10%) per month, compounded daily, shall apply to any
+      unpaid balance.
+    expected_severity: high
+    keywords: ["1.5%", cap, reduce, lower rate, 30 day grace, grace period]
+
+  - id: F2
+    domain: financial
+    text: >-
+      Upon any change of control of Company (including any equity financing
+      of more than $1M), all amounts owed under this Agreement become
+      immediately due and payable, plus a 25% acceleration premium.
+    expected_severity: critical
+    keywords: [remove, carve out, qualified financing, exclude equity, limit]
+
+  - id: F3
+    domain: financial
+    text: >-
+      Vendor may unilaterally increase fees by up to fifty percent (50%)
+      annually upon thirty (30) days' written notice. Company has no right
+      to terminate in response.
+    expected_severity: critical
+    keywords: [cap, cpi, right to terminate, notice period, annual cap]
+
+  - id: F4
+    domain: financial
+    text: >-
+      All fees are non-refundable under any circumstances, including but not
+      limited to Vendor's material breach, service unavailability, or
+      termination for convenience by either party.
+    expected_severity: high
+    keywords: [pro-rated refund, prorated, service credit, material breach, carve out]
+
+  - id: F5
+    domain: financial
+    text: >-
+      Customer authorizes Vendor to auto-renew this Agreement for successive
+      twelve (12) month terms unless Customer provides written notice of
+      non-renewal at least one hundred eighty (180) days prior to expiration.
+    expected_severity: medium
+    keywords: [30 day, 60 day, shorter notice, opt-in renewal, monthly]
+
+# Aggregate thresholds the harness asserts on.
+thresholds:
+  detection_recall: 0.95
+  severity_within_one: 0.95
+  excerpt_overlap_avg: 0.80
+  suggestion_keyword_hit: 0.60
+  latency_p50_ms: 20000
+  composite: 0.85

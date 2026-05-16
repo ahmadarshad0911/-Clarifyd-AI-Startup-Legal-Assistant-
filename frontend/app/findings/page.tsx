@@ -94,12 +94,15 @@ function FindingsPageInner() {
 
     function settle(items: StoredAnalysis[]) {
       if (cancelled) return;
-      // Findings shows EVERY analyzed doc — no negotiated_at filter.
-      setDocs(items);
+      // Hide drafts that were previously stamped negotiated (legacy data
+      // from when an action on Findings auto-marked them). Per product
+      // call those should NOT show in Findings.
+      const visible = items.filter((d) => !d.negotiated_at);
+      setDocs(visible);
       const wanted = params.get("draft");
       setActiveId(
-        (wanted && items.some((d) => d.draft_id === wanted) ? wanted : null) ??
-          items[0]?.draft_id ??
+        (wanted && visible.some((d) => d.draft_id === wanted) ? wanted : null) ??
+          visible[0]?.draft_id ??
           null
       );
       setLoaded(true);

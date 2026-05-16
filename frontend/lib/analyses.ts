@@ -61,6 +61,13 @@ export function getAnalysis(draftId: string): StoredAnalysis | null {
   return read().find((a) => a.draft_id === draftId) ?? null;
 }
 
+/** Drop an analysis from the local list. Pair with a backend
+ *  DELETE /drafts/{id} so the server soft-delete also fires. */
+export function removeAnalysis(draftId: string): void {
+  const list = read().filter((a) => a.draft_id !== draftId);
+  write(list);
+}
+
 /** Locally mark a draft as "negotiated". Used by /negotiate the first
  *  time the user toggles a suggestion or generates a collaborator doc —
  *  pairs with a backend POST /api/v1/analyses/{id}/negotiate. */

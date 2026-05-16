@@ -15,7 +15,8 @@ import { AppShell } from "../../components/shell/app-shell";
 import { OrbitalLoader } from "../../components/common/orbital-loader";
 import { VerdictCard } from "../../components/findings/verdict-card";
 import { useAuth } from "../../lib/auth";
-import { listAnalyses, type StoredAnalysis } from "../../lib/analyses";
+import { listAnalyses, removeAnalysis, type StoredAnalysis } from "../../lib/analyses";
+import { useToast } from "../../lib/toast";
 
 const RISK_DOT: Record<string, string> = {
   low: "#475569",
@@ -35,6 +36,7 @@ export default function FindingsPage() {
 
 function FindingsPageInner() {
   const { client } = useAuth();
+  const { push } = useToast();
   const params = useSearchParams();
   const [docs, setDocs] = useState<StoredAnalysis[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -88,6 +90,23 @@ function FindingsPageInner() {
     () => docs.find((d) => d.draft_id === activeId) ?? null,
     [docs, activeId]
   );
+
+  async function deleteDoc(d: StoredAnalysis, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!window.confirm(`Remove "${d.file_name}" from Findings? This can't be undone.`)) return;
+    removeAnalysis(d.draft_id);
+    setDocs((prev) => {
+      const next = prev.filter((x) => x.draft_id !== d.draft_id);
+      if (activeId === d.draft_id) setActiveId(next[0]?.draft_id ?? null);
+      return next;
+    });
+    try {
+      await client.softDeleteDraft(d.draft_id);
+      push("Removed", "success", d.file_name);
+    } catch (err) {
+      push("Removed locally — server delete failed", "info");
+    }
+  }
 
   function relTime(iso: string): string {
     const diff = Date.now() - new Date(iso).getTime();
@@ -149,15 +168,14 @@ function FindingsPageInner() {
             const selected = d.draft_id === activeId;
             const risk = d.analysis.summary.highest_risk;
             return (
-              <button
+              <div
                 key={d.draft_id}
-                type="button"
-                onClick={() => setActiveId(d.draft_id)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border text-left transition-all ${
+                className={`group relative flex items-center gap-3 px-4 py-3 pr-10 rounded-2xl border text-left transition-all cursor-pointer ${
                   selected
                     ? "bg-gradient-to-r from-primary to-accent-violet text-white border-transparent shadow-md"
                     : "bg-white/50 border-white/60 text-on-surface hover:bg-white/70"
                 }`}
+                onClick={() => setActiveId(d.draft_id)}
               >
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -175,7 +193,20 @@ function FindingsPageInner() {
                     {d.analysis.summary.findings_count} findings · {risk} · {relTime(d.analyzed_at)}
                   </span>
                 </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={(e) => deleteDoc(d, e)}
+                  aria-label={`Remove ${d.file_name}`}
+                  title="Remove from Findings"
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full inline-flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 ${
+                    selected
+                      ? "bg-white/25 hover:bg-white/40 text-white"
+                      : "bg-status-danger/10 hover:bg-status-danger/20 text-status-danger"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
             );
           })}
         </div>

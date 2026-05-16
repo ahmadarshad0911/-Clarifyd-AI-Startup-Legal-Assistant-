@@ -564,10 +564,13 @@ Return ONLY the full revised document text. No commentary.`;
                   const sg = suggestions[i];
                   const isPicked = activePicked.has(i);
                   return (
-                    <ScrollReveal key={i} delay={Math.min(i, 4) * 80}>
-                      <li
-                        className={`risky-card ${isPicked ? "is-applied" : ""} ${meta.aura} p-5 md:p-7`}
-                      >
+                    <ScrollReveal
+                      key={i}
+                      as="li"
+                      delay={Math.min(i, 4) * 80}
+                      className={`risky-card ${isPicked ? "is-applied" : ""} ${meta.aura} p-5 md:p-7`}
+                    >
+                      <>
                         <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
                           <div className="flex items-start gap-4 min-w-0">
                             <div
@@ -682,7 +685,7 @@ Return ONLY the full revised document text. No commentary.`;
                             </button>
                           </div>
                         ) : null}
-                      </li>
+                      </>
                     </ScrollReveal>
                   );
                 })}

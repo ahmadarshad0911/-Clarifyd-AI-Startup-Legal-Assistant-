@@ -41,6 +41,7 @@ from app.routes.comments import router as comments_router
 from app.routes.compare import router as compare_router
 from app.routes.compliance import router as compliance_router
 from app.routes.exports import router as exports_router
+from app.routes.feedback import router as feedback_router
 from app.routes.negotiate import router as negotiate_router
 from app.routes.oauth import router as oauth_router
 from app.routes.reasoning import router as reasoning_router
@@ -181,6 +182,7 @@ app.include_router(auth_router)
 app.include_router(oauth_router)
 app.include_router(reviews_router)
 app.include_router(analyses_router)
+app.include_router(feedback_router)
 app.include_router(exports_router)
 app.include_router(admin_router)
 app.include_router(reasoning_router)

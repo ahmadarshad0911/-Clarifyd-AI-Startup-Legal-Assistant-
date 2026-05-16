@@ -70,6 +70,36 @@ async def current_user(
     return AuthenticatedUser(id=user.id, email=user.email, role=user.role)
 
 
+async def current_user_optional(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> AuthenticatedUser | None:
+    """Resolve the caller if a valid token is present; otherwise None.
+
+    Used by endpoints that accept anonymous traffic but also want to
+    attribute submissions to a signed-in user when possible (feedback).
+    Never raises — bad token = anonymous.
+    """
+    auth = request.headers.get("authorization") or request.headers.get("Authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        return None
+    token = auth.split(" ", 1)[1].strip()
+    try:
+        payload = decode_token(token, settings)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    user = (
+        await session.execute(select(User).where(User.id == user_id))
+    ).scalar_one_or_none()
+    if user is None or user.disabled_at is not None:
+        return None
+    return AuthenticatedUser(id=user.id, email=user.email, role=user.role)
+
+
 def require_role(min_role: str) -> Callable[[AuthenticatedUser], AuthenticatedUser]:
     async def _dep(user: AuthenticatedUser = Depends(current_user)) -> AuthenticatedUser:
         if not role_satisfies(user.role, min_role):

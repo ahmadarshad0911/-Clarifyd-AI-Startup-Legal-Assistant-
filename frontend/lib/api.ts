@@ -163,6 +163,22 @@ export class ApiClient {
   /** Persisted analyses for the current user, newest first.
    *  Used by the Findings tab as a fallback when browser localStorage is empty
    *  (e.g. visiting from a different device or origin). */
+  /** POST /api/v1/feedback — submit a feedback entry. Auth-optional (anon ok). */
+  async submitFeedback(body: {
+    mood: number;
+    category: "bug" | "feature" | "ui" | "performance" | "praise";
+    message: string;
+    nps?: number | null;
+    contact_email?: string | null;
+    page_path?: string | null;
+  }): Promise<{ id: string; submitted_at: string }> {
+    return this.request("/api/v1/feedback", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   async listStoredAnalyses(): Promise<{
     items: Array<{
       draft_id: string;

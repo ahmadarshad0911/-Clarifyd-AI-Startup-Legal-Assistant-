@@ -19,7 +19,11 @@ const PRIMARY_NAV: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/findings", label: "Findings", icon: "description" },
   { href: "/copilot", label: "Co-Pilot", icon: "auto_awesome" },
-  { href: "/negotiation", label: "Negotiate", icon: "handshake" },
+  // Was pointing to /negotiation (an older command-center page). The
+  // user-facing risky-clauses + collaborator-document workflow lives at
+  // /negotiate, so route the top-nav there.
+  { href: "/negotiate", label: "Negotiate", icon: "handshake" },
+  { href: "/feedback", label: "Feedback", icon: "rate_review" },
   { href: "/exports", label: "Audit", icon: "history_edu" },
   { href: "/admin", label: "Admin", icon: "shield", adminOnly: true },
 ];

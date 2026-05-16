@@ -31,6 +31,7 @@ const NAV_SECTIONS: Array<{ label: string; items: NavItem[] }> = [
       { href: "/search", label: "Search" },
       { href: "/comments", label: "Comments" },
       { href: "/exports", label: "Exports" },
+      { href: "/feedback", label: "Feedback" },
     ],
   },
   {

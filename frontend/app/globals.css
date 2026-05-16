@@ -1155,3 +1155,139 @@ button.danger {
     grid-column: span 12;
   }
 }
+
+/* === Feedback page additions === */
+
+/* Bubbly category chip — used by /feedback. Press squish via :active. */
+.chip-bubbly {
+  cursor: pointer;
+  will-change: transform, background;
+  outline: none;
+  border: none;
+  white-space: nowrap;
+}
+.chip-bubbly:hover {
+  filter: brightness(1.05);
+}
+.chip-bubbly:active {
+  transform: scale(0.92) !important;
+  transition-duration: 0.12s !important;
+}
+.chip-bubbly:focus-visible {
+  outline: 2px solid rgba(53, 37, 205, 0.55);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip-bubbly { transition: none !important; }
+  .chip-bubbly:active { transform: none !important; }
+}
+
+/* Stronger glass for input/textarea — beefier blur, prism edge, frosted feel. */
+.glass-field-strong {
+  position: relative;
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.28) 100%);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(53, 37, 205, 0.05),
+    0 4px 14px -8px rgba(15, 23, 42, 0.18);
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.glass-field-strong::before {
+  /* Prismatic top edge highlight */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.4),
+    rgba(255, 255, 255, 0) 35%,
+    rgba(34, 211, 238, 0.25) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.glass-field-strong:hover {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.4) 100%);
+}
+.glass-field-strong:focus-within {
+  border-color: rgba(53, 37, 205, 0.5);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.5) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 4px rgba(53, 37, 205, 0.15),
+    0 8px 24px -10px rgba(53, 37, 205, 0.25);
+  transform: translateY(-1px);
+}
+.glass-field-strong:focus-within::before {
+  opacity: 1;
+}
+.glass-field-strong > textarea,
+.glass-field-strong > input {
+  width: 100%;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--color-text, #0f172a);
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0.875rem 1rem;
+  border-radius: inherit;
+  resize: none;
+}
+.glass-field-strong > textarea::placeholder,
+.glass-field-strong > input::placeholder {
+  color: rgba(70, 69, 85, 0.55);
+}
+
+/* Card flip for feedback success — keeps animation in CSS so it doesn't
+   need styled-jsx (which inflates the bundle). */
+@keyframes feedback-flip-in {
+  0%   { opacity: 0; transform: rotateX(-22deg) translateY(-14px) scale(0.96); }
+  60%  { opacity: 1; transform: rotateX(6deg) translateY(2px) scale(1.01); }
+  100% { opacity: 1; transform: rotateX(0deg) translateY(0) scale(1); }
+}
+.feedback-flip-in {
+  animation: feedback-flip-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .feedback-flip-in { animation: none !important; }
+}
+
+/* === Feedback page responsive sizing === */
+:root {
+  --mood-off: 34px;
+  --mood-on: 48px;
+}
+@media (min-width: 640px) {
+  :root {
+    --mood-off: 38px;
+    --mood-on: 54px;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --mood-off: 40px;
+    --mood-on: 56px;
+  }
+}

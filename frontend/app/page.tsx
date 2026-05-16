@@ -24,6 +24,7 @@
  */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CSSProperties,
   ReactNode,
@@ -45,6 +46,29 @@ function prefersReducedMotion(): boolean {
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+}
+
+/**
+ * Manual smooth-scroll to a section by id, with header offset.
+ *
+ * Why not rely on native `<a href="#id">`: the site sets `html { zoom: 0.9 }`
+ * for desktop, which silently breaks the browser's anchor-scroll math —
+ * each target lands at the wrong Y, so "Features" jumps to "Pricing" etc.
+ * `getBoundingClientRect()` returns layout-pixel coordinates that respect
+ * zoom, so this works correctly regardless.
+ */
+function scrollToHash(id: string) {
+  if (typeof window === "undefined") return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const targetY = window.scrollY + rect.top - 90; // header height
+  window.scrollTo({
+    top: Math.max(0, targetY),
+    behavior: prefersReducedMotion() ? "auto" : "smooth",
+  });
+  // Reflect in URL without triggering native jump.
+  history.replaceState(null, "", `#${id}`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -144,10 +168,19 @@ function MagneticLink({
     variant === "primary"
       ? "bg-gradient-to-r from-primary to-accent-violet text-white shadow-lg shadow-primary/40"
       : "bg-white/60 text-onboarding-navy border border-white/70";
+  // Intercept in-page anchor hrefs so we can route through scrollToHash
+  // (avoids the zoom-induced wrong-Y bug).
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (href.startsWith("#")) {
+      e.preventDefault();
+      scrollToHash(href.slice(1));
+    }
+  };
   return (
     <Link
       ref={ref}
       href={href}
+      onClick={handleClick}
       className={`magnetic-btn inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold tracking-tight ${styleClass} ${className}`}
     >
       {children}
@@ -304,11 +337,14 @@ export default function LandingPage() {
           </span>
         </Link>
         <nav className="hidden md:flex gap-7 text-[11px] font-label-caps font-bold tracking-[0.18em] uppercase text-on-surface-variant">
-          <a href="#how" className="hover:text-primary transition-colors">How</a>
-          <a href="#features" className="hover:text-primary transition-colors">Features</a>
-          <a href="#pricing" className="hover:text-primary transition-colors">Pricing</a>
-          <a href="#contact" className="hover:text-primary transition-colors">Contact</a>
-          <Link href="/feedback" className="hover:text-primary transition-colors">Feedback</Link>
+          <NavAnchor id="how">How</NavAnchor>
+          <NavAnchor id="features">Features</NavAnchor>
+          <NavAnchor id="pricing">Pricing</NavAnchor>
+          <NavAnchor id="faq">FAQ</NavAnchor>
+          <NavAnchor id="contact">Contact</NavAnchor>
+          {/* /feedback requires auth (AppShell-wrapped) — landing visitors
+              hit /login instead. Removed from public nav; still in footer for
+              signed-in users navigating back here. */}
         </nav>
         <MagneticLink href={primaryHref} className="text-sm py-2 px-5">
           {primaryLabel}
@@ -738,6 +774,31 @@ Done. 2 critical · 3 high · 11 clean.   Total: 7.5s`}
         </div>
       </section>
 
+      {/* ============ FAQ TEASER ============ */}
+      <section id="faq" className="py-20 md:py-28 px-4 md:px-10" style={{ scrollMarginTop: "100px", minHeight: "60vh" }}>
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-10">
+            <ScrollReveal>
+              <span className="font-label-caps text-label-caps uppercase tracking-widest text-primary">
+                Questions, answered
+              </span>
+              <h2 className="font-display-hero text-h1-mobile md:text-h1 text-onboarding-navy m-0 mt-2">
+                The 3 we get the most.
+              </h2>
+              <p className="text-on-surface-variant max-w-xl mx-auto mt-3">
+                Skim the highlights or open the full library for pricing, security, jurisdictions &amp; more.
+              </p>
+            </ScrollReveal>
+          </div>
+
+          <LandingFaqTeaser />
+
+          <div className="text-center mt-8">
+            <FaqBrowseButton />
+          </div>
+        </div>
+      </section>
+
       {/* ============ CONTACT (embedded, public) ============ */}
       <section id="contact" className="py-20 md:py-28 px-4 md:px-10">
         <div className="max-w-container-max mx-auto grid lg:grid-cols-[1fr_1.1fr] gap-8 lg:gap-12 items-start">
@@ -837,11 +898,103 @@ Done. 2 critical · 3 high · 11 clean.   Total: 7.5s`}
           <div className="flex gap-5">
             <Link href="/terms">Terms</Link>
             <Link href="/terms?tab=privacy">Privacy</Link>
+            <Link href="/faq">FAQ</Link>
             <Link href="/contact">Contact</Link>
             <Link href="/feedback">Feedback</Link>
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing FAQ teaser — top 3 only, full page lives at /faq            */
+/* ------------------------------------------------------------------ */
+/* Hard-route to /faq via router.push — bypasses anything stealing the
+   click on Next <Link> inside the landing-root perspective stack. */
+function FaqBrowseButton() {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      onClick={() => router.push("/faq")}
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-onboarding-navy bg-white/65 border border-white/75 hover:bg-white/85 transition-all cursor-pointer"
+    >
+      <span className="material-symbols-outlined text-[18px]">menu_book</span>
+      Browse all FAQs
+      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+    </button>
+  );
+}
+
+/* Simple nav anchor button — uses scrollToHash so zoom doesn't shift Y. */
+function NavAnchor({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={() => scrollToHash(id)}
+      className="hover:text-primary transition-colors font-bold uppercase tracking-[0.18em] text-[11px] text-on-surface-variant bg-transparent border-none cursor-pointer"
+    >
+      {children}
+    </button>
+  );
+}
+
+function LandingFaqTeaser() {
+  // Premium native <details> accordion — bullet-proof toggle, no JS state.
+  const items = [
+    {
+      tag: "Pricing",
+      icon: "sell",
+      tone: "#3525cd",
+      q: "Is there a free tier?",
+      a: "Yes — 3 analyses every month on the house, no credit card, with rules-only fallback. Starter ($19/mo) unlocks Kimi K2 reasoning + PDF export and pays for itself the first time it catches a runaway clause.",
+    },
+    {
+      tag: "Security",
+      icon: "shield",
+      tone: "#7c3aed",
+      q: "Do you train models on my contracts?",
+      a: "Never. AES-256 at rest, TLS 1.3 in transit. Reasoning calls go directly to NVIDIA NIM with zero retention beyond the response. Audit trail is hash-chained and tamper-evident by default.",
+    },
+    {
+      tag: "Reasoning",
+      icon: "public",
+      tone: "#059669",
+      q: "What jurisdictions do you cover?",
+      a: "US (Delaware), UK, EU, Singapore, Australia out of the box. Enterprise gets custom-tuned templates for any jurisdiction within ~5 days — share a few sample contracts and we calibrate the prompt + rule set.",
+    },
+  ];
+  return (
+    <div className="lp-faq-stack">
+      {items.map((it, i) => (
+        <details
+          key={i}
+          open={i === 0}
+          className="lp-faq-card"
+          style={{ "--tone": it.tone } as CSSProperties}
+        >
+          <summary className="lp-faq-summary">
+            <span className="lp-faq-num" aria-hidden>
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="lp-faq-body">
+              <span className="lp-faq-tag">
+                <span className="material-symbols-outlined text-[12px]">{it.icon}</span>
+                {it.tag}
+              </span>
+              <span className="lp-faq-q">{it.q}</span>
+            </span>
+            <span className="lp-faq-chev material-symbols-outlined">
+              expand_more
+            </span>
+          </summary>
+          <div className="lp-faq-answer">
+            <p>{it.a}</p>
+          </div>
+        </details>
+      ))}
     </div>
   );
 }

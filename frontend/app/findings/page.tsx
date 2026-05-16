@@ -22,7 +22,6 @@ import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
 import {
   listAnalyses,
-  markAnalysisNegotiated,
   removeAnalysis,
   type StoredAnalysis,
 } from "../../lib/analyses";
@@ -137,22 +136,6 @@ function FindingsPageInner() {
   const suggestions: ReportSuggestion[] = active?.analysis.report?.suggestions ?? [];
   const activePicked = (active && picked[active.draft_id]) || new Set<number>();
 
-  function ensureNegotiatedMark(draftId: string) {
-    // Stamp the moment the user does the first negotiation action on a
-    // draft — it then becomes visible in the Negotiate history list.
-    const d = docs.find((x) => x.draft_id === draftId);
-    if (!d || d.negotiated_at) return;
-    markAnalysisNegotiated(draftId);
-    setDocs((prev) =>
-      prev.map((x) =>
-        x.draft_id === draftId
-          ? { ...x, negotiated_at: new Date().toISOString() }
-          : x
-      )
-    );
-    client.markAnalysisNegotiated(draftId).catch(() => { /* local mark survives */ });
-  }
-
   async function deleteDoc(d: StoredAnalysis, e: React.MouseEvent) {
     e.stopPropagation();
     if (!window.confirm(`Remove "${d.file_name}" from Findings? This can't be undone.`)) return;
@@ -172,7 +155,6 @@ function FindingsPageInner() {
 
   function togglePick(i: number) {
     if (!active) return;
-    ensureNegotiatedMark(active.draft_id);
     setPicked((prev) => {
       const set = new Set(prev[active.draft_id] ?? []);
       if (set.has(i)) set.delete(i);
@@ -184,7 +166,6 @@ function FindingsPageInner() {
 
   function applyAll() {
     if (!active) return;
-    ensureNegotiatedMark(active.draft_id);
     setPicked((prev) => ({
       ...prev,
       [active.draft_id]: new Set(suggestions.map((_, i) => i)),
@@ -225,7 +206,6 @@ function FindingsPageInner() {
     if (!active) return;
     const chosen = suggestions.filter((_, i) => activePicked.has(i));
     if (!chosen.length) { push("Pick at least one suggested clause to apply.", "info"); return; }
-    ensureNegotiatedMark(active.draft_id);
     setExporting(true);
     try {
       if (active.analysis.extracted_text) {

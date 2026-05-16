@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql.elements import quoted_name
 
 from app.db.base import Base
 
@@ -14,7 +15,9 @@ def _uuid() -> str:
 
 
 class User(Base):
-    __tablename__ = "user"
+    # "user" is a reserved word in Postgres — force-quote so SELECT/INSERT
+    # emit FROM "user" instead of bare `FROM user` (which Postgres rejects).
+    __tablename__ = quoted_name("user", quote=True)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)

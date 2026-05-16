@@ -151,3 +151,11 @@ client_secret*.json
 # Sample contracts used for ad-hoc local testing
 sample-*.docx
 sample-*.pdf
+.vercel
+
+# User-uploaded contract artifacts (never commit; contains PII)
+backend/exports/
+backend/uploads/
+
+# Ad-hoc dev scripts that touch the DB (admin bootstrap, migration probes)
+backend/_*.py

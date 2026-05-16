@@ -532,45 +532,47 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
         </section>
       ) : null}
 
-      {/* Stored analyses history — per-row delete */}
-      {stored.length > 0 ? (
+      {/* History panel only shows drafts already negotiated — fresh
+          uploads stay on the Findings tab until the user accepts a
+          suggestion there. */}
+      {stored.filter((d) => d.negotiated_at).length > 0 ? (
         <section className="crystal-glass rounded-3xl p-6 md:p-8">
           <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
             <div>
               <span className="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant">
-                Stored analyses
+                Negotiation history
               </span>
               <h3 className="font-display-hero text-h3 text-onboarding-navy m-0">
-                Your negotiation history
+                Active negotiations
               </h3>
             </div>
             <span className="text-[11px] text-on-surface-variant/70">
-              {stored.length} doc{stored.length === 1 ? "" : "s"}
+              {stored.filter((d) => d.negotiated_at).length} doc
             </span>
           </div>
           <ul className="flex flex-col gap-2 m-0 p-0 list-none">
-            {stored.map((d) => (
+            {stored.filter((d) => d.negotiated_at).map((d) => (
               <li
                 key={d.draft_id}
                 className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/50 border border-white/60 hover:bg-white/70 transition-colors"
               >
                 <span
                   className="material-symbols-outlined text-primary"
-                  style={{ fontVariationSettings: d.negotiated_at ? "'FILL' 1" : "'FILL' 0" }}
-                  title={d.negotiated_at ? "Negotiated" : "Pending"}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                  title="Negotiated"
                 >
-                  {d.negotiated_at ? "handshake" : "description"}
+                  handshake
                 </span>
                 <Link
-                  href={`/negotiate?draft=${d.draft_id}`}
+                  href={`/findings?draft=${d.draft_id}`}
                   className="flex-1 min-w-0 no-underline"
                 >
                   <span className="block font-semibold text-on-surface text-body-sm truncate">
                     {d.file_name}
                   </span>
                   <span className="block text-[11px] text-on-surface-variant">
-                    {d.analysis.summary.findings_count} findings · {d.analysis.summary.highest_risk}
-                    {d.negotiated_at ? " · negotiated" : " · pending"}
+                    {d.analysis.summary.findings_count} findings ·{" "}
+                    {d.analysis.summary.highest_risk} · negotiated
                   </span>
                 </Link>
                 <button

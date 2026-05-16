@@ -1,0 +1,20 @@
+.venv/
+.env
+# Note: `_*.py` would match __init__.py (double-underscore-named files).
+# Be explicit so package structure survives the bundler.
+_make_admin.py
+_check_*.py
+_migrate_*.py
+_purge_*.py
+_inspect_*.py
+_uv.*
+*.db
+*.sqlite*
+exports/
+uploads/
+__pycache__/
+tests/
+docs/
+*.md
+alembic/
+alembic.ini

@@ -1490,3 +1490,11 @@ button.danger {
 .rail-ghost:hover > * {
   opacity: 1;
 }
+
+/* === Desktop default zoom — 90% on lg+ only === */
+/* `zoom` is non-standard but widely supported (Chromium, Safari, Firefox).
+   Acts like a real scale so layout reflows correctly (unlike transform:scale,
+   which leaves an empty box). Mobile/tablet untouched. */
+@media (min-width: 1024px) {
+  html { zoom: 0.9; }
+}

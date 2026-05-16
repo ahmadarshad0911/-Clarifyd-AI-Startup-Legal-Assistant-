@@ -117,17 +117,11 @@ export default function LoginPage() {
     setError(null);
     try {
       if (mode === "register") {
+        // OTP gate temporarily off — backend returns a token directly,
+        // AuthProvider stores it, useEffect below redirects to /terms.
+        justRegistered.current = true;
         await register(email.trim(), password);
-        push(
-          "Check your email",
-          "success",
-          "We sent a 6-digit code to " + email.trim()
-        );
-        // Bounce to OTP entry — no token yet until they verify.
-        router.replace(
-          `/login/verify?email=${encodeURIComponent(email.trim().toLowerCase())}`
-        );
-        return;
+        push("Account created", "success", "Set up your founder profile.");
       } else {
         await login(email.trim(), password);
       }

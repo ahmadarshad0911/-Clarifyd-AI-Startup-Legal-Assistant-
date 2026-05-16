@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     otp_ttl_seconds: int = 600       # 10-minute code lifetime
     otp_max_attempts: int = 5        # per-verification brute-force cap
     otp_resend_cooldown_seconds: int = 60
+    # --- Gmail SMTP backup (used if Resend errors / is unconfigured) ---
+    # Generate the app password at https://myaccount.google.com/apppasswords
+    # — requires 2-step verification enabled. The app password is 16 chars.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""           # full Gmail address
+    smtp_password: str = ""       # 16-char App Password (NOT your Gmail login pw)
+    smtp_from: str = ""           # optional override (defaults to smtp_user)
+    smtp_use_tls: bool = True
     review_confidence_threshold: float = 0.7
     review_auto_route_severities: str = "high,critical"
     export_dir: str = "./exports"

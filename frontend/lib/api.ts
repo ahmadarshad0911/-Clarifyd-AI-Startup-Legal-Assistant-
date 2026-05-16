@@ -99,12 +99,13 @@ export class ApiClient {
     });
   }
 
-  /** Returns OTP-verification-required instead of a token now. */
-  async register(body: LoginRequest): Promise<{
-    verification_required: boolean;
-    email: string;
-    expires_in: number;
-  }> {
+  /** OTP gate currently disabled — backend issues a LoginResponse here.
+   *  When the gate is re-enabled it returns
+   *  `{verification_required, email, expires_in}` instead. */
+  async register(body: LoginRequest): Promise<
+    | LoginResponse
+    | { verification_required: boolean; email: string; expires_in: number }
+  > {
     return this.request("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -139,12 +139,15 @@ async def login(
             message="Invalid credentials.",
             status_code=401,
         )
-    if user.email_verified_at is None:
-        raise AppError(
-            code=ErrorCode.request_validation_error,
-            message="Email not verified. Check your inbox for the 6-digit code.",
-            status_code=403,
-        )
+    # NOTE: OTP-verification gate temporarily disabled per product call.
+    # Re-enable by un-commenting the block below when email infrastructure
+    # (verified domain on Resend or SMTP relay) is ready.
+    # if user.email_verified_at is None:
+    #     raise AppError(
+    #         code=ErrorCode.request_validation_error,
+    #         message="Email not verified. Check your inbox for the 6-digit code.",
+    #         status_code=403,
+    #     )
 
     token = create_access_token(user_id=user.id, role=user.role, settings=settings)
     await append_audit_event(
@@ -165,36 +168,35 @@ async def login(
 
 @router.post(
     "/register",
-    response_model=RegisterResponse,
+    response_model=LoginResponse,
     dependencies=[Depends(_login_limiter)],
 )
 async def register(
     body: RegisterRequest,
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
-) -> RegisterResponse:
+) -> LoginResponse:
+    """OTP verification disabled — users get a token immediately on signup.
+    Schema for email_verification + endpoints below remain dormant so we
+    can flip the gate back on without a migration when email infra is
+    ready."""
     email = str(body.email).strip().lower()
     existing = (
         await session.execute(select(User).where(User.email == email))
     ).scalar_one_or_none()
     if existing is not None:
-        if existing.email_verified_at is None:
-            # Re-arm verification — replace any pending OTPs with a fresh one.
-            await _expire_pending_otps(session, email)
-            ttl = await _create_and_send_otp(session, settings, email)
-            await session.commit()
-            return RegisterResponse(email=email, expires_in=ttl)
         raise AppError(
             code=ErrorCode.request_validation_error,
             message="An account with this email already exists.",
             status_code=409,
         )
 
+    now = datetime.now(timezone.utc)
     user = User(
         email=email,
         hashed_password=hash_password(body.password),
         role="reviewer",
-        # email_verified_at stays NULL until OTP succeeds.
+        email_verified_at=now,  # auto-verify while gate is off
     )
     session.add(user)
     await session.flush()
@@ -204,11 +206,15 @@ async def register(
         target_type="user",
         target_id=user.id,
         actor_id=user.id,
-        payload={"email": user.email, "pending_verification": True},
+        payload={"email": user.email},
     )
-    ttl = await _create_and_send_otp(session, settings, email)
+    token = create_access_token(user_id=user.id, role=user.role, settings=settings)
     await session.commit()
-    return RegisterResponse(email=email, expires_in=ttl)
+    return LoginResponse(
+        access_token=token,
+        expires_in=settings.jwt_access_ttl_minutes * 60,
+        role=user.role,
+    )
 
 
 async def _expire_pending_otps(session: AsyncSession, email: str) -> None:

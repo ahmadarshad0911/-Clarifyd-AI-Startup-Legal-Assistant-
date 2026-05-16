@@ -97,14 +97,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  /** Register no longer issues a token directly. Backend sends an OTP
-   *  email and the caller must POST /auth/verify-otp before they get a
-   *  session. Caller should navigate to /login/verify?email=… after this
-   *  resolves. */
+  /** OTP gate is currently disabled — backend issues a token on /register
+   *  again. (verifyOtp below stays wired for when we re-enable.) */
   const register = useCallback(
     async (email: string, password: string) => {
       setError(null);
-      await new ApiClient(() => null).register({ email, password });
+      const res = (await new ApiClient(() => null).register({ email, password })) as
+        | { access_token?: string; role?: string; expires_in?: number }
+        | { verification_required: boolean; email: string; expires_in: number };
+      if ("access_token" in res && res.access_token) {
+        setToken(res.access_token);
+        setRole(res.role as Role);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(TOKEN_KEY, res.access_token);
+          if (res.role) window.localStorage.setItem(ROLE_KEY, res.role);
+        }
+      }
     },
     []
   );

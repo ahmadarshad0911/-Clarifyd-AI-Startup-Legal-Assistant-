@@ -1498,3 +1498,491 @@ button.danger {
 @media (min-width: 1024px) {
   html { zoom: 0.9; }
 }
+
+/* ================================================================== */
+/* === LANDING PAGE — 3D + cursor-driven motion ===================== */
+/* ================================================================== */
+
+.landing-root { perspective: 1200px; }
+
+/* --- Hero spotlight: radial follows the cursor --- */
+.landing-hero {
+  position: relative;
+  isolation: isolate;
+}
+.hero-spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    520px circle at var(--mx, 50%) var(--my, 30%),
+    rgba(124, 58, 237, 0.18),
+    rgba(53, 37, 205, 0.08) 35%,
+    transparent 70%
+  );
+  transition: background 0.15s ease-out;
+}
+
+/* --- 3D tilt card wrapper --- */
+.tilt-3d {
+  perspective: 1200px;
+  perspective-origin: center;
+}
+.tilt-3d-inner {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* --- Hero card + 3D floating pills (translateZ) --- */
+.hero-card-wrap { width: 100%; max-width: 460px; margin: 0 auto; }
+.hero-card {
+  transform: translate3d(var(--lx, 0), var(--ly, 0), 30px);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.hero-pill {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #3525cd, #7c3aed);
+  color: #fff;
+  box-shadow: 0 10px 24px -10px rgba(124, 58, 237, 0.6);
+  white-space: nowrap;
+  transform: translateZ(70px);
+  animation: hero-pill-float 4s ease-in-out infinite;
+}
+.hero-pill-1 { top: -14px; right: -10px; }
+.hero-pill-2 {
+  bottom: -14px; left: -10px;
+  background: linear-gradient(135deg, #059669, #22d3ee);
+  animation-delay: -2s;
+  box-shadow: 0 10px 24px -10px rgba(5, 150, 105, 0.6);
+}
+@keyframes hero-pill-float {
+  0%, 100% { transform: translateZ(70px) translateY(0); }
+  50%      { transform: translateZ(80px) translateY(-6px); }
+}
+@keyframes hero-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.hero-pop-1 { animation: hero-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s both; }
+.hero-pop-2 { animation: hero-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1.0s both; }
+
+/* --- Magnetic button glow on hover --- */
+.magnetic-btn {
+  transition:
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+  will-change: transform;
+}
+.magnetic-btn:hover { filter: brightness(1.06); }
+.magnetic-btn:active { transform: scale(0.97) translate(0, 0) !important; }
+
+/* --- Typewriter caret --- */
+.typewriter-caret {
+  display: inline-block;
+  margin-left: 1px;
+  color: #3525cd;
+  animation: caret-blink 1s steps(2) infinite;
+}
+@keyframes caret-blink { 50% { opacity: 0; } }
+
+/* --- Marquee --- */
+.marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+.marquee-track {
+  display: inline-flex;
+  gap: 48px;
+  animation: marquee 28s linear infinite;
+  white-space: nowrap;
+}
+.marquee-item {
+  display: inline-block;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 18px;
+  color: #1E3A8A;
+  opacity: 0.55;
+  letter-spacing: -0.01em;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* --- Demo terminal --- */
+.demo-terminal {
+  box-shadow: 0 24px 60px -28px rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.demo-scroll {
+  max-height: 420px;
+  overflow: auto;
+}
+
+/* --- How-it-works 3D stack --- */
+.how-stack { perspective: 1400px; }
+.how-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  padding: 28px 28px;
+  margin-bottom: 22px;
+  border-radius: 24px;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--idx) * -1deg)) translateZ(calc(var(--idx) * -10px));
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+.how-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--tone);
+  opacity: 0.7;
+}
+.how-card:hover {
+  transform: rotateX(0deg) translateZ(20px) translateY(-2px);
+  box-shadow: 0 30px 60px -28px rgba(15, 23, 42, 0.4);
+}
+.how-card-step {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1;
+  width: 60px;
+  flex-shrink: 0;
+}
+.how-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* --- Bento grid --- */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  grid-auto-rows: minmax(180px, auto);
+}
+@media (max-width: 768px) {
+  .bento-grid { grid-template-columns: 1fr; }
+}
+.bento-card {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  isolation: isolate;
+}
+.bento-card:hover { transform: translateY(-3px); }
+.bento-card-border {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, 50%),
+    var(--tone, #3525cd),
+    transparent 70%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.bento-card:hover .bento-card-border { opacity: 1; }
+
+/* --- Pricing cards --- */
+.pricing-card {
+  transition:
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.4s ease;
+}
+.pricing-card:hover { transform: translateY(-4px); }
+.pricing-card-pro {
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55)) !important;
+  border: 1.5px solid transparent !important;
+  background-clip: padding-box !important;
+  box-shadow:
+    0 20px 50px -20px rgba(53, 37, 205, 0.45),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  transform: translateY(-6px);
+}
+.pricing-card-pro:hover { transform: translateY(-10px); }
+
+/* --- Final-CTA 3D orb --- */
+.cta-orb {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 380px;
+  height: 380px;
+  pointer-events: none;
+  perspective: 800px;
+  z-index: 0;
+}
+.cta-orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  transform-style: preserve-3d;
+}
+.cta-orb-ring-1 { animation: orb-spin 12s linear infinite; }
+.cta-orb-ring-2 {
+  border-color: rgba(34, 211, 238, 0.35);
+  animation: orb-spin-y 10s linear infinite reverse;
+}
+.cta-orb-ring-3 {
+  border-color: rgba(53, 37, 205, 0.35);
+  animation: orb-spin-z 16s linear infinite;
+}
+.cta-orb-core {
+  position: absolute;
+  inset: 32%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.6), rgba(53, 37, 205, 0.2) 60%, transparent);
+  filter: blur(18px);
+  animation: orb-pulse 3.4s ease-in-out infinite;
+}
+@keyframes orb-spin     { from { transform: rotateY(0)   rotateX(60deg); } to { transform: rotateY(360deg) rotateX(60deg); } }
+@keyframes orb-spin-y   { from { transform: rotateX(0)   rotateY(60deg); } to { transform: rotateX(360deg) rotateY(60deg); } }
+@keyframes orb-spin-z   { from { transform: rotateZ(0)   rotateX(20deg) rotateY(20deg); } to { transform: rotateZ(360deg) rotateX(20deg) rotateY(20deg); } }
+@keyframes orb-pulse    { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+
+/* --- Reduced motion: gut every landing animation --- */
+@media (prefers-reduced-motion: reduce) {
+  .hero-spotlight, .tilt-3d-inner, .hero-card, .hero-pill,
+  .magnetic-btn, .typewriter-caret, .marquee-track,
+  .how-card, .bento-card, .pricing-card, .pricing-card-pro,
+  .cta-orb-ring, .cta-orb-core, .hero-pop-1, .hero-pop-2 {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ================================================================== */
+/* === Premium cursor (landing page only) =========================== */
+/* ================================================================== */
+
+.premium-cursor-on,
+.premium-cursor-on a,
+.premium-cursor-on button,
+.premium-cursor-on [role="button"] {
+  cursor: none !important;
+}
+/* Keep text caret for typing fields so form usability isn't degraded. */
+.premium-cursor-on input,
+.premium-cursor-on textarea {
+  cursor: text !important;
+}
+
+.premium-cursor-dot,
+.premium-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 2147483646; /* above virtually everything */
+  will-change: transform, opacity;
+  transition: opacity 0.2s ease;
+}
+@media (pointer: coarse) {
+  .premium-cursor-dot,
+  .premium-cursor-ring { display: none; }
+}
+
+.premium-cursor-dot {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #3525cd;
+  box-shadow: 0 0 12px rgba(53, 37, 205, 0.55);
+}
+
+.premium-cursor-ring {
+  width: 38px;
+  height: 38px;
+  margin: -19px 0 0 -19px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(53, 37, 205, 0.65);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.12), transparent 70%);
+  backdrop-filter: blur(2px) saturate(140%);
+  -webkit-backdrop-filter: blur(2px) saturate(140%);
+  transition:
+    width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    margin 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    opacity 0.2s ease;
+}
+.premium-cursor-ring.is-hover {
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-color: rgba(124, 58, 237, 0.75);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.22), transparent 70%);
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.25),
+    0 16px 32px -12px rgba(124, 58, 237, 0.4);
+}
+.premium-cursor-ring.is-down {
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-color: rgba(53, 37, 205, 0.9);
+}
+
+/* ================================================================== */
+/* === Landing page — mobile + tablet responsive overrides ========== */
+/* ================================================================== */
+
+/* Tablet (md): 2-col bento middle ground */
+@media (min-width: 769px) and (max-width: 1023px) {
+  .bento-grid { grid-template-columns: repeat(2, 1fr); }
+  /* On 2-col, drop wide-span so cards don't overflow row */
+  .bento-grid > .bento-card.md\:col-span-2 { grid-column: span 2; }
+  .bento-grid > .bento-card.md\:row-span-2 { grid-row: auto; }
+}
+
+/* Mobile: tighter how-card layout — stack icon on top */
+@media (max-width: 640px) {
+  .how-card {
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 20px 18px;
+    border-radius: 18px;
+    /* Don't stack with 3D depth on phones — feels broken on small screens */
+    transform: none !important;
+  }
+  .how-card-step {
+    width: auto;
+    font-size: 32px;
+  }
+  .how-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+  .how-card > .flex-1 {
+    flex: 1 0 100%;
+    margin-top: 4px;
+  }
+}
+
+/* Hero card + 3D pills — disable extra translateZ depth on small screens */
+@media (max-width: 640px) {
+  .hero-card { transform: none !important; }
+  .hero-pill {
+    transform: none !important;
+    animation: none !important;
+    font-size: 10px;
+    padding: 4px 9px;
+  }
+  .hero-pill-1 { top: -10px; right: -4px; }
+  .hero-pill-2 { bottom: -10px; left: -4px; }
+}
+
+/* Hero card width fits the column on small screens */
+@media (max-width: 1023px) {
+  .hero-card-wrap { max-width: 100%; }
+}
+
+/* Demo terminal — readable on phones, allow horizontal scroll on the
+   monospace block instead of breaking the page */
+@media (max-width: 640px) {
+  .demo-scroll {
+    font-size: 11px;
+    padding: 14px !important;
+    line-height: 1.5;
+    max-height: 360px;
+    overflow: auto;
+  }
+}
+
+/* Stats — 2 col on mobile already from Tailwind; shrink number font */
+@media (max-width: 640px) {
+  .landing-root .font-display-hero.text-4xl { font-size: 32px; }
+}
+
+/* CTA orb — scale with viewport, never exceed parent width on phones */
+.cta-orb {
+  width: clamp(220px, 70vw, 380px);
+  height: clamp(220px, 70vw, 380px);
+}
+@media (max-width: 480px) {
+  .cta-orb { opacity: 0.55; }
+}
+
+/* Marquee — tighter gap + smaller text on phones so logos cycle visibly */
+@media (max-width: 640px) {
+  .marquee-track { gap: 28px; }
+  .marquee-item { font-size: 14px; }
+}
+
+/* Header: shorter on phones, hide CTA arrow icon to save width */
+@media (max-width: 480px) {
+  .landing-root header { padding: 10px 12px; }
+  .landing-root header .magnetic-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .landing-root header .magnetic-btn .material-symbols-outlined { display: none; }
+}
+
+/* Pricing — Pro card "Most Popular" badge can clip on tight viewports */
+@media (max-width: 640px) {
+  .pricing-card-pro { transform: none; margin-top: 12px; }
+  .pricing-card-pro:hover { transform: translateY(-4px); }
+}
+
+/* === Bento grid — clean responsive override (mobile/tablet) === */
+/* Reset earlier rules: simpler stack on phones, even 2-col on tablet,
+   asymmetric 3-col only at desktop. */
+.bento-grid { grid-template-columns: 1fr !important; }
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .bento-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Cancel the wide-spans inherited from Tailwind md:col-span-2 /
+     md:row-span-2 — at tablet we want a clean uniform 2-col grid. */
+  .bento-grid > .bento-card { grid-column: auto !important; grid-row: auto !important; }
+}
+
+@media (min-width: 1024px) {
+  .bento-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* Phone / tablet: cards equal height feel, less padding */
+@media (max-width: 1023px) {
+  .bento-card { padding: 20px; }
+  .bento-card h3 { font-size: 18px; }
+}

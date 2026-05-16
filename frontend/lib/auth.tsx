@@ -25,6 +25,7 @@ type AuthState = {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -96,19 +97,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  /** Register no longer issues a token directly. Backend sends an OTP
+   *  email and the caller must POST /auth/verify-otp before they get a
+   *  session. Caller should navigate to /login/verify?email=… after this
+   *  resolves. */
   const register = useCallback(
     async (email: string, password: string) => {
       setError(null);
-      const res = await new ApiClient(() => null).register({ email, password });
-      setToken(res.access_token);
-      setRole(res.role);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(TOKEN_KEY, res.access_token);
-        window.localStorage.setItem(ROLE_KEY, res.role);
-      }
+      await new ApiClient(() => null).register({ email, password });
     },
     []
   );
+
+  /** Verify OTP, store the issued JWT, set context state. */
+  const verifyOtp = useCallback(async (email: string, otp: string) => {
+    setError(null);
+    const res = await new ApiClient(() => null).verifyOtp({ email, otp });
+    setToken(res.access_token);
+    setRole(res.role);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TOKEN_KEY, res.access_token);
+      window.localStorage.setItem(ROLE_KEY, res.role);
+    }
+  }, []);
 
   const logout = useCallback(() => {
     setToken(null);
@@ -129,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     login,
     register,
+    verifyOtp,
     logout,
   };
 

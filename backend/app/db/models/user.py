@@ -27,3 +27,8 @@ class User(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set once the user successfully enters the 6-digit OTP we email them
+    # at signup. /auth/login rejects users where this is NULL.
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

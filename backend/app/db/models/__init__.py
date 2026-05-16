@@ -4,6 +4,7 @@ from app.db.models.clause_finding import ClauseFinding
 from app.db.models.comment import Comment
 from app.db.models.contact_message import ContactMessage
 from app.db.models.contract_draft import ContractDraft
+from app.db.models.email_verification import EmailVerification
 from app.db.models.export_job import ExportJob
 from app.db.models.feedback import Feedback
 from app.db.models.oauth_identity import OAuthIdentity
@@ -19,6 +20,7 @@ __all__ = [
     "Comment",
     "ContactMessage",
     "ContractDraft",
+    "EmailVerification",
     "ExportJob",
     "Feedback",
     "OAuthIdentity",

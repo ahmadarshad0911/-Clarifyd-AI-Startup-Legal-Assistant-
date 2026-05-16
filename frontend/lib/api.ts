@@ -99,8 +99,33 @@ export class ApiClient {
     });
   }
 
-  async register(body: LoginRequest): Promise<LoginResponse> {
-    return this.request<LoginResponse>("/auth/register", {
+  /** Returns OTP-verification-required instead of a token now. */
+  async register(body: LoginRequest): Promise<{
+    verification_required: boolean;
+    email: string;
+    expires_in: number;
+  }> {
+    return this.request("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async verifyOtp(body: { email: string; otp: string }): Promise<LoginResponse> {
+    return this.request<LoginResponse>("/auth/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async resendOtp(body: { email: string }): Promise<{
+    verification_required: boolean;
+    email: string;
+    expires_in: number;
+  }> {
+    return this.request("/auth/resend-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

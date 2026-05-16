@@ -117,9 +117,17 @@ export default function LoginPage() {
     setError(null);
     try {
       if (mode === "register") {
-        justRegistered.current = true;
         await register(email.trim(), password);
-        push("Account created", "success", "Set up your founder profile.");
+        push(
+          "Check your email",
+          "success",
+          "We sent a 6-digit code to " + email.trim()
+        );
+        // Bounce to OTP entry — no token yet until they verify.
+        router.replace(
+          `/login/verify?email=${encodeURIComponent(email.trim().toLowerCase())}`
+        );
+        return;
       } else {
         await login(email.trim(), password);
       }

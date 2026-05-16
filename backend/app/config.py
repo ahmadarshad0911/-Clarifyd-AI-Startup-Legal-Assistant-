@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     rate_limit_analyze_per_min: int = 10
     # Public POSTs (contact / feedback) — anti-spam.
     rate_limit_public_post_per_min: int = 15
+
+    # --- Email / OTP verification ---
+    # `console` logs the OTP to the backend log (dev).
+    # `resend` sends via Resend API (needs resend_api_key).
+    email_provider: str = "console"
+    resend_api_key: str = ""
+    email_from: str = "Clarifyd <onboarding@clarifyd.com>"
+    otp_ttl_seconds: int = 600       # 10-minute code lifetime
+    otp_max_attempts: int = 5        # per-verification brute-force cap
+    otp_resend_cooldown_seconds: int = 60
     review_confidence_threshold: float = 0.7
     review_auto_route_severities: str = "high,critical"
     export_dir: str = "./exports"

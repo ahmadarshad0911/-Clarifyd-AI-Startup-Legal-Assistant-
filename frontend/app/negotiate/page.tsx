@@ -553,8 +553,14 @@ Return ONLY the full revised document text. No commentary.`;
             ) : (
               <ul className="flex flex-col gap-6 m-0 p-0 list-none">
                 {loopholes.map((lp, i) => {
-                  const sev = (lp.severity as RiskLevel) ?? "low";
-                  const meta = RISK_META[sev];
+                  // Defensive: Kimi sometimes emits "Low"/"HIGH"/null. Normalize so
+                  // an out-of-spec severity can never crash the whole list and
+                  // hide every loophole behind a sibling export panel.
+                  const rawSev = String(lp.severity ?? "low").toLowerCase();
+                  const sev = (
+                    ["low", "medium", "high", "critical"].includes(rawSev) ? rawSev : "low"
+                  ) as RiskLevel;
+                  const meta = RISK_META[sev] ?? RISK_META.low;
                   const sg = suggestions[i];
                   const isPicked = activePicked.has(i);
                   return (

@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env*.local
+*.log
+.DS_Store
+.vercel
+.idea/
+.vscode/
+coverage/
+dist/
+.turbo/
+drizzle/meta/_journal.json.bak

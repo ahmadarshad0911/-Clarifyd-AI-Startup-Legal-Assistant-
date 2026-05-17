@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { AppShell } from "../../components/shell/app-shell";
+import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { ExportPanel } from "../../components/exports/export-panel";
 import { listRecent, removeRecent, type RecentDraft } from "../../lib/recent";
 import { useToast } from "../../lib/toast";

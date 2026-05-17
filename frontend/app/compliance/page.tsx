@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 
 import { DraftPicker } from "../../components/common/draft-picker";
-import { AppShell } from "../../components/shell/app-shell";
+import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import type { ComplianceCheckResponse } from "../../lib/contracts";

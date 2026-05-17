@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-import { AppShell } from "../../components/shell/app-shell";
+import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import type { SearchResponse } from "../../lib/contracts";

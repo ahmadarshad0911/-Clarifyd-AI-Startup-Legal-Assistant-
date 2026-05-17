@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
-import { AppShell } from "../../components/shell/app-shell";
+import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { OrbitalLoader } from "../../components/common/orbital-loader";
 import { ScrollReveal } from "../../components/common/scroll-reveal";
 import { VerdictCard } from "../../components/findings/verdict-card";

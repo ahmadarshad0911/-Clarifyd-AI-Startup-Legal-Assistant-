@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { AppShell } from "../../components/shell/app-shell";
+import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { OrbitalLoader } from "../../components/common/orbital-loader";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";

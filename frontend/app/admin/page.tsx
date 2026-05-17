@@ -1,6 +1,6 @@
 "use client";
 
-import { AppShell } from "../../components/shell/app-shell";
+import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { AuditVerifyCard } from "../../components/admin/audit-verify-card";
 import { SoftDeleteForm } from "../../components/admin/soft-delete-form";
 import { WebhooksPanel } from "../../components/admin/webhooks-panel";

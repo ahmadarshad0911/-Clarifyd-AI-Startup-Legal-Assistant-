@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Login + Register — dark editorial. Preserves all original auth logic
+ * (password generator, strength meter, OAuth, error handling).
+ */
+
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,8 +20,8 @@ export default function LoginPage() {
   const { push } = useToast();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("signin");
-  const [email, setEmail] = useState("admin");
-  const [password, setPassword] = useState("123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,12 +29,19 @@ export default function LoginPage() {
   const [copiedHint, setCopiedHint] = useState(false);
   const justRegistered = useRef(false);
 
-  // Generate a 16-char strong password using crypto.getRandomValues.
-  // Guarantees ≥1 lower, ≥1 upper, ≥1 digit, ≥1 symbol.
+  // Override aurora body bg with dark canvas while mounted.
+  useEffect(() => {
+    const orig = document.body.style.background;
+    document.body.style.background = "#020617";
+    return () => {
+      document.body.style.background = orig;
+    };
+  }, []);
+
   function generateStrongPassword(): string {
-    const lowers = "abcdefghijkmnopqrstuvwxyz"; // no l
-    const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I/O
-    const digits = "23456789"; // no 0/1
+    const lowers = "abcdefghijkmnopqrstuvwxyz";
+    const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const digits = "23456789";
     const symbols = "!@#$%^&*?-_+=";
     const all = lowers + uppers + digits + symbols;
     const pick = (set: string) => {
@@ -38,10 +50,8 @@ export default function LoginPage() {
       return set[buf[0] % set.length];
     };
     const required = [pick(lowers), pick(uppers), pick(digits), pick(symbols)];
-    const len = 16;
-    const rest = Array.from({ length: len - required.length }, () => pick(all));
+    const rest = Array.from({ length: 12 }, () => pick(all));
     const chars = [...required, ...rest];
-    // Fisher–Yates shuffle with crypto randomness
     for (let i = chars.length - 1; i > 0; i--) {
       const r = new Uint32Array(1);
       window.crypto.getRandomValues(r);
@@ -51,20 +61,23 @@ export default function LoginPage() {
     return chars.join("");
   }
 
-  // 0..4 strength score with label + tailwind class
-  function scorePassword(pw: string): { score: 0 | 1 | 2 | 3 | 4; label: string; tone: string } {
-    if (!pw) return { score: 0, label: "Empty", tone: "bg-on-surface-variant/30" };
+  function scorePassword(pw: string): {
+    score: 0 | 1 | 2 | 3 | 4;
+    label: string;
+    tone: string;
+  } {
+    if (!pw) return { score: 0, label: "Empty", tone: "bg-slate-700" };
     let s = 0;
     if (pw.length >= 8) s++;
     if (pw.length >= 12) s++;
     if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
     if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
     const map = [
-      { label: "Too short", tone: "bg-status-danger" },
-      { label: "Weak", tone: "bg-status-danger" },
-      { label: "Fair", tone: "bg-status-warn" },
-      { label: "Good", tone: "bg-status-info" },
-      { label: "Strong", tone: "bg-status-success" },
+      { label: "Too short", tone: "bg-rose-500" },
+      { label: "Weak", tone: "bg-rose-500" },
+      { label: "Fair", tone: "bg-amber-400" },
+      { label: "Good", tone: "bg-sky-400" },
+      { label: "Strong", tone: "bg-emerald-400" },
     ] as const;
     return { score: s as 0 | 1 | 2 | 3 | 4, ...map[s] };
   }
@@ -75,14 +88,13 @@ export default function LoginPage() {
     setPassword(pw);
     setShowPw(true);
     setCopiedHint(false);
-    // Attempt clipboard copy — silently ignore if blocked.
     try {
       navigator.clipboard?.writeText(pw).then(
         () => {
           setCopiedHint(true);
           window.setTimeout(() => setCopiedHint(false), 2200);
         },
-        () => {}
+        () => {},
       );
     } catch {}
   }
@@ -102,13 +114,6 @@ export default function LoginPage() {
     setSuggestedPw(null);
     setCopiedHint(false);
     setShowPw(false);
-    if (next === "register") {
-      setEmail("");
-      setPassword("");
-    } else {
-      setEmail("admin");
-      setPassword("123");
-    }
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -117,8 +122,6 @@ export default function LoginPage() {
     setError(null);
     try {
       if (mode === "register") {
-        // OTP gate temporarily off — backend returns a token directly,
-        // AuthProvider stores it, useEffect below redirects to /terms.
         justRegistered.current = true;
         await register(email.trim(), password);
         push("Account created", "success", "Set up your founder profile.");
@@ -131,7 +134,7 @@ export default function LoginPage() {
         setError(`${err.message} [${err.status} ${err.code}]${rid}`);
       } else if (err instanceof TypeError) {
         setError(
-          `Cannot reach backend at ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}. Is the FastAPI server running?`
+          `Cannot reach backend at ${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}. Is the FastAPI server running?`,
         );
       } else {
         setError(err instanceof Error ? err.message : "Authentication failed.");
@@ -142,144 +145,172 @@ export default function LoginPage() {
   }
 
   function oauthSignIn(provider: "google" | "facebook") {
-    const base =
-      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
     window.location.href = `${base}/auth/oauth/${provider}/authorize`;
   }
 
-  return (
-    <div className="min-h-screen relative overflow-x-hidden">
-      {/* Aurora background */}
-      <div className="fixed inset-0 -z-10 overflow-hidden" aria-hidden>
-        <div className="aurora-bg">
-          <div className="blob blob-1" />
-          <div className="blob blob-2" />
-          <div className="blob blob-3" />
-          <div className="blob blob-4" />
-        </div>
-      </div>
+  const strength = scorePassword(password);
 
-      <main className="min-h-screen w-full flex flex-col items-center justify-center px-margin-mobile md:px-margin-desktop py-12">
-        <header className="mb-10 text-center">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <span className="material-symbols-outlined text-primary text-[32px]">gavel</span>
-            <h1 className="font-display-hero text-h1 text-onboarding-navy tracking-tight">Clarifyd</h1>
-          </div>
-          <p className="text-on-surface-variant max-w-xs mx-auto">
-            Foundational security for forward-thinking founders.
+  return (
+    <div
+      className="min-h-screen text-slate-200 relative overflow-x-hidden"
+      style={{
+        background:
+          "radial-gradient(ellipse 90% 50% at 50% -10%, rgba(99,102,241,0.12) 0%, transparent 50%), #020617",
+        fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
+      }}
+    >
+      {/* Background grid */}
+      <div
+        className="absolute inset-0 -z-10 opacity-[0.035]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage:
+            "radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 100%)",
+        }}
+        aria-hidden
+      />
+
+      <main className="min-h-screen w-full flex flex-col items-center justify-center px-6 py-12">
+        <header className="mb-8 text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-slate-100 font-semibold tracking-tight cursor-pointer"
+          >
+            <span
+              className="inline-block h-5 w-5 rounded-[6px]"
+              style={{
+                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                boxShadow: "0 0 18px rgba(139,92,246,0.5)",
+              }}
+              aria-hidden
+            />
+            <span className="text-lg">Clarifyd</span>
+          </Link>
+          <p className="mt-3 text-sm text-slate-400 max-w-xs mx-auto">
+            Contract analysis for founders. Sign in to your workspace.
           </p>
         </header>
 
-        <div className="crystal-glass w-full max-w-[440px] rounded-3xl p-8 md:p-10 relative z-10">
+        <div className="w-full max-w-[440px] rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-sm shadow-2xl p-8 md:p-9 relative z-10">
           {/* Mode toggle */}
-          <div className="relative bg-white/40 p-1.5 rounded-full mb-8 flex border border-white/60">
-            <button
-              type="button"
-              onClick={() => switchMode("signin")}
-              className={`flex-1 py-2 font-label-caps text-label-caps uppercase rounded-full z-10 transition-colors ${
-                mode === "signin" ? "text-white" : "text-on-surface-variant"
-              }`}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode("register")}
-              className={`flex-1 py-2 font-label-caps text-label-caps uppercase rounded-full z-10 transition-colors ${
-                mode === "register" ? "text-white" : "text-on-surface-variant"
-              }`}
-            >
-              Create account
-            </button>
+          <div className="relative mb-7 grid grid-cols-2 rounded-full bg-slate-950/60 border border-white/10 p-1">
+            {(["signin", "register"] as Mode[]).map((m) => {
+              const active = mode === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => switchMode(m)}
+                  className={`relative z-10 py-2 text-xs font-semibold uppercase tracking-wider rounded-full transition-colors duration-200 cursor-pointer ${
+                    active ? "text-slate-950" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {m === "signin" ? "Sign in" : "Create account"}
+                </button>
+              );
+            })}
             <div
-              className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-gradient-to-r from-primary to-accent-violet rounded-full shadow-sm transition-all duration-300"
-              style={{ left: mode === "signin" ? "6px" : "calc(50% + 0px)" }}
+              className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-white transition-transform duration-300"
+              style={{
+                transform: mode === "signin" ? "translateX(0)" : "translateX(100%)",
+              }}
               aria-hidden
             />
           </div>
 
           <form onSubmit={onSubmit} className="space-y-5">
-            <label className="flex flex-col gap-1">
-              <span className="font-label-caps text-label-caps uppercase text-on-surface-variant">
-                {mode === "register" ? "Work email address" : "Username or email"}
-              </span>
+            {/* Email */}
+            <div>
+              <label
+                className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
+                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                htmlFor="lp-email"
+              >
+                {mode === "register" ? "Work email" : "Email"}
+              </label>
               <input
-                type={mode === "register" ? "email" : "text"}
+                id="lp-email"
+                type="email"
                 autoComplete={mode === "register" ? "email" : "username"}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/70 border border-white/70 rounded-xl px-4 py-3 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                placeholder="you@startup.com"
+                className="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/60 px-3.5 py-2.5 text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all"
               />
-            </label>
+            </div>
 
-            <label className="flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-label-caps text-label-caps uppercase text-on-surface-variant">
-                  {mode === "register" ? "Secure password (min 6 chars)" : "Password"}
-                </span>
+            {/* Password */}
+            <div>
+              <div className="flex items-center justify-between">
+                <label
+                  className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
+                  style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                  htmlFor="lp-pw"
+                >
+                  {mode === "register" ? "Password (≥ 6)" : "Password"}
+                </label>
                 {mode === "register" ? (
                   <button
                     type="button"
                     onClick={useSuggestion}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-primary hover:text-accent-violet transition-colors"
+                    className="text-[10px] uppercase tracking-wider text-indigo-300 hover:text-indigo-200 font-semibold cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                    Suggest strong password
+                    ✨ Suggest strong
                   </button>
                 ) : null}
               </div>
-              <div className="relative">
+              <div className="relative mt-1.5">
                 <input
+                  id="lp-pw"
                   type={showPw ? "text" : "password"}
                   autoComplete={mode === "register" ? "new-password" : "current-password"}
                   required
                   minLength={mode === "register" ? 6 : undefined}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/70 border border-white/70 rounded-xl px-4 py-3 pr-12 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                  className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3.5 py-2.5 pr-12 text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 text-xs font-semibold cursor-pointer"
                   aria-label={showPw ? "Hide password" : "Show password"}
                 >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {showPw ? "visibility_off" : "visibility"}
-                  </span>
+                  {showPw ? "hide" : "show"}
                 </button>
               </div>
 
               {mode === "register" ? (
-                <div className="mt-2 space-y-2">
-                  {/* Strength meter — 4 segment bars */}
-                  {(() => {
-                    const s = scorePassword(password);
-                    return (
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 flex gap-1">
-                          {[1, 2, 3, 4].map((seg) => (
-                            <span
-                              key={seg}
-                              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                                seg <= s.score ? s.tone : "bg-white/50"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant min-w-[60px] text-right">
-                          {password ? s.label : ""}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Suggested password chip — appears after click */}
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex gap-1">
+                      {[1, 2, 3, 4].map((seg) => (
+                        <span
+                          key={seg}
+                          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                            seg <= strength.score ? strength.tone : "bg-slate-800"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span
+                      className="text-[10px] uppercase tracking-wider text-slate-500 min-w-[52px] text-right"
+                      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                    >
+                      {password ? strength.label : ""}
+                    </span>
+                  </div>
                   {suggestedPw ? (
-                    <div className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/30 px-3 py-2">
-                      <span className="material-symbols-outlined text-primary text-[16px]">key</span>
-                      <code className="flex-1 text-[12px] font-mono text-onboarding-navy truncate">
+                    <div className="flex items-center gap-2 rounded-lg bg-indigo-950/40 border border-indigo-500/20 px-3 py-2">
+                      <span className="text-indigo-300 text-xs">🔑</span>
+                      <code
+                        className="flex-1 text-xs text-slate-100 truncate"
+                        style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                      >
                         {suggestedPw}
                       </code>
                       <button
@@ -291,119 +322,129 @@ export default function LoginPage() {
                             window.setTimeout(() => setCopiedHint(false), 2200);
                           } catch {}
                         }}
-                        className="text-[11px] font-semibold uppercase tracking-wider text-primary hover:text-accent-violet"
+                        className="text-[10px] uppercase tracking-wider text-indigo-300 hover:text-indigo-200 font-semibold cursor-pointer"
                       >
-                        {copiedHint ? "Copied" : "Copy"}
+                        {copiedHint ? "Copied ✓" : "Copy"}
                       </button>
                     </div>
-                  ) : (
-                    <p className="text-[11px] text-on-surface-variant/80 leading-snug">
-                      Tip: mix upper, lower, digits, symbols — or tap{" "}
-                      <span className="text-primary font-semibold">Suggest strong password</span> for
-                      a 16-char one-time secret.
-                    </p>
-                  )}
+                  ) : null}
                 </div>
               ) : null}
-            </label>
+            </div>
 
             {mode === "signin" ? (
-              <div className="flex items-center justify-between">
-                <span className="text-body-sm text-on-surface-variant">
-                  Demo: <code>admin</code> / <code>123</code>
-                </span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Use your registered email + password.</span>
                 <button
                   type="button"
                   onClick={() => push("Password reset coming soon", "info")}
-                  className="text-body-sm text-primary font-semibold hover:underline"
+                  className="text-indigo-300 hover:text-indigo-200 font-semibold cursor-pointer"
                 >
-                  Forgot password?
+                  Forgot?
                 </button>
               </div>
             ) : (
-              <p className="text-body-sm text-on-surface-variant">
-                New accounts get the <strong>reviewer</strong> role — upload and analyze contracts.
+              <p className="text-xs text-slate-500">
+                New accounts get the <span className="text-slate-300 font-semibold">reviewer</span> role —
+                upload + analyze contracts.
               </p>
             )}
 
-            {error ? <p className="error">{error}</p> : null}
+            {error ? (
+              <div className="rounded-lg border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs text-rose-300">
+                {error}
+              </div>
+            ) : null}
 
             <button
               type="submit"
               disabled={submitting}
-              className="btn-capsule btn-capsule-primary w-full text-body-lg"
+              className="w-full rounded-lg bg-white text-slate-950 px-4 py-2.5 text-sm font-semibold hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
             >
               {submitting
                 ? mode === "register"
                   ? "Creating…"
                   : "Signing in…"
                 : mode === "register"
-                ? "Create account"
-                : "Access dashboard"}
+                  ? "Create account →"
+                  : "Sign in →"}
             </button>
 
             <div className="relative flex items-center py-1">
-              <div className="flex-grow border-t border-white/50" />
-              <span className="flex-shrink mx-4 font-label-caps text-label-caps uppercase text-on-surface-variant/60">
-                Or secure auth
+              <div className="flex-grow border-t border-white/5" />
+              <span
+                className="flex-shrink mx-3 text-[10px] uppercase tracking-[0.14em] text-slate-600"
+                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+              >
+                or
               </span>
-              <div className="flex-grow border-t border-white/50" />
+              <div className="flex-grow border-t border-white/5" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => oauthSignIn("google")}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/40 border border-white/60 hover:bg-white/60 transition-colors"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 bg-slate-950/60 hover:bg-slate-900 text-slate-200 text-sm transition-colors duration-200 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[20px] text-status-warn">public</span>
-                <span className="font-label-caps text-label-caps">Google</span>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden>
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                </svg>
+                Google
               </button>
               <button
                 type="button"
                 onClick={() => oauthSignIn("facebook")}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/40 border border-white/60 hover:bg-white/60 transition-colors"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 bg-slate-950/60 hover:bg-slate-900 text-slate-200 text-sm transition-colors duration-200 cursor-pointer"
               >
-                <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden>
-                  <path
-                    fill="#1877F2"
-                    d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.43c0-3.014 1.792-4.678 4.533-4.678 1.313 0 2.686.235 2.686.235v2.964h-1.513c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073Z"
-                  />
+                <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden>
+                  <path fill="#1877F2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.43c0-3.01 1.79-4.68 4.53-4.68 1.31 0 2.69.24 2.69.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z" />
                 </svg>
-                <span className="font-label-caps text-label-caps">Facebook</span>
+                Facebook
               </button>
             </div>
           </form>
         </div>
 
-        <footer className="mt-10 text-center space-y-4">
+        <footer className="mt-8 text-center space-y-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors duration-200 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-            Back to overview
+            ← Back to landing
           </Link>
-          <div className="flex items-center justify-center gap-6">
-            <span className="font-label-caps text-[10px] uppercase tracking-widest text-on-surface-variant/60">
-              Privacy
-            </span>
-            <span className="font-label-caps text-[10px] uppercase tracking-widest text-on-surface-variant/60">
-              Legal terms
-            </span>
-            <span className="font-label-caps text-[10px] uppercase tracking-widest text-on-surface-variant/60">
-              Decision-support only — not legal advice
-            </span>
+          <div
+            className="flex items-center justify-center gap-5 text-[10px] uppercase tracking-[0.14em] text-slate-600"
+            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+          >
+            <Link href="/terms" className="hover:text-slate-400 cursor-pointer">
+              Terms
+            </Link>
+            <Link href="/contact" className="hover:text-slate-400 cursor-pointer">
+              Contact
+            </Link>
+            <span>not legal advice</span>
           </div>
         </footer>
-      </main>
 
-      <div className="fixed bottom-6 right-6 hidden md:flex items-center gap-3 crystal-glass px-4 py-2 rounded-full">
-        <div className="w-2 h-2 bg-status-success rounded-full animate-pulse" />
-        <span className="font-label-caps text-[10px] uppercase tracking-wider text-on-surface">
-          AES-256 encrypted environment
-        </span>
-      </div>
+        <div
+          className="fixed bottom-6 right-6 hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 backdrop-blur-md px-3.5 py-1.5"
+        >
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"
+            aria-hidden
+          />
+          <span
+            className="text-[10px] uppercase tracking-[0.14em] text-slate-400"
+            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+          >
+            AES-256 · JWT · audit-chained
+          </span>
+        </div>
+      </main>
     </div>
   );
 }

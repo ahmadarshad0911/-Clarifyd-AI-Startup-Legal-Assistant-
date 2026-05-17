@@ -480,8 +480,18 @@ async def _analyze_and_persist(
     reporter_task: "asyncio.Task[ContractReport | None] | None" = None
     if reporter is not None:
         async def _run_reporter_isolated() -> ContractReport | None:
+            # On serverless we must build a fresh engine bound to THIS
+            # coroutine's loop. Reusing the request session would be a race
+            # (the request session is being written to concurrently), and
+            # reusing a cached module-level sessionmaker would bind us to
+            # whatever loop made it (often dead in the next invocation).
+            engine = None
             try:
-                sessionmaker = get_sessionmaker()
+                from app.db.session import IS_SERVERLESS, build_request_scoped_engine
+                if IS_SERVERLESS:
+                    engine, sessionmaker = build_request_scoped_engine()
+                else:
+                    sessionmaker = get_sessionmaker()
             except Exception:  # pragma: no cover — DB not initialised
                 # Degrade to cache-bypass mode rather than fail the request.
                 return await asyncio.wait_for(
@@ -506,6 +516,12 @@ async def _analyze_and_persist(
             except Exception:  # pragma: no cover — never block the response
                 logger.exception("Reporter task failed.")
                 return None
+            finally:
+                if engine is not None:
+                    try:
+                        await engine.dispose()
+                    except Exception:  # pragma: no cover — best-effort cleanup
+                        pass
 
         reporter_task = asyncio.create_task(_run_reporter_isolated())
 

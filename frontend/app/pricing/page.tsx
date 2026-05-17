@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+/** Pricing — dark editorial. */
 
-import { AuroraBackground } from "../../components/common/aurora-background";
-import { ScrollReveal } from "../../components/common/scroll-reveal";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
 import { useAuth } from "../../lib/auth";
 
 type Plan = {
@@ -13,8 +13,6 @@ type Plan = {
   monthly: number | null;
   features: string[];
   cta: string;
-  btnClass: string;
-  checkClass: string;
   popular?: boolean;
 };
 
@@ -22,26 +20,28 @@ const PLANS: Plan[] = [
   {
     id: "founder",
     name: "Founder",
-    monthly: 99,
-    features: ["3 contracts / mo", "Basic risk mapping", "Kimi verdict + report", "Standard support"],
+    monthly: 29,
+    features: [
+      "3 contracts / mo",
+      "Kimi K2 risk analysis",
+      "Suggested rewrites",
+      "Standard support",
+    ],
     cta: "Start Founder",
-    btnClass: "bg-onboarding-navy text-white",
-    checkClass: "text-status-success",
   },
   {
     id: "growth",
     name: "Growth",
-    monthly: 249,
+    monthly: 99,
     features: [
-      "10 contracts / mo",
-      "Priority Kimi reasoning",
-      "Legal Co-Pilot + templates",
-      "Negotiation Lab",
+      "20 contracts / mo",
+      "Priority Kimi reasoning + cache",
+      "Co-Pilot + templates",
+      "Negotiation tracker",
       "Team sharing (up to 5)",
+      "Audit chain exports",
     ],
-    cta: "Get Growth now",
-    btnClass: "bg-gradient-to-r from-accent-indigo to-accent-violet text-white",
-    checkClass: "text-accent-violet",
+    cta: "Get Growth",
     popular: true,
   },
   {
@@ -51,18 +51,25 @@ const PLANS: Plan[] = [
     features: [
       "Unlimited analysis",
       "Custom risk rulesets",
-      "Tamper-evident SOC2 exports",
-      "Dedicated partner success",
+      "SOC-2 tamper-evident exports",
+      "Dedicated success partner",
+      "SLA",
     ],
     cta: "Contact sales",
-    btnClass: "bg-on-surface text-white",
-    checkClass: "text-status-success",
   },
 ];
 
 export default function PricingPage() {
   const { token } = useAuth();
   const [annual, setAnnual] = useState(true);
+
+  useEffect(() => {
+    const orig = document.body.style.background;
+    document.body.style.background = "#020617";
+    return () => {
+      document.body.style.background = orig;
+    };
+  }, []);
 
   function priceLabel(p: Plan): { big: string; small: string } {
     if (p.monthly === null) return { big: "Custom", small: "" };
@@ -73,174 +80,183 @@ export default function PricingPage() {
   const planHref = token ? "/dashboard" : "/login";
 
   return (
-    <div className="text-on-surface font-body-lg overflow-x-hidden min-h-screen">
-      <AuroraBackground />
-
-      <header className="fixed top-0 left-0 w-full z-[100] px-4 md:px-8 py-4 flex justify-between items-center gap-4 glass-frosted">
-        <Link href="/" className="flex items-center gap-3 no-underline">
-          <span className="material-symbols-outlined text-primary text-3xl">gavel</span>
-          <span className="font-display-hero text-2xl font-bold text-onboarding-navy tracking-tight">
+    <div
+      className="min-h-screen text-slate-200"
+      style={{
+        background:
+          "radial-gradient(ellipse 90% 50% at 50% -10%, rgba(99,102,241,0.10) 0%, transparent 50%), #020617",
+        fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
+      }}
+    >
+      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
+        <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-slate-100 font-semibold tracking-tight cursor-pointer"
+          >
+            <span
+              className="inline-block h-5 w-5 rounded-[6px]"
+              style={{
+                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+              }}
+              aria-hidden
+            />
             Clarifyd
-          </span>
-        </Link>
-        <nav className="hidden md:flex gap-8 text-[11px] font-label-caps font-bold tracking-[0.2em] uppercase text-on-surface-variant">
-          <Link className="hover:text-primary transition-colors" href="/#solutions">Solutions</Link>
-          <Link className="hover:text-primary transition-colors" href="/#how">How it works</Link>
-          <span className="text-primary">Pricing</span>
-        </nav>
-        <Link
-          href={planHref}
-          className="btn-capsule btn-capsule-primary text-[11px] tracking-[0.2em] uppercase px-6 py-2"
-        >
-          {token ? "Dashboard" : "Sign in"}
-        </Link>
-      </header>
+          </Link>
+          <div className="flex items-center gap-4 text-sm">
+            <Link href="/faq" className="text-slate-400 hover:text-slate-100 cursor-pointer">
+              FAQ
+            </Link>
+            <Link
+              href={planHref}
+              className="rounded-lg bg-white text-slate-950 px-3.5 py-1.5 font-semibold hover:bg-slate-200 cursor-pointer transition-colors duration-200"
+            >
+              {token ? "Open app" : "Sign in"} →
+            </Link>
+          </div>
+        </div>
+      </nav>
 
-      <main className="relative z-10 pt-32 pb-32 max-w-container-max mx-auto px-4 md:px-8">
-        <ScrollReveal as="section" className="text-center mb-12">
-          <span className="font-label-caps text-label-caps text-primary tracking-[0.2em] uppercase mb-4 block">
-            Pricing
-          </span>
-          <h1 className="font-display-hero text-[42px] md:text-7xl leading-tight mb-4 text-onboarding-navy">
-            Simple pricing for <br className="hidden md:block" />
-            <span className="italic text-primary">total legal clarity.</span>
+      <main className="pt-28 pb-24">
+        <section className="mx-auto max-w-6xl px-6 text-center">
+          <div
+            className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
+            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+          >
+            ↳ pricing
+          </div>
+          <h1 className="mt-3 text-4xl md:text-5xl text-white font-semibold tracking-tight">
+            Free until your seed round.
           </h1>
-          <p className="text-on-surface-variant max-w-2xl mx-auto mb-8 text-lg">
-            Stop overpaying for routine reviews. Pick a plan that scales with your deal flow and
-            protects your vision.
+          <p className="mt-4 text-slate-400 max-w-xl mx-auto">
+            3 contracts free forever. Pay only when you outgrow it. No annual
+            lock-in, no contact-sales wall.
           </p>
 
-          {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-4">
-            <span
-              className={`font-label-caps text-label-caps uppercase ${
-                !annual ? "text-onboarding-navy font-bold" : "text-on-surface-variant"
-              }`}
-            >
-              Monthly
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={annual}
-              onClick={() => setAnnual((v) => !v)}
-              className="relative w-14 h-7 bg-primary rounded-full p-1 transition-all"
-            >
-              <span
-                className={`block w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
-                  annual ? "translate-x-7" : "translate-x-0"
-                }`}
-              />
-            </button>
-            <div className="flex items-center gap-2">
-              <span
-                className={`font-label-caps text-label-caps uppercase ${
-                  annual ? "text-onboarding-navy font-bold" : "text-on-surface-variant"
-                }`}
-              >
-                Annual
-              </span>
-              <span className="px-2 py-0.5 bg-status-success/10 text-status-success rounded-full font-label-caps text-[10px]">
-                20% OFF
-              </span>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* Plans */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-          {PLANS.map((p, i) => {
-            const price = priceLabel(p);
-            return (
-              <ScrollReveal key={p.id} delay={i * 110} className="flex">
-                <div
-                  className={`crystal-glass rounded-3xl p-8 flex flex-col relative w-full ${
-                    p.popular ? "ring-2 ring-accent-violet/40 shadow-2xl md:-mt-3 md:mb-3" : ""
+          <div className="mt-9 inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 p-1">
+            {(["annual", "monthly"] as const).map((mode) => {
+              const isAnnual = mode === "annual";
+              const active = isAnnual === annual;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setAnnual(isAnnual)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors duration-200 ${
+                    active
+                      ? "bg-white text-slate-950"
+                      : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  {p.popular ? (
-                    <div className="popular-badge-float">
-                      Most
-                      <br />
-                      Popular
-                    </div>
-                  ) : null}
-                  <div className="mb-8">
-                    <h3 className="font-display-hero text-h2 text-onboarding-navy mb-2">
-                      {p.name}
-                    </h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="font-display-hero text-5xl font-bold text-onboarding-navy">
-                        {price.big}
-                      </span>
-                      {price.small ? (
-                        <span className="text-on-surface-variant text-sm">{price.small}</span>
-                      ) : null}
-                    </div>
-                    {p.monthly !== null && annual ? (
-                      <p className="text-[11px] text-on-surface-variant mt-1 m-0">
-                        Billed annually · ${Math.round(p.monthly * 0.8) * 12}/yr
-                      </p>
-                    ) : null}
+                  {mode === "annual" ? "Annual −20%" : "Monthly"}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 mt-14 grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PLANS.map((p) => {
+            const label = priceLabel(p);
+            const popular = !!p.popular;
+            return (
+              <div
+                key={p.id}
+                className={`relative rounded-2xl border p-7 flex flex-col transition-all duration-200 ${
+                  popular
+                    ? "border-indigo-400/40 bg-gradient-to-br from-indigo-950/40 via-slate-900/80 to-slate-900/40 md:scale-[1.03] shadow-2xl"
+                    : "border-white/10 bg-slate-900/40 hover:bg-slate-900/60"
+                }`}
+              >
+                {popular ? (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider"
+                      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                    >
+                      most popular
+                    </span>
                   </div>
-                  <ul className="flex flex-col gap-4 mb-10 flex-grow m-0 p-0 list-none">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex items-center gap-3">
-                        <span
-                          className={`material-symbols-outlined text-[18px] ${p.checkClass}`}
-                        >
-                          check_circle
-                        </span>
-                        <span className="text-body-sm">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href={p.id === "enterprise" ? "/#security" : planHref}
-                    className={`neon-glow-btn w-full py-4 rounded-xl font-bold text-center ${p.btnClass}`}
-                  >
-                    {p.cta}
-                  </Link>
+                ) : null}
+                <div className="text-sm text-slate-400 font-semibold">
+                  {p.name}
                 </div>
-              </ScrollReveal>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-4xl text-white font-semibold tracking-tight">
+                    {label.big}
+                  </span>
+                  {label.small ? (
+                    <span className="text-sm text-slate-400">{label.small}</span>
+                  ) : null}
+                </div>
+                {annual && p.monthly !== null ? (
+                  <div className="mt-1 text-xs text-slate-500">
+                    billed annually · save 20%
+                  </div>
+                ) : (
+                  <div className="mt-1 text-xs text-slate-500">&nbsp;</div>
+                )}
+
+                <ul className="mt-6 space-y-3 flex-1">
+                  {p.features.map((f, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-sm text-slate-300"
+                    >
+                      <span className="text-emerald-400 mt-0.5">✓</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href={p.id === "enterprise" ? "/contact" : planHref}
+                  className={`mt-7 inline-flex justify-center items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold cursor-pointer transition-colors duration-200 ${
+                    popular
+                      ? "bg-white text-slate-950 hover:bg-slate-200"
+                      : "border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10"
+                  }`}
+                >
+                  {p.cta} →
+                </Link>
+              </div>
             );
           })}
-        </div>
+        </section>
 
-        {/* Trust signals */}
-        <ScrollReveal
-          as="section"
-          className="mt-20 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 border-t border-white/40 pt-12"
-        >
-          {[
-            { icon: "lock", text: "Secure payments by Stripe" },
-            { icon: "verified_user", text: "30-day money-back guarantee" },
-            { icon: "shield", text: "SOC2 Type II in progress" },
-          ].map((t) => (
-            <div key={t.text} className="flex items-center gap-3 opacity-80">
-              <span
-                className="material-symbols-outlined text-on-surface-variant"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                {t.icon}
-              </span>
-              <p className="font-label-caps text-label-caps uppercase text-on-surface-variant m-0">
-                {t.text}
-              </p>
-            </div>
-          ))}
-        </ScrollReveal>
+        <section className="mx-auto max-w-3xl px-6 mt-20 text-center">
+          <h2 className="text-2xl text-white font-semibold tracking-tight">
+            Questions?
+          </h2>
+          <p className="mt-2 text-sm text-slate-400">
+            See the FAQ or reach out — we usually reply in under a day.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link
+              href="/faq"
+              className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-slate-100 px-4 py-2 text-sm cursor-pointer transition-colors duration-200"
+            >
+              Read FAQ →
+            </Link>
+            <Link
+              href="/contact"
+              className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-slate-100 px-4 py-2 text-sm cursor-pointer transition-colors duration-200"
+            >
+              Contact us →
+            </Link>
+          </div>
+        </section>
       </main>
 
-      <footer className="glass-frosted py-8 px-4 md:px-8 border-t border-white/20" role="note">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-4 text-[11px] text-on-surface-variant/90 text-center md:text-left">
-          <span className="font-label-caps font-bold uppercase tracking-widest text-onboarding-navy whitespace-nowrap">
-            Legal disclaimer:
-          </span>
-          <p className="m-0">
-            Clarifyd is an AI-powered contract analysis tool, not a law firm. Findings do not
-            constitute legal advice. Always consult qualified legal counsel before signing.
-          </p>
+      <footer className="border-t border-white/5 bg-slate-950/90">
+        <div
+          className="mx-auto max-w-6xl px-6 py-6 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2"
+          style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+        >
+          <span>© 2026 Clarifyd. Not legal advice.</span>
+          <Link href="/" className="hover:text-slate-300 cursor-pointer">
+            ← landing
+          </Link>
         </div>
       </footer>
     </div>

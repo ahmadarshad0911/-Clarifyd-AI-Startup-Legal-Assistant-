@@ -1,36 +1,38 @@
 "use client";
 
 /**
- * DarkAppShell — dark-editorial wrapper for Phase 2+ pages.
+ * AppShell — Broadsheet · v6
  *
- * Parallel to <AppShell> which keeps the existing crystal-glass aurora theme
- * for all routes not yet ported (Co-Pilot, Negotiate, Exports, Admin etc.).
- *
- * Responsibilities:
- *   - Auth gate (redirect to /login if no token)
- *   - Force dark canvas (overrides body's aurora gradient while mounted)
- *   - Sticky top nav with primary links + user avatar menu
- *   - Per-pathname active-link styling
- *
- * Children get a centered max-w-6xl container with breathing-room padding.
- * Pages can opt out of the container by passing `bare`.
+ * Export name kept (DarkAppShell) so all prior callers keep working.
+ * Sidebar removed. Top masthead nav with primary + tools dropdown.
+ * Inline-flow main area, no fixed chrome eating viewport.
  */
 
 import Link from "next/link";
-import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { ArrowRight, CaretDown, SignOut, User } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth";
 
-type NavLink = { href: string; label: string; adminOnly?: boolean };
+type NavItem = { href: string; label: string };
 
-const NAV: NavLink[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/findings", label: "Findings" },
-  { href: "/copilot", label: "Co-Pilot" },
+const NAV_PRIMARY: NavItem[] = [
+  { href: "/dashboard",   label: "Dashboard" },
+  { href: "/findings",    label: "Findings" },
+  { href: "/copilot",     label: "Co-Pilot" },
   { href: "/negotiation", label: "Negotiate" },
-  { href: "/exports", label: "Audit" },
-  { href: "/admin", label: "Admin", adminOnly: true },
+];
+const NAV_TOOLS: NavItem[] = [
+  { href: "/reasoning",    label: "Reasoning" },
+  { href: "/compare",      label: "Compare" },
+  { href: "/monitor",      label: "Monitor" },
+  { href: "/lawyer",       label: "Lawyer" },
+  { href: "/library",      label: "Library" },
+  { href: "/integrations", label: "Integrations" },
+  { href: "/compliance",   label: "Compliance" },
+  { href: "/exports",      label: "Audit" },
+  { href: "/feedback",     label: "Feedback" },
 ];
 
 export function DarkAppShell({
@@ -43,153 +45,285 @@ export function DarkAppShell({
   const { token, loading, me, role, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname() ?? "/";
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [acctOpen, setAcctOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement | null>(null);
+  const acctRef = useRef<HTMLDivElement | null>(null);
 
-  // Override body's aurora gradient with dark canvas while DarkAppShell is mounted.
-  useEffect(() => {
-    const original = document.body.style.background;
-    document.body.style.background = "#020617";
-    return () => {
-      document.body.style.background = original;
-    };
-  }, []);
-
-  // Auth gate — kick to /login if not signed in.
   useEffect(() => {
     if (!loading && !token) router.replace("/login");
   }, [loading, token, router]);
 
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) setToolsOpen(false);
+      if (acctRef.current && !acctRef.current.contains(e.target as Node)) setAcctOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  useEffect(() => {
+    setToolsOpen(false);
+    setAcctOpen(false);
+  }, [pathname]);
+
   if (loading || !token) {
     return (
-      <main
-        className="min-h-screen flex items-center justify-center"
-        style={{
-          background: "#020617",
-          fontFamily: "'Inter', system-ui, sans-serif",
-        }}
-      >
-        <div className="rounded-xl border border-white/10 bg-slate-900/60 px-8 py-6">
-          <p className="text-slate-300">Loading workspace…</p>
+      <main style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bsd-paper)" }}>
+        <div style={{ padding: "22px 28px", border: "1.5px solid var(--bsd-ink)" }}>
+          <div className="cf-eyebrow" style={{ color: "var(--bsd-red)" }}>Loading workspace</div>
+          <div style={{ marginTop: 6, fontSize: 17, color: "var(--bsd-ink)", fontWeight: 600, letterSpacing: "-0.01em" }}>
+            One moment.
+          </div>
         </div>
       </main>
     );
   }
 
-  const items = NAV.filter((n) => !n.adminOnly || role === "admin");
   const initial = (me?.email ?? role ?? "U")[0].toUpperCase();
+  const adminItems = role === "admin" ? [{ href: "/admin", label: "Admin" }] : [];
 
   return (
-    <div
-      className="min-h-screen text-slate-200"
-      style={{
-        background:
-          "radial-gradient(ellipse 90% 30% at 50% 0%, rgba(99,102,241,0.07) 0%, transparent 60%), #020617",
-        fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
-      }}
-    >
-      <header className="sticky top-0 inset-x-0 z-50 border-b border-white/5 bg-slate-950/85 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-7">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 text-slate-100 font-semibold tracking-tight cursor-pointer"
-            >
-              <span
-                className="inline-block h-5 w-5 rounded-[6px]"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                  boxShadow: "0 0 18px rgba(139,92,246,0.5)",
-                }}
-                aria-hidden
-              />
-              Clarifyd
-            </Link>
-            <nav className="hidden md:flex items-center gap-1">
-              {items.map((it) => {
-                const active = pathname === it.href || pathname.startsWith(it.href + "/");
-                return (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    className={`px-3 py-1.5 rounded-md text-sm transition-colors duration-200 cursor-pointer ${
-                      active
-                        ? "text-white bg-white/10"
-                        : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
-                    }`}
-                  >
-                    {it.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+    <div style={{ minHeight: "100dvh", background: "var(--bsd-paper)", color: "var(--bsd-body)" }}>
+      {/* ===== Masthead ===== */}
+      <header
+        style={{
+          borderBottom: "3px double var(--bsd-ink)",
+          padding: "14px 28px 10px",
+          display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 22,
+        }}
+      >
+        <Link href="/dashboard" className="cursor-pointer" style={{ textDecoration: "none", display: "inline-flex", alignItems: "baseline", gap: 10 }}>
+          <span style={{ fontFamily: "Geist, sans-serif", fontWeight: 800, fontSize: 22, color: "var(--bsd-ink)", letterSpacing: "-0.04em", lineHeight: 1 }}>
+            Clarifyd
+          </span>
+          <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700 }}>
+            Workspace
+          </span>
+        </Link>
 
-          <div className="flex items-center gap-3 relative">
-            <Link
-              href="/"
-              className="hidden md:inline text-xs text-slate-500 hover:text-slate-300 transition-colors duration-200 cursor-pointer"
-            >
-              ↗ landing
-            </Link>
+        {/* Primary nav */}
+        <nav style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 22, flexWrap: "wrap" }}>
+          {NAV_PRIMARY.map((n) => {
+            const active = pathname === n.href || pathname.startsWith(n.href + "/");
+            return <NavLink key={n.href} href={n.href} label={n.label} active={active} />;
+          })}
+          {/* Tools dropdown */}
+          <div ref={toolsRef} style={{ position: "relative" }}>
             <button
               type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              className="w-9 h-9 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-slate-100 text-sm font-semibold flex items-center justify-center transition-colors duration-200 cursor-pointer"
-              aria-label="Account menu"
-              aria-expanded={menuOpen}
+              onClick={() => setToolsOpen((v) => !v)}
+              aria-expanded={toolsOpen}
+              className="cursor-pointer cf-mono"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                background: "transparent", border: "none",
+                color: NAV_TOOLS.some((n) => pathname.startsWith(n.href)) ? "var(--bsd-red)" : "var(--bsd-ink)",
+                fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700,
+                padding: "6px 0",
+              }}
             >
-              {initial}
+              Tools <CaretDown weight="bold" size={10} style={{ transform: toolsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms var(--ease-out)" }} />
             </button>
-            {menuOpen ? (
+            {toolsOpen ? (
               <div
                 role="menu"
-                className="absolute right-0 top-12 min-w-[220px] rounded-xl border border-white/10 bg-slate-900/95 backdrop-blur-md p-2 shadow-2xl z-50"
+                style={{
+                  position: "absolute", top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                  minWidth: 200,
+                  background: "var(--bsd-paper)",
+                  border: "1.5px solid var(--bsd-ink)",
+                  padding: 4, zIndex: 60,
+                  boxShadow: "0 12px 36px -12px rgba(12, 10, 8, 0.18)",
+                }}
               >
-                <div className="px-3 py-2 border-b border-white/5 mb-1">
-                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
-                    style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-                    Signed in as
-                  </div>
-                  <div className="mt-0.5 text-sm text-slate-100 truncate">
-                    {me?.email ?? "user"}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">role: {role ?? "viewer"}</div>
-                </div>
-                <Link
-                  href="/onboarding/profile"
-                  className="block px-3 py-2 rounded-md text-sm text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-                <Link
-                  href="/feedback"
-                  className="block px-3 py-2 rounded-md text-sm text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Feedback
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    logout();
-                    router.replace("/login");
-                  }}
-                  className="block w-full text-left px-3 py-2 rounded-md text-sm text-rose-300 hover:text-rose-200 hover:bg-rose-950/30 cursor-pointer"
-                >
-                  Sign out
-                </button>
+                {[...NAV_TOOLS, ...adminItems].map((n) => {
+                  const active = pathname === n.href || pathname.startsWith(n.href + "/");
+                  return (
+                    <Link
+                      key={n.href}
+                      href={n.href}
+                      className="cursor-pointer cf-mono"
+                      style={{
+                        display: "block", padding: "8px 12px",
+                        textDecoration: "none",
+                        color: active ? "var(--bsd-red)" : "var(--bsd-ink)",
+                        background: active ? "var(--bsd-paper-deep)" : "transparent",
+                        fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
+                        transition: "background var(--dur-base) ease, color var(--dur-base) ease",
+                      }}
+                      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "var(--bsd-paper-deep)"; e.currentTarget.style.color = "var(--bsd-red)"; } }}
+                      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--bsd-ink)"; } }}
+                    >
+                      {n.label}
+                    </Link>
+                  );
+                })}
               </div>
             ) : null}
           </div>
+        </nav>
+
+        {/* Account */}
+        <div ref={acctRef} style={{ position: "relative" }}>
+          <button
+            type="button"
+            onClick={() => setAcctOpen((v) => !v)}
+            aria-expanded={acctOpen}
+            className="cursor-pointer"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "transparent", border: "1.5px solid var(--bsd-ink)",
+              padding: "6px 10px 6px 6px",
+              cursor: "pointer",
+              transition: "background var(--dur-base) ease, color var(--dur-base) ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bsd-ink)"; e.currentTarget.style.color = "var(--bsd-paper)"; (e.currentTarget.querySelector(".acct-avatar") as HTMLElement).style.background = "var(--bsd-red)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--bsd-ink)"; (e.currentTarget.querySelector(".acct-avatar") as HTMLElement).style.background = "var(--bsd-ink)"; }}
+          >
+            <span
+              className="acct-avatar cf-mono"
+              style={{
+                width: 26, height: 26,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                background: "var(--bsd-ink)", color: "var(--bsd-paper)",
+                fontSize: 11, fontWeight: 800,
+                transition: "background var(--dur-base) ease",
+              }}
+            >
+              {initial}
+            </span>
+            <span className="cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
+              {role ?? "viewer"}
+            </span>
+            <CaretDown weight="bold" size={9} style={{ transform: acctOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms var(--ease-out)" }} />
+          </button>
+          {acctOpen ? (
+            <div
+              role="menu"
+              style={{
+                position: "absolute", top: "calc(100% + 6px)", right: 0,
+                minWidth: 220,
+                background: "var(--bsd-paper)",
+                border: "1.5px solid var(--bsd-ink)",
+                padding: 4, zIndex: 60,
+                boxShadow: "0 12px 36px -12px rgba(12, 10, 8, 0.18)",
+              }}
+            >
+              <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--bsd-hairline)" }}>
+                <div style={{ fontSize: 13, color: "var(--bsd-ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {me?.email ?? "user"}
+                </div>
+                <div className="cf-mono" style={{ marginTop: 3, fontSize: 9.5, color: "var(--bsd-muted)", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
+                  {role ?? "viewer"}
+                </div>
+              </div>
+              <MenuLink href="/onboarding/profile" label="Profile" Icon={User} />
+              <MenuLink href="/" label="Landing" />
+              <button
+                type="button"
+                onClick={() => {
+                  setAcctOpen(false);
+                  logout();
+                  router.replace("/login");
+                }}
+                className="cursor-pointer cf-mono"
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 8,
+                  padding: "8px 12px",
+                  background: "transparent", border: "none",
+                  color: "var(--bsd-red)",
+                  fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
+                  borderTop: "1px solid var(--bsd-hairline)", marginTop: 4,
+                  cursor: "pointer",
+                  transition: "background var(--dur-base) ease",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bsd-red-soft)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <SignOut weight="bold" size={11} /> Sign out
+              </button>
+            </div>
+          ) : null}
         </div>
       </header>
 
-      <main className={bare ? "" : "mx-auto max-w-6xl px-6 py-10"}>
-        {children}
+      {/* ===== Disclaimer dateline strip ===== */}
+      <div
+        style={{
+          borderBottom: "1px solid var(--bsd-hairline)",
+          padding: "8px 28px",
+          display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12,
+          fontFamily: "Geist Mono, monospace",
+          fontSize: 9.5, color: "var(--bsd-muted)", letterSpacing: "0.18em",
+          textTransform: "uppercase", fontWeight: 600,
+        }}
+      >
+        <span>Pre-seed founders workspace</span>
+        <span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+      </div>
+
+      {/* ===== Main pane ===== */}
+      <main style={{ minWidth: 0 }}>
+        {bare ? children : (
+          <div style={{ padding: "36px 28px 64px", maxWidth: 1280, margin: "0 auto" }}>
+            {children}
+          </div>
+        )}
       </main>
     </div>
+  );
+}
+
+function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className="cursor-pointer cf-mono"
+      style={{
+        position: "relative",
+        textDecoration: "none",
+        color: active ? "var(--bsd-red)" : "var(--bsd-ink)",
+        fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700,
+        padding: "6px 0",
+        transition: "color var(--dur-base) ease",
+      }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "var(--bsd-red)"; }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "var(--bsd-ink)"; }}
+    >
+      {label}
+      {active ? (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", left: 0, right: 0, bottom: -3,
+            height: 2, background: "var(--bsd-red)",
+          }}
+        />
+      ) : null}
+    </Link>
+  );
+}
+
+function MenuLink({ href, label, Icon }: { href: string; label: string; Icon?: typeof User }) {
+  return (
+    <Link
+      href={href}
+      className="cursor-pointer cf-mono"
+      style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "8px 12px",
+        textDecoration: "none",
+        color: "var(--bsd-ink)",
+        fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
+        transition: "background var(--dur-base) ease, color var(--dur-base) ease",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bsd-paper-deep)"; e.currentTarget.style.color = "var(--bsd-red)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--bsd-ink)"; }}
+    >
+      {Icon ? <Icon weight="duotone" size={12} /> : null}
+      {label}
+    </Link>
   );
 }

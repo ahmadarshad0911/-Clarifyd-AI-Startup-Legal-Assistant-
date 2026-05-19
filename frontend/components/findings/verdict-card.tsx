@@ -15,7 +15,7 @@ const VERDICT: Record<
     chip: "bg-rose-100 text-rose-900",
     icon: "block",
     advice:
-      "Kimi flagged critical clauses (unlimited liability, uncapped damages, or similar). Renegotiate before signing.",
+      "Clarifyd AI flagged critical clauses (unlimited liability, uncapped damages, or similar). Renegotiate before signing.",
   },
   high: {
     label: "RENEGOTIATE — high-risk clauses",
@@ -70,7 +70,7 @@ export function VerdictCard({ analysis, fileName }: Props) {
               {v.icon}
             </span>
             <span className="font-label-caps text-label-caps uppercase tracking-widest opacity-90">
-              Kimi K2.6 verdict
+              Clarifyd AI verdict
             </span>
           </div>
           <h2 className="font-display-hero text-h1 m-0">{v.label}</h2>

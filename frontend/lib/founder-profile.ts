@@ -1,6 +1,8 @@
 // Local founder profile store — kept in localStorage until a real backend
 // profile table lands. Read by the Co-Pilot, Negotiation Lab, and any flow
-// that wants to give Kimi user context without re-asking each time.
+// that wants to give Clarifyd AI user context without re-asking each time.
+
+import { readJSON, writeJSON, readString, writeString } from "./user-storage";
 
 const KEY = "clarifyd.founder-profile";
 const ONBOARDED = "clarifyd.onboarded";
@@ -23,14 +25,7 @@ export type FounderProfile = {
 };
 
 export function getProfile(): FounderProfile {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as FounderProfile;
-  } catch {
-    return {};
-  }
+  return readJSON<FounderProfile>(KEY, {});
 }
 
 export function setProfile(patch: Partial<FounderProfile>): FounderProfile {
@@ -40,34 +35,21 @@ export function setProfile(patch: Partial<FounderProfile>): FounderProfile {
     ...patch,
     updated_at: new Date().toISOString(),
   };
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    // ignore quota / private-mode errors
-  }
+  writeJSON(KEY, next);
   return next;
 }
 
 export function markOnboarded(): void {
-  try {
-    window.localStorage.setItem(ONBOARDED, "1");
-  } catch {
-    // ignore
-  }
+  writeString(ONBOARDED, "1");
 }
 
 export function isOnboarded(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(ONBOARDED) === "1";
-  } catch {
-    return false;
-  }
+  return readString(ONBOARDED) === "1";
 }
 
 /**
  * Render a one-shot snapshot of what we know about the founder, ready to
- * inject into a Kimi opener so it doesn't have to re-ask the basics.
+ * inject into a Clarifyd AI opener so it doesn't have to re-ask the basics.
  * Returns an empty string when nothing useful is set.
  */
 export function profileContextLine(p: FounderProfile = getProfile()): string {

@@ -1,5 +1,5 @@
 // Startup legal template skeletons. {{PLACEHOLDERS}} are filled by the
-// Legal Co-Pilot (Kimi) using terms collected in the builder chat.
+// Legal Co-Pilot (Clarifyd AI) using terms collected in the builder chat.
 // These are starting points only — not legal advice.
 
 export type StartupTemplate = {

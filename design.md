@@ -2,11 +2,12 @@
 
 ## 1. Overview
 
-**Clarifyd / AI Contract Risk Analyzer** is an SLC (Simple, Loveable, Complete) web application that lets startup founders upload a contract, get clause-level risk analysis (rules + LLM), route findings to reviewers, and export tamper-evident reports. Reasoning runs against external provider APIs (OpenAI / Kimi); there is no in-house model training.
+**Clarifyd / AI Contract Risk Analyzer** is an SLC (Simple, Loveable, Complete) web application built for **pre-seed founders**. Upload a contract, get clause-level risk analysis (rules + LLM), route findings to reviewers, and export tamper-evident reports. Reasoning is exposed under the **Clarifyd AI** brand; no in-house model training.
 
-- **Frontend:** Next.js 14 (App Router), React 18, TypeScript, plain CSS with a glassmorphism aesthetic.
+- **Frontend:** Next.js 14 (App Router), React 18, TypeScript. Aesthetic = **The Broadsheet** (brutalist editorial — warm ivory paper `#f4ede1`, coffee-black ink `#0c0a08`, single arterial red accent `#b8260f`, Geist + Geist Mono, Phosphor duotone icons, sharp edges, no gradients/glass/shadows). Framer Motion 11 for entries with `cubic-bezier(0.23, 1, 0.32, 1)` ease-out-quart, transforms + opacity only.
 - **Backend:** FastAPI (Python 3.11+), strict layering (`routes → services → contracts → models`), Pydantic schemas, SQLite (dev) via Alembic.
 - **Deployment:** `docker-compose` two-service scaffold (`frontend`, `backend`).
+- **Per-user storage:** the frontend scopes every `localStorage` key by signed-in user via `lib/user-storage.ts`. Account-switch wipes 11 known legacy globals so no data bleeds across users.
 
 The canonical workflow is: **Upload → Analyze → Review → Export**.
 

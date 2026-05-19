@@ -1,830 +1,794 @@
 "use client";
 
 /**
- * Landing page — dark editorial vibe ("Stripe meets Linear").
+ * Landing — Clarifyd v6 · "The Broadsheet"
  *
- * Self-contained styling: wraps everything in `bg-slate-950` so the body's
- * aurora background (still used by every other route) is fully covered. No
- * change to globals.css or layout.tsx — other pages (auth, dashboard, etc.)
- * keep the existing aurora theme until a follow-up rewrite phase.
- *
- * Design system: persisted at design-system/clarifyd/MASTER.md
- *   - Palette: slate-950 base, slate-800 surfaces, slate-100 text,
- *              indigo-500 → violet-500 gradient accent, emerald-500 CTA
- *   - Type:    Inter (body + display), IBM Plex Mono (accents)
- *   - Motion:  150-300ms cubic-bezier, no scale-on-hover layout shift
- *   - A11y:    AA contrast, visible focus rings, prefers-reduced-motion gated
- *
- * Sections (top→bottom):
- *   1. Sticky nav
- *   2. Hero — headline + dual CTA + live findings card
- *   3. Metric strip — three credibility numbers
- *   4. Live demo — animated terminal scanning a real clause
- *   5. How it works — three-step ink-on-dark explainer
- *   6. Features bento — 6 cards, asymmetric grid
- *   7. Pricing teaser — link to /pricing
- *   8. Final CTA + footer
+ * Brutalist editorial. Warm ivory paper, deep coffee ink, single arterial
+ * red accent. Oversize display type, asymmetric broadsheet grid, sharp
+ * edges (no border-radius), no gradients, no glass, no shadows.
  */
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Check, X, Quotes, CaretRight } from "@phosphor-icons/react";
 
-import { useAuth } from "../lib/auth";
+const T = {
+  paper:      "#f4ede1",
+  paperDeep:  "#ebe2d0",
+  ink:        "#0c0a08",
+  body:       "#2b251f",
+  muted:      "#6c6356",
+  soft:       "#9b9181",
+  hairline:   "rgba(12, 10, 8, 0.12)",
+  rule:       "rgba(12, 10, 8, 0.22)",
+  red:        "#b8260f",
+  redHi:      "#8c1c08",
+  redSoft:    "rgba(184, 38, 15, 0.10)",
+};
+const EOQ = [0.23, 1, 0.32, 1] as const;
 
-function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined") return false;
+export default function LandingPage() {
+  const reduceMotion = useReducedMotion() ?? false;
   return (
-    window.matchMedia &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    <div style={{ background: T.paper, color: T.body, minHeight: "100dvh", fontFeatureSettings: "'tnum', 'ss01'" }}>
+      <Masthead />
+      <Hero reduceMotion={reduceMotion} />
+      <LoopholeOfTheWeek reduceMotion={reduceMotion} />
+      <Process reduceMotion={reduceMotion} />
+      <RiskAtlas reduceMotion={reduceMotion} />
+      <Plans reduceMotion={reduceMotion} />
+      <Manifesto reduceMotion={reduceMotion} />
+      <Footer />
+      <style jsx global>{`
+        .bsd-link { position: relative; color: ${T.ink}; text-decoration: none; transition: color 200ms ease; }
+        .bsd-link::after {
+          content: ""; position: absolute; left: 0; bottom: -2px;
+          width: 100%; height: 1.5px; background: ${T.red};
+          transform: scaleX(0); transform-origin: right center;
+          transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .bsd-link:hover { color: ${T.red}; }
+          .bsd-link:hover::after { transform: scaleX(1); transform-origin: left center; }
+        }
+        .bsd-btn {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 14px 22px; border: 1.5px solid ${T.ink};
+          background: ${T.ink}; color: ${T.paper};
+          font-family: Geist Mono, monospace;
+          font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+          transition: background 200ms ease, color 200ms ease, border-color 200ms ease, transform 100ms ease;
+          cursor: pointer; text-decoration: none;
+        }
+        .bsd-btn:active { transform: translateY(1px); }
+        @media (hover: hover) and (pointer: fine) {
+          .bsd-btn:hover { background: ${T.red}; border-color: ${T.red}; }
+        }
+        .bsd-btn--ghost { background: transparent; color: ${T.ink}; }
+        @media (hover: hover) and (pointer: fine) {
+          .bsd-btn--ghost:hover { background: ${T.ink}; color: ${T.paper}; }
+        }
+        .bsd-row { transition: background 200ms ease, padding-left 240ms cubic-bezier(0.23, 1, 0.32, 1); }
+        @media (hover: hover) and (pointer: fine) {
+          .bsd-row:hover { background: ${T.paperDeep}; padding-left: 18px; }
+          .bsd-row:hover .bsd-row__caret { transform: translateX(4px); color: ${T.red}; }
+        }
+        .bsd-row__caret { transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), color 200ms ease; }
+        @media (prefers-reduced-motion: reduce) {
+          .bsd-link::after, .bsd-row { transition: none !important; transform: none !important; padding-left: 0 !important; }
+        }
+      `}</style>
+    </div>
   );
 }
 
-/* ============================================================ */
-/* Top nav                                                       */
-/* ============================================================ */
-function Nav() {
-  const { token } = useAuth();
-  const isAuthenticated = !!token;
+function Masthead() {
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-slate-100 font-semibold tracking-tight cursor-pointer"
-        >
-          <span
-            className="inline-block h-5 w-5 rounded-[6px]"
-            style={{
-              background:
-                "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-              boxShadow: "0 0 18px rgba(139,92,246,0.5)",
-            }}
-            aria-hidden
-          />
-          Clarifyd
+    <header
+      style={{
+        borderBottom: `3px double ${T.ink}`,
+        padding: "16px 32px 12px",
+        display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "end", gap: 16,
+      }}
+    >
+      <span className="cf-mono" style={{ color: T.muted, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700 }}>
+        Vol. I · No. 03
+      </span>
+      <Link href="/" className="cursor-pointer" style={{ textDecoration: "none" }}>
+        <span style={{ display: "block", fontFamily: "Geist, sans-serif", fontWeight: 800, fontSize: 28, color: T.ink, letterSpacing: "-0.04em", lineHeight: 1, textAlign: "center" }}>
+          The Clarifyd
+        </span>
+        <span style={{ display: "block", textAlign: "center", color: T.muted, fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", marginTop: 2 }}>
+          Broadsheet
+        </span>
+      </Link>
+      <nav style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 22 }}>
+        <Link href="/faq" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>FAQ</Link>
+        <Link href="/pricing" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>Plans</Link>
+        <Link href="/contact" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>Contact</Link>
+        <Link href="/login" className="bsd-btn" style={{ padding: "10px 18px" }}>
+          Sign in <ArrowRight weight="bold" size={11} />
         </Link>
-        <div className="hidden md:flex items-center gap-7 text-sm text-slate-400">
-          <a
-            href="#features"
-            className="hover:text-slate-100 transition-colors duration-200 cursor-pointer"
-          >
-            Features
-          </a>
-          <a
-            href="#demo"
-            className="hover:text-slate-100 transition-colors duration-200 cursor-pointer"
-          >
-            Demo
-          </a>
-          <Link
-            href="/pricing"
-            className="hover:text-slate-100 transition-colors duration-200 cursor-pointer"
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/faq"
-            className="hover:text-slate-100 transition-colors duration-200 cursor-pointer"
-          >
-            FAQ
-          </Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href={isAuthenticated ? "/dashboard" : "/login"}
-            className="text-sm text-slate-300 hover:text-white transition-colors duration-200 cursor-pointer"
-          >
-            {isAuthenticated ? "Dashboard" : "Sign in"}
-          </Link>
-          <Link
-            href={isAuthenticated ? "/findings" : "/login"}
-            className="text-sm font-medium px-3.5 py-1.5 rounded-lg bg-white text-slate-950 hover:bg-slate-200 transition-colors duration-200 cursor-pointer"
-          >
-            {isAuthenticated ? "Open app" : "Try free"} →
-          </Link>
-        </div>
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
 }
 
-/* ============================================================ */
-/* Hero                                                          */
-/* ============================================================ */
-const LIVE_ROWS = [
-  { sev: "critical", name: "Unlimited Liability", time: "62s →" },
-  { sev: "critical", name: "Irrevocable IP Grab", time: "0.7s ⚡" },
-  { sev: "high", name: "Auto-Renew (365d)", time: "cached" },
-  { sev: "high", name: "Personal Guarantee", time: "cached" },
-  { sev: "medium", name: "Forced Arbitration", time: "cached" },
-];
-
-function SevDot({ sev }: { sev: string }) {
-  const color =
-    sev === "critical"
-      ? "bg-rose-500 shadow-[0_0_10px_#f43f5e]"
-      : sev === "high"
-        ? "bg-amber-400 shadow-[0_0_10px_#fbbf24]"
-        : sev === "medium"
-          ? "bg-sky-400 shadow-[0_0_10px_#38bdf8]"
-          : "bg-slate-500";
-  return <span className={`inline-block h-1.5 w-1.5 rounded-full ${color}`} />;
-}
-
-function Hero() {
+function Hero({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <section className="relative pt-32 pb-24">
-      {/* Background grid */}
+    <section style={{ padding: "96px 48px 112px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div
-        className="absolute inset-0 -z-10 opacity-[0.04]"
         style={{
-          backgroundImage:
-            "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage:
-            "radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 100%)",
+          display: "grid", gridTemplateColumns: "minmax(0, 8fr) minmax(0, 4fr)",
+          gap: 80, alignItems: "end",
+          maxWidth: 1200, margin: "0 auto",
         }}
-        aria-hidden
-      />
-      {/* Soft glow */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 -z-10 h-[520px] w-[820px] rounded-full"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, rgba(99,102,241,0.18) 0%, transparent 60%)",
-          filter: "blur(20px)",
-        }}
-        aria-hidden
-      />
+        className="grid-cols-1 lg:grid-cols-[8fr_4fr]"
+      >
+        <motion.h1
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: EOQ }}
+          style={{
+            margin: 0,
+            fontSize: "clamp(44px, 6.4vw, 96px)",
+            lineHeight: 0.95,
+            letterSpacing: "-0.04em",
+            color: T.ink,
+            fontWeight: 700,
+          }}
+        >
+          Read your next<br />
+          contract like a<br />
+          <span style={{ color: T.red, fontStyle: "italic", fontWeight: 600 }}>senior counsel.</span>
+        </motion.h1>
 
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
-          {/* Left — headline */}
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 font-medium">
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"
-                aria-hidden
-              />
-              <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-                ↳ live · Kimi K2 · 116× faster on cached reads
-              </span>
-            </div>
-            <h1 className="mt-6 text-[44px] sm:text-5xl lg:text-[58px] leading-[1.05] tracking-tight font-semibold text-white">
-              Contract review for
-              <br />
-              founders, in{" "}
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400">
-                8 seconds.
-              </span>
-            </h1>
-            <p className="mt-6 text-lg text-slate-400 max-w-xl leading-relaxed">
-              Drop a PDF. Every clause scored. Every loophole flagged. Every
-              fix written for you. No more $400/hr lawyer round-trips to find
-              an unlimited-liability bomb.
-            </p>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link
-                href="/login"
-                className="group inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-slate-200 transition-colors duration-200 cursor-pointer"
-              >
-                Try free
-                <span className="transition-transform duration-200 group-hover:translate-x-0.5">
-                  →
-                </span>
-              </Link>
-              <a
-                href="#demo"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-200 hover:bg-white/10 transition-colors duration-200 cursor-pointer"
-              >
-                Watch demo
-                <span aria-hidden>↓</span>
-              </a>
-            </div>
-            <p
-              className="mt-5 text-xs text-slate-500"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              No card. 3 contracts free. SOC-2 in flight.
-            </p>
-          </div>
-
-          {/* Right — live card */}
-          <div className="relative">
-            <div
-              className="absolute -inset-2 -z-10 rounded-2xl opacity-50"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.15) 60%, transparent)",
-                filter: "blur(24px)",
-              }}
-              aria-hidden
-            />
-            <div className="rounded-xl border border-white/10 bg-slate-900/70 backdrop-blur-sm overflow-hidden shadow-2xl">
-              {/* Top bar */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-slate-900/50">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-                </div>
-                <span
-                  className="text-[11px] text-slate-500"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                >
-                  clarifyd · live findings
-                </span>
-                <span className="text-[11px] text-emerald-400">● ready</span>
-              </div>
-              {/* Title */}
-              <div className="px-5 py-4 border-b border-white/5">
-                <div
-                  className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                >
-                  Master Services Agreement · 6 findings
-                </div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <div className="text-white font-semibold">
-                    Verdict: <span className="text-rose-400">CRITICAL</span>
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    do not sign as-is
-                  </div>
-                </div>
-              </div>
-              {/* Rows */}
-              <ul className="divide-y divide-white/5">
-                {LIVE_ROWS.map((row, i) => (
-                  <li
-                    key={i}
-                    className="px-5 py-3 flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <SevDot sev={row.sev} />
-                      <div
-                        className="text-[10px] uppercase tracking-[0.14em] w-14 text-slate-500"
-                        style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                      >
-                        {row.sev}
-                      </div>
-                      <div className="text-sm text-slate-200 truncate">
-                        {row.name}
-                      </div>
-                    </div>
-                    <div
-                      className="text-xs text-slate-400 tabular-nums"
-                      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                    >
-                      {row.time}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {/* Footer */}
-              <div className="px-5 py-3 border-t border-white/5 bg-slate-900/40 flex items-center justify-between text-xs">
-                <span
-                  className="text-slate-500"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                >
-                  $ clarifyd scan dummy.pdf
-                </span>
-                <span className="text-emerald-400">✓ 0 hallucinations</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================ */
-/* Metric strip                                                  */
-/* ============================================================ */
-function Metrics() {
-  const items = [
-    { num: "0.7s", label: "Re-read same PDF · cache hit" },
-    { num: "100%", label: "Detection recall on benchmark" },
-    { num: "0", label: "Hallucinated clauses (A1 grounding)" },
-  ];
-  return (
-    <section className="border-y border-white/5 bg-white/[0.015]">
-      <div className="mx-auto max-w-6xl px-6 py-10 grid sm:grid-cols-3 gap-8">
-        {items.map((it, i) => (
-          <div key={i}>
-            <div
-              className="text-3xl text-white font-semibold tracking-tight"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              {it.num}
-            </div>
-            <div className="mt-1 text-sm text-slate-400">{it.label}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================ */
-/* Live demo (typewriter terminal)                               */
-/* ============================================================ */
-const DEMO_LINES = [
-  "$ clarifyd scan vendor-msa.pdf",
-  "▸ extracting 17 clauses ...",
-  "▸ scoring against rubric ...",
-  "▸ grounding excerpts ...",
-  "",
-  "● critical   Unlimited Liability       │  needs cap",
-  "● critical   Irrevocable IP Assignment │  carve out pre-existing",
-  "● high       Auto-Renew (365d notice)  │  push to 30d",
-  "● medium     Net-30 + 1.5%/mo interest │  standard, accept",
-  "",
-  "verdict      CRITICAL — do not sign as-is",
-  "suggestions  written and ready to paste",
-  "",
-  "next         → review in Findings · → export redline",
-];
-
-function Demo() {
-  const [idx, setIdx] = useState(0);
-  const reducedRef = useRef(false);
-  useEffect(() => {
-    reducedRef.current = prefersReducedMotion();
-    if (reducedRef.current) {
-      setIdx(DEMO_LINES.length);
-      return;
-    }
-    const id = setInterval(
-      () => setIdx((i) => (i < DEMO_LINES.length ? i + 1 : i)),
-      280,
-    );
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <section id="demo" className="py-28">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="max-w-2xl">
-          <div
-            className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
-            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-          >
-            ↳ live demo
-          </div>
-          <h2 className="mt-3 text-4xl text-white font-semibold tracking-tight">
-            One drop. Every clause scored.
-          </h2>
-          <p className="mt-3 text-slate-400">
-            Real terminal, real Kimi K2 output. The whole pipeline runs in 8
-            seconds on cached reads — under a minute even cold.
+        <motion.div
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, ease: EOQ, delay: 0.12 }}
+          style={{ display: "flex", flexDirection: "column", gap: 22 }}
+        >
+          <span className="cf-mono" style={{ color: T.red, fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", fontWeight: 800 }}>
+            ★ Volume I · The founder edition
+          </span>
+          <p style={{ margin: 0, fontSize: 19, color: T.body, lineHeight: 1.55, maxWidth: 380, fontWeight: 500 }}>
+            Drop a SAFE, term sheet, or vendor MSA. Clarifyd AI flags the loopholes, rewrites the risky clauses, and hands you a draft your counterparty can sign.
           </p>
-        </div>
-        <div className="mt-10 rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-            <div className="flex gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-            </div>
-            <span
-              className="text-[11px] text-slate-500"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              ~/contracts $
-            </span>
-            <span className="w-12" />
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+            <Link href="/login" className="bsd-btn cursor-pointer">
+              Start free <ArrowRight weight="bold" size={11} />
+            </Link>
+            <Link href="/pricing" className="bsd-btn bsd-btn--ghost cursor-pointer">See plans</Link>
           </div>
-          <pre
-            className="px-5 py-6 text-[13.5px] leading-[1.7] text-slate-300 min-h-[460px] overflow-x-auto"
-            style={{ fontFamily: "'IBM Plex Mono', 'Menlo', monospace" }}
+        </motion.div>
+      </div>
+
+      <div
+        style={{
+          maxWidth: 1200, margin: "72px auto 0",
+          paddingTop: 20, borderTop: `1px solid ${T.hairline}`,
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16,
+          fontFamily: "Geist Mono, monospace",
+          fontSize: 10, color: T.muted, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700,
+        }}
+      >
+        <span>Powered by Clarifyd AI</span>
+        <span style={{ display: "inline-flex", gap: 24 }}>
+          <span>8s scan</span>
+          <span>$0 first 3 contracts</span>
+          <span>0 hallucinations</span>
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function RuleHeavy() {
+  return (
+    <div style={{ background: T.ink, color: T.paper, padding: "10px 32px", borderBottom: `1.5px solid ${T.ink}` }}>
+      <div
+        style={{
+          maxWidth: 1280, margin: "0 auto",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 28, flexWrap: "wrap",
+          fontFamily: "Geist Mono, monospace", fontSize: 10.5, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700,
+        }}
+      >
+        <span style={{ color: T.red }}>★</span>
+        <span>Loophole detection</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span>Founder-friendly rewrites</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span>Citation-grounded findings</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span>Hash-chained audit trail</span>
+        <span style={{ color: T.red }}>★</span>
+      </div>
+    </div>
+  );
+}
+
+function LoopholeOfTheWeek({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <SectionHeader kicker="§ Featured loophole" title="From a real seed-round SAFE." rule={`No. ${new Date().getDate().toString().padStart(2, "0")}`} />
+        <div
+          style={{
+            marginTop: 56,
+            display: "grid", gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)", gap: 72,
+          }}
+          className="grid-cols-1 lg:grid-cols-[5fr_7fr]"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.55, ease: EOQ }}
           >
-            {DEMO_LINES.slice(0, idx).map((line, i) => {
-              const color = line.startsWith("● critical")
-                ? "text-rose-400"
-                : line.startsWith("● high")
-                  ? "text-amber-300"
-                  : line.startsWith("● medium")
-                    ? "text-sky-300"
-                    : line.startsWith("▸")
-                      ? "text-violet-300"
-                      : line.startsWith("$")
-                        ? "text-emerald-300"
-                        : line.startsWith("verdict")
-                          ? "text-rose-300 font-semibold"
-                          : line.startsWith("suggestions") ||
-                              line.startsWith("next")
-                            ? "text-slate-100"
-                            : "text-slate-400";
-              return (
-                <div key={i} className={color}>
-                  {line || " "}
-                </div>
-              );
-            })}
-            {idx < DEMO_LINES.length && (
-              <span className="inline-block h-4 w-2 bg-violet-400 animate-pulse" />
-            )}
-          </pre>
+            <span className="cf-mono" style={{ color: T.red, fontSize: 10.5, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+              Severity · Critical
+            </span>
+            <h3 style={{ margin: "10px 0 14px", fontSize: 30, lineHeight: 1.1, fontWeight: 600, color: T.ink, letterSpacing: "-0.022em" }}>
+              The unlimited liability cap, hidden in 16 words.
+            </h3>
+            <p style={{ margin: "0 0 18px", fontSize: 15, color: T.body, lineHeight: 1.65 }}>
+              The original clause caps the founder personally at any amount the investor declares. Clarifyd AI rewrites it so cap follows the round, not the founder, and only triggers on wilful misrepresentation.
+            </p>
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                "Personal exposure removed",
+                "Cap tied to the round, not the founder",
+                "Trigger limited to wilful misrepresentation",
+              ].map((b) => (
+                <li key={b} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: T.body }}>
+                  <Check weight="bold" size={13} color={T.red} aria-hidden />
+                  {b}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.55, ease: EOQ, delay: 0.08 }}
+          >
+            <div
+              style={{
+                borderTop: `2px solid ${T.ink}`,
+                borderBottom: `1px solid ${T.hairline}`,
+                padding: "14px 18px",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: T.muted,
+              }}
+            >
+              <span>Original clause</span>
+              <span style={{ color: T.red }}><X weight="bold" size={11} style={{ verticalAlign: "middle" }} /> Flagged</span>
+            </div>
+            <pre
+              style={{
+                margin: 0, padding: 18, background: "transparent",
+                fontFamily: "Geist Mono, monospace", fontSize: 13.5,
+                color: T.body, lineHeight: 1.7, whiteSpace: "pre-wrap",
+                borderBottom: `1px dashed ${T.rule}`,
+              }}
+            >
+              <s style={{ textDecorationColor: T.red, textDecorationThickness: 2 }}>
+                The Founder shall indemnify the Investor for any and all losses incurred, of any amount whatsoever, in connection with this agreement.
+              </s>
+            </pre>
+            <div
+              style={{
+                borderTop: `2px solid ${T.red}`,
+                padding: "14px 18px",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: T.red,
+              }}
+            >
+              <span>Clarifyd AI rewrite</span>
+              <span><Check weight="bold" size={11} style={{ verticalAlign: "middle" }} /> Founder-friendly</span>
+            </div>
+            <pre
+              style={{
+                margin: 0, padding: 18, background: T.paperDeep,
+                fontFamily: "Geist Mono, monospace", fontSize: 13.5,
+                color: T.ink, lineHeight: 1.7, whiteSpace: "pre-wrap", fontWeight: 500,
+              }}
+            >
+              The Company shall indemnify the Investor for direct losses up to the amount of the Investor&rsquo;s actual contribution, and only in cases of wilful misrepresentation by the Company.
+            </pre>
+          </motion.div>
         </div>
       </div>
     </section>
   );
 }
 
-/* ============================================================ */
-/* How it works                                                  */
-/* ============================================================ */
-function HowItWorks() {
-  const steps = [
-    {
-      n: "01",
-      title: "Drop your contract",
-      body: "PDF, DOCX, or paste raw text. We extract every clause, in seconds.",
-    },
-    {
-      n: "02",
-      title: "Kimi K2 scores it",
-      body: "Severity rubric calibrated by senior counsel examples. Citation-grounded — never invents text.",
-    },
-    {
-      n: "03",
-      title: "Drop-in rewrites",
-      body: "Founder-friendly replacement language with the numeric fix named (12-month cap, 30-day notice, mutual indemnity).",
-    },
-  ];
+type Step = {
+  n: string;
+  title: string;
+  body: string;
+  bullets: string[];
+  proof: { label: string; lines: string[] };
+  cta: { label: string; href: string };
+};
+
+const STEPS: Step[] = [
+  {
+    n: "01",
+    title: "Drop the contract",
+    body: "PDF, DOCX, or paste raw text. SAFEs, MSAs, NDAs, offer letters, term sheets up to 10 MB.",
+    bullets: [
+      "Drag-and-drop or browse — no upload queue.",
+      "Encrypted in transit (TLS 1.3), at rest (AES-256).",
+      "Re-upload same file → free, served from cache.",
+    ],
+    proof: { label: "Accepted", lines: [".pdf  .docx  .txt", "≤ 10 MB", "≤ 200 pages"] },
+    cta: { label: "Upload your first", href: "/login" },
+  },
+  {
+    n: "02",
+    title: "Clarifyd AI reads it",
+    body: "Reasoning grounded against the verbatim clause text. No invented findings. Citations on every flag.",
+    bullets: [
+      "Verbatim grounding — every flag carries clause text.",
+      "Ungrounded suggestions are silently dropped.",
+      "8s cached, < 60s cold.",
+    ],
+    proof: { label: "Sample finding", lines: [
+      "› liability_cap  critical",
+      "  cites: §6.3 lines 142-156",
+      "  conf:  0.94",
+    ]},
+    cta: { label: "See a real scan", href: "/findings" },
+  },
+  {
+    n: "03",
+    title: "You review",
+    body: "Severity-sorted loopholes. Founder-friendly rewrites side-by-side with originals. Accept, reject, edit.",
+    bullets: [
+      "Critical → Low ranking, no jargon.",
+      "Side-by-side diff, original + rewrite.",
+      "Inline edits, no re-upload needed.",
+    ],
+    proof: { label: "Actions", lines: [
+      "[ ✓ ] accept",
+      "[ ✕ ] reject",
+      "[ … ] edit inline",
+    ]},
+    cta: { label: "Open Findings", href: "/findings" },
+  },
+  {
+    n: "04",
+    title: "Hand to counterparty",
+    body: "Exported draft plus a hash-chained audit trail proving exactly what changed and when.",
+    bullets: [
+      "PDF or DOCX export, no watermarks on Founder+.",
+      "Tamper-evident SHA-256 chain on every action.",
+      "Counsel-ready collaborator doc.",
+    ],
+    proof: { label: "Audit chain", lines: [
+      "0x4f2a…b91c  open",
+      "0x88d3…0e22  accept §6.3",
+      "0xa1cc…774b  export.v3",
+    ]},
+    cta: { label: "Read the audit doc", href: "/exports" },
+  },
+];
+
+function Process({ reduceMotion }: { reduceMotion: boolean }) {
+  const [openN, setOpenN] = useState<string>("01");
   return (
-    <section className="py-28 border-t border-white/5">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="max-w-2xl">
-          <div
-            className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
-            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-          >
-            ↳ workflow
-          </div>
-          <h2 className="mt-3 text-4xl text-white font-semibold tracking-tight">
-            Three steps. No PhD required.
-          </h2>
-        </div>
-        <ol className="mt-12 grid md:grid-cols-3 gap-6">
-          {steps.map((s, i) => (
-            <li
-              key={i}
-              className="group relative rounded-xl border border-white/10 bg-slate-900/40 p-7 hover:bg-slate-900/70 transition-colors duration-200"
-            >
-              <div
-                className="text-xs text-slate-500 tabular-nums"
-                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <SectionHeader kicker="§ The process" title="Eight seconds, four moves." rule="Method" />
+        <ol style={{ margin: "48px 0 0", padding: 0, listStyle: "none", borderTop: `2px solid ${T.ink}` }}>
+          {STEPS.map((s, i) => {
+            const open = openN === s.n;
+            return (
+              <motion.li
+                key={s.n}
+                initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.4, ease: EOQ, delay: i * 0.06 }}
+                style={{ borderBottom: `1px solid ${T.hairline}`, background: open ? T.paperDeep : "transparent", transition: "background 240ms cubic-bezier(0.23, 1, 0.32, 1)" }}
               >
-                {s.n}
-              </div>
-              <div className="mt-3 text-lg text-white font-semibold tracking-tight">
-                {s.title}
-              </div>
-              <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-                {s.body}
-              </p>
-              <div
-                className="absolute bottom-0 left-7 right-7 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                aria-hidden
-              />
-            </li>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => setOpenN(open ? "" : s.n)}
+                  aria-expanded={open}
+                  className={`bsd-row cursor-pointer${open ? " is-active" : ""}`}
+                  style={{
+                    width: "100%", textAlign: "left",
+                    display: "grid",
+                    gridTemplateColumns: "72px 1fr minmax(0, 2.4fr) 24px",
+                    alignItems: "center", gap: 28,
+                    padding: "32px 24px",
+                    background: "transparent", border: "none",
+                  }}
+                >
+                  <span style={{ fontFamily: "Geist Mono, monospace", fontWeight: 800, fontSize: 30, color: T.red, letterSpacing: "-0.02em", textAlign: "right" }}>
+                    {s.n}
+                  </span>
+                  <span style={{ fontSize: 22, fontWeight: 600, color: T.ink, letterSpacing: "-0.015em" }}>
+                    {s.title}
+                  </span>
+                  <span style={{ fontSize: 14.5, color: T.body, lineHeight: 1.55 }}>
+                    {s.body}
+                  </span>
+                  <CaretRight
+                    className="bsd-row__caret"
+                    weight="bold"
+                    size={16}
+                    color={open ? T.red : T.soft}
+                    style={{
+                      transform: open ? "rotate(90deg)" : "rotate(0deg)",
+                      transition: "transform 240ms cubic-bezier(0.23, 1, 0.32, 1), color 200ms ease",
+                    }}
+                    aria-hidden
+                  />
+                </button>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateRows: open ? "1fr" : "0fr",
+                    transition: "grid-template-rows 320ms cubic-bezier(0.23, 1, 0.32, 1), opacity 240ms ease-out",
+                    opacity: open ? 1 : 0,
+                  }}
+                >
+                  <div style={{ overflow: "hidden" }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "72px minmax(0, 1.4fr) minmax(0, 1fr)",
+                        gap: 28,
+                        padding: "0 24px 40px 24px",
+                      }}
+                    >
+                      <span aria-hidden />
+                      <div>
+                        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+                          {s.bullets.map((b, j) => (
+                            <li
+                              key={j}
+                              style={{
+                                display: "flex", alignItems: "flex-start", gap: 12,
+                                fontSize: 15, color: T.body, lineHeight: 1.55,
+                                transform: open ? "translateX(0)" : "translateX(-6px)",
+                                opacity: open ? 1 : 0,
+                                transition: `transform 320ms cubic-bezier(0.23, 1, 0.32, 1) ${60 + j * 50}ms, opacity 280ms ease-out ${60 + j * 50}ms`,
+                              }}
+                            >
+                              <Check weight="bold" size={13} color={T.red} style={{ marginTop: 5, flexShrink: 0 }} aria-hidden />
+                              {b}
+                            </li>
+                          ))}
+                        </ul>
+                        <Link
+                          href={s.cta.href}
+                          className="bsd-btn cursor-pointer"
+                          style={{
+                            marginTop: 22,
+                            transform: open ? "translateY(0)" : "translateY(6px)",
+                            opacity: open ? 1 : 0,
+                            transition: "transform 320ms cubic-bezier(0.23, 1, 0.32, 1) 260ms, opacity 280ms ease-out 260ms",
+                          }}
+                        >
+                          {s.cta.label} <ArrowRight weight="bold" size={11} />
+                        </Link>
+                      </div>
+                      <div
+                        style={{
+                          background: T.paper,
+                          border: `1.5px solid ${T.ink}`,
+                          padding: "16px 18px",
+                          fontFamily: "Geist Mono, monospace",
+                          fontSize: 12.5,
+                          color: T.body,
+                          lineHeight: 1.7,
+                          alignSelf: "start",
+                          transform: open ? "translateY(0) scale(1)" : "translateY(8px) scale(0.985)",
+                          opacity: open ? 1 : 0,
+                          transition: "transform 360ms cubic-bezier(0.23, 1, 0.32, 1) 120ms, opacity 320ms ease-out 120ms",
+                        }}
+                      >
+                        <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 800, color: T.red, marginBottom: 10 }}>
+                          {s.proof.label}
+                        </div>
+                        {s.proof.lines.map((ln, j) => (
+                          <div key={j} style={{ whiteSpace: "pre" }}>{ln}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.li>
+            );
+          })}
         </ol>
       </div>
     </section>
   );
 }
 
-/* ============================================================ */
-/* Features bento                                                */
-/* ============================================================ */
-function Features() {
+const ATLAS: { type: string; freq: number; sev: "Critical" | "High" | "Medium" | "Low" }[] = [
+  { type: "Liability cap",               freq: 84, sev: "Critical" },
+  { type: "IP assignment",               freq: 78, sev: "Critical" },
+  { type: "Auto-renewal",                freq: 72, sev: "High" },
+  { type: "Non-compete scope",           freq: 65, sev: "High" },
+  { type: "Termination for convenience", freq: 61, sev: "High" },
+  { type: "Pro-rata rights",             freq: 44, sev: "Medium" },
+  { type: "Confidentiality term",        freq: 31, sev: "Low" },
+];
+const SEV_COLORS: Record<string, string> = {
+  Critical: T.red,
+  High: "#d97706",
+  Medium: "#a98b2a",
+  Low: T.muted,
+};
+function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <section id="features" className="py-28 border-t border-white/5">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="max-w-2xl">
-          <div
-            className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
-            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-          >
-            ↳ what's inside
-          </div>
-          <h2 className="mt-3 text-4xl text-white font-semibold tracking-tight">
-            Built for founders who don't have a GC.
-          </h2>
-        </div>
-
-        <div className="mt-12 grid md:grid-cols-3 md:grid-rows-2 gap-4 auto-rows-[180px]">
-          {/* 1 — big card */}
-          <div className="md:col-span-2 md:row-span-2 rounded-xl border border-white/10 bg-gradient-to-br from-indigo-950/40 via-slate-900/60 to-slate-900/40 p-8 flex flex-col justify-between overflow-hidden relative">
-            <div>
-              <div
-                className="text-[10px] uppercase tracking-[0.14em] text-indigo-300"
-                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                core feature
-              </div>
-              <h3 className="mt-3 text-2xl text-white font-semibold tracking-tight">
-                Citation-grounded AI
-              </h3>
-              <p className="mt-3 text-sm text-slate-400 max-w-md">
-                Every flagged clause traces back to verbatim text in your
-                contract. Hallucinated findings get dropped before they reach
-                your screen. <em className="text-slate-200">A1 guardrail</em>{" "}
-                — zero invented clauses in benchmarks.
-              </p>
-            </div>
-            <div className="mt-6 flex items-center gap-4">
-              <code
-                className="text-xs text-emerald-400 bg-emerald-950/40 px-2 py-1 rounded"
-                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                excerpt ∈ contract ✓
-              </code>
-              <code
-                className="text-xs text-rose-400 bg-rose-950/40 px-2 py-1 rounded"
-                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                hallucinated ✗
-              </code>
-            </div>
-            <div
-              className="absolute -bottom-12 -right-12 h-48 w-48 rounded-full opacity-30"
-              style={{
-                background:
-                  "radial-gradient(circle, rgba(139,92,246,0.6), transparent 70%)",
-                filter: "blur(20px)",
-              }}
-              aria-hidden
-            />
-          </div>
-
-          {/* 2 */}
-          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <div
-              className="text-[10px] uppercase tracking-[0.14em] text-violet-300"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              speed
-            </div>
-            <h3 className="mt-2 text-base text-white font-semibold">
-              116× cache speedup
-            </h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Re-read the same contract? Byte-identical response in under a
-              second.
-            </p>
-          </div>
-
-          {/* 3 */}
-          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <div
-              className="text-[10px] uppercase tracking-[0.14em] text-violet-300"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              determinism
-            </div>
-            <h3 className="mt-2 text-base text-white font-semibold">
-              Same input → same answer
-            </h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Seed-locked sampling + canonical ordering. No drift across re-runs.
-            </p>
-          </div>
-
-          {/* 4 */}
-          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <div
-              className="text-[10px] uppercase tracking-[0.14em] text-violet-300"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              fixes
-            </div>
-            <h3 className="mt-2 text-base text-white font-semibold">
-              Drop-in replacement clauses
-            </h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Real legal language with concrete numbers. Paste and ship.
-            </p>
-          </div>
-
-          {/* 5 */}
-          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <div
-              className="text-[10px] uppercase tracking-[0.14em] text-violet-300"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              export
-            </div>
-            <h3 className="mt-2 text-base text-white font-semibold">
-              Audit-chain reports
-            </h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Hash-chained finding log. Tamper-evident export for your records.
-            </p>
-          </div>
-
-          {/* 6 */}
-          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <div
-              className="text-[10px] uppercase tracking-[0.14em] text-violet-300"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              fallback
-            </div>
-            <h3 className="mt-2 text-base text-white font-semibold">
-              Rules + LLM = no blind spots
-            </h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Rules-based safety net catches what the model misses. Defense in
-              depth.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================ */
-/* Pricing teaser                                                */
-/* ============================================================ */
-function PricingTeaser() {
-  return (
-    <section className="py-28 border-t border-white/5">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="max-w-2xl">
-          <div
-            className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
-            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-          >
-            ↳ pricing
-          </div>
-          <h2 className="mt-3 text-4xl text-white font-semibold tracking-tight">
-            Free until your seed round.
-          </h2>
-          <p className="mt-3 text-slate-400">
-            3 contracts free. $29/mo when you need more. No annual lock-in, no
-            "contact sales" wall.
-          </p>
-          <div className="mt-8">
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100 hover:bg-white/10 transition-colors duration-200 cursor-pointer"
-            >
-              See plans
-              <span aria-hidden>→</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================ */
-/* Final CTA                                                     */
-/* ============================================================ */
-function FinalCTA() {
-  return (
-    <section className="py-32 border-t border-white/5 relative overflow-hidden">
-      <div
-        className="absolute inset-x-0 top-0 -z-10 h-full"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 70% at 50% 100%, rgba(99,102,241,0.18) 0%, transparent 70%)",
-        }}
-        aria-hidden
-      />
-      <div className="mx-auto max-w-3xl px-6 text-center">
-        <h2 className="text-5xl text-white font-semibold tracking-tight leading-tight">
-          Stop signing things
-          <br />
-          you haven't read.
-        </h2>
-        <p className="mt-5 text-slate-400 max-w-xl mx-auto">
-          Three free contracts. Eight seconds each. Zero card required.
+    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <SectionHeader kicker="§ Risk atlas" title="What we find, by how often." rule="Index" />
+        <p style={{ margin: "22px 0 0", maxWidth: 560, fontSize: 15, color: T.body, lineHeight: 1.65 }}>
+          Sampled across <span style={{ fontFamily: "Geist Mono, monospace", color: T.ink, fontWeight: 700 }}>1,240</span> founder-uploaded pre-seed contracts last quarter. Severity follows Clarifyd&rsquo;s rubric, not the contract&rsquo;s tone.
         </p>
-        <div className="mt-9 flex justify-center gap-3">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3.5 text-sm font-semibold text-slate-950 hover:bg-slate-200 transition-colors duration-200 cursor-pointer"
+        <div style={{ marginTop: 48, borderTop: `2px solid ${T.ink}`, borderBottom: `2px solid ${T.ink}` }}>
+          <div
+            style={{
+              display: "grid", gridTemplateColumns: "80px minmax(0, 3fr) 1fr 1fr", gap: 24,
+              padding: "12px 0",
+              borderBottom: `1px solid ${T.ink}`,
+              fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: T.muted,
+            }}
           >
-            Start free →
-          </Link>
-          <Link
-            href="/contact"
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-medium text-slate-200 hover:bg-white/10 transition-colors duration-200 cursor-pointer"
-          >
-            Talk to us
-          </Link>
+            <span>No.</span>
+            <span>Clause type</span>
+            <span>Frequency</span>
+            <span style={{ textAlign: "right" }}>Severity</span>
+          </div>
+          {ATLAS.map((row, i) => (
+            <motion.div
+              key={row.type}
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.3, ease: EOQ, delay: i * 0.025 }}
+              style={{
+                display: "grid", gridTemplateColumns: "80px minmax(0, 3fr) 1fr 1fr", gap: 28,
+                padding: "22px 0",
+                borderBottom: i < ATLAS.length - 1 ? `1px dotted ${T.hairline}` : "none",
+                alignItems: "center",
+              }}
+            >
+              <span className="cf-mono" style={{ color: T.soft, fontSize: 12, fontWeight: 700, letterSpacing: "0.10em" }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span style={{ color: T.ink, fontSize: 15, fontWeight: 500 }}>{row.type}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, height: 6, background: T.hairline, position: "relative" }}>
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    whileInView={{ scaleX: row.freq / 100 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.7, ease: EOQ, delay: 0.1 + i * 0.025 }}
+                    style={{ position: "absolute", inset: 0, background: T.ink, transformOrigin: "left" }}
+                  />
+                </div>
+                <span className="cf-mono" style={{ color: T.muted, fontSize: 11, fontWeight: 700, minWidth: 30, textAlign: "right" }}>
+                  {row.freq}%
+                </span>
+              </div>
+              <span
+                className="cf-mono"
+                style={{
+                  justifySelf: "end",
+                  color: SEV_COLORS[row.sev],
+                  fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 800,
+                }}
+              >
+                {row.sev}
+              </span>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-/* ============================================================ */
-/* Footer                                                        */
-/* ============================================================ */
+const PLANS = [
+  { name: "Reader",  price: "$0",     cadence: "forever",       bullets: ["3 contracts / month", "Founder-friendly rewrites", "Hash-chained audit trail", "Community support"], cta: "Start free",   featured: false },
+  { name: "Founder", price: "$29",    cadence: "/ month",       bullets: ["Unlimited contracts", "Collaborator export", "Negotiation tracker", "Same-day email support"],     cta: "Get Founder",  featured: true },
+  { name: "Counsel", price: "Custom", cadence: "talk to us",    bullets: ["Everything in Founder", "Custom jurisdiction templates", "SAML SSO + SOC-2 export", "Dedicated partner"], cta: "Talk to sales", featured: false },
+];
+function Plans({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+        <SectionHeader kicker="§ Subscriptions" title="Free until your seed round." rule="Rates" />
+        <div
+          style={{
+            marginTop: 48,
+            display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+            borderTop: `2px solid ${T.ink}`, borderBottom: `2px solid ${T.ink}`,
+          }}
+          className="grid-cols-1 md:grid-cols-3"
+        >
+          {PLANS.map((p, i) => (
+            <motion.div
+              key={p.name}
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.5, ease: EOQ, delay: i * 0.08 }}
+              style={{
+                padding: 40,
+                background: p.featured ? T.ink : "transparent",
+                color: p.featured ? T.paper : T.ink,
+                borderRight: i < PLANS.length - 1 ? `1px solid ${T.hairline}` : "none",
+                position: "relative",
+                display: "flex", flexDirection: "column", gap: 22,
+                minHeight: 440,
+              }}
+            >
+              {p.featured ? (
+                <span
+                  className="cf-mono"
+                  style={{
+                    position: "absolute", top: -10, left: 28,
+                    background: T.red, color: T.paper,
+                    padding: "3px 10px", fontSize: 9.5, letterSpacing: "0.20em",
+                    textTransform: "uppercase", fontWeight: 800,
+                  }}
+                >
+                  Most chosen
+                </span>
+              ) : null}
+              <span className="cf-mono" style={{ color: p.featured ? T.red : T.muted, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+                {p.name}
+              </span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontSize: 56, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, color: p.featured ? T.paper : T.ink }}>
+                  {p.price}
+                </span>
+                <span style={{ fontSize: 13, color: p.featured ? "#bbb" : T.muted }}>{p.cadence}</span>
+              </div>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+                {p.bullets.map((b) => (
+                  <li key={b} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: p.featured ? "#ddd" : T.body, lineHeight: 1.5 }}>
+                    <Check weight="bold" size={12} color={p.featured ? T.red : T.ink} style={{ marginTop: 4, flexShrink: 0 }} aria-hidden />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href={p.name === "Counsel" ? "/contact" : "/login"}
+                className="bsd-btn cursor-pointer"
+                style={{
+                  background: p.featured ? T.red : T.ink,
+                  borderColor: p.featured ? T.red : T.ink,
+                  color: T.paper,
+                }}
+              >
+                {p.cta} <ArrowRight weight="bold" size={11} />
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Manifesto({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <section style={{ padding: "144px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+      <div style={{ maxWidth: 920, margin: "0 auto", textAlign: "center" }}>
+        <Quotes weight="duotone" size={36} color={T.red} aria-hidden />
+        <motion.blockquote
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: EOQ }}
+          style={{
+            margin: "20px 0 0",
+            fontSize: "clamp(28px, 4vw, 44px)",
+            lineHeight: 1.2,
+            color: T.ink,
+            fontWeight: 500,
+            letterSpacing: "-0.022em",
+            fontStyle: "italic",
+          }}
+        >
+          We don&rsquo;t replace your lawyer. We make sure you arrive at the meeting already knowing what&rsquo;s in the document.
+        </motion.blockquote>
+        <p className="cf-mono" style={{ margin: "26px 0 0", color: T.muted, fontSize: 11, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700 }}>
+          The Clarifyd Editors · Volume I
+        </p>
+        <div style={{ marginTop: 36, display: "inline-flex", gap: 12 }}>
+          <Link href="/login" className="bsd-btn cursor-pointer">
+            Start free <ArrowRight weight="bold" size={11} />
+          </Link>
+          <Link href="/faq" className="bsd-btn bsd-btn--ghost cursor-pointer">Read the FAQ</Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-slate-950/90">
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex items-center gap-2 text-slate-300">
-            <span
-              className="inline-block h-4 w-4 rounded"
-              style={{
-                background:
-                  "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-              }}
-              aria-hidden
-            />
-            <span className="font-semibold">Clarifyd</span>
-            <span className="text-slate-500 text-sm">
-              · contract analysis for founders
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-6 text-sm text-slate-400">
-            <Link
-              href="/pricing"
-              className="hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              Pricing
-            </Link>
-            <Link
-              href="/faq"
-              className="hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              FAQ
-            </Link>
-            <Link
-              href="/contact"
-              className="hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              Contact
-            </Link>
-            <Link
-              href="/terms"
-              className="hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              Terms
-            </Link>
-          </div>
+    <footer style={{ padding: "48px 32px 36px", background: T.ink, color: T.paper }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 2fr) repeat(3, minmax(0, 1fr))", gap: 36 }} className="grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr]">
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 26, letterSpacing: "-0.03em" }}>The Clarifyd Broadsheet</div>
+          <p style={{ margin: "12px 0 0", color: "#bbb", fontSize: 13, maxWidth: 380, lineHeight: 1.6 }}>
+            A weekly editorial on what your contracts are actually saying. Founder readers only.
+          </p>
         </div>
-        <div
-          className="mt-6 pt-6 border-t border-white/5 text-xs text-slate-500 flex flex-col md:flex-row md:justify-between gap-2"
-          style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-        >
-          <span>© 2026 Clarifyd. Not legal advice.</span>
-          <span>
-            built with Kimi K2 · Next.js · Neon · Vercel
-          </span>
-        </div>
+        <FootCol heading="Product" items={[["Plans", "/pricing"], ["FAQ", "/faq"], ["Sign in", "/login"]]} />
+        <FootCol heading="Company" items={[["Contact", "/contact"], ["Privacy", "/terms?tab=privacy"], ["Terms", "/terms"]]} />
+        <FootCol heading="Resources" items={[["Status", "#"], ["Changelog", "#"], ["Security", "/terms?tab=privacy"]]} />
+      </div>
+      <div style={{ maxWidth: 1280, margin: "28px auto 0", paddingTop: 18, borderTop: "1px solid rgba(244, 237, 225, 0.18)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontFamily: "Geist Mono, monospace", fontSize: 10, color: "#9b9181", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600 }}>
+        <span>© 2026 Clarifyd · v0.6.0</span>
+        <span>Built for pre-seed founders</span>
       </div>
     </footer>
   );
 }
 
-/* ============================================================ */
-/* Page root                                                     */
-/* ============================================================ */
-export default function LandingPage() {
-  // Force-cover the body's aurora background with our dark canvas.
-  // Style applied on a wrapper div so we don't have to mutate globals.css
-  // (other routes still use the aurora theme).
-  useEffect(() => {
-    const original = document.body.style.background;
-    document.body.style.background = "#020617"; // slate-950
-    return () => {
-      document.body.style.background = original;
-    };
-  }, []);
+function FootCol({ heading, items }: { heading: string; items: Array<[string, string]> }) {
+  return (
+    <div>
+      <div className="cf-mono" style={{ color: T.red, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800, marginBottom: 14 }}>
+        {heading}
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map(([label, href]) => (
+          <li key={label}>
+            <Link
+              href={href}
+              className="cursor-pointer"
+              style={{ color: T.paper, fontSize: 13.5, textDecoration: "none", transition: "color 200ms ease" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = T.red)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = T.paper)}
+            >
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
+function SectionHeader({ kicker, title, rule }: { kicker: string; title: string; rule: string }) {
   return (
     <div
-      className="min-h-screen text-slate-200"
       style={{
-        background:
-          "radial-gradient(ellipse 90% 50% at 50% -10%, rgba(99,102,241,0.10) 0%, transparent 50%), #020617",
-        fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
+        display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24,
+        borderBottom: `1px solid ${T.hairline}`,
+        paddingBottom: 14,
       }}
     >
-      <Nav />
-      <main className="pt-14">
-        <Hero />
-        <Metrics />
-        <Demo />
-        <HowItWorks />
-        <Features />
-        <PricingTeaser />
-        <FinalCTA />
-      </main>
-      <Footer />
+      <div>
+        <span className="cf-mono" style={{ color: T.red, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+          {kicker}
+        </span>
+        <h2 style={{ margin: "8px 0 0", fontSize: "clamp(32px, 4vw, 56px)", fontWeight: 700, color: T.ink, letterSpacing: "-0.03em", lineHeight: 1.02 }}>
+          {title}
+        </h2>
+      </div>
+      <span className="cf-mono" style={{ color: T.muted, fontSize: 10.5, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
+        ◆ {rule}
+      </span>
     </div>
   );
 }

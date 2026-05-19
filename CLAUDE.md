@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Clarifyd / AI Contract Risk Analyzer** — SLC (Simple, Loveable, Complete) deliverable. One workflow: upload → analyze → review → export. Backend-first; frontend integration is the final stage of the 2-week SLC plan. Reasoning runs against external provider APIs (OpenAI / Kimi); **no model training or fine-tuning** in this project.
+**Clarifyd / AI Contract Risk Analyzer** — SLC (Simple, Loveable, Complete) deliverable for **pre-seed founders**. One workflow: upload → analyze → review → export. Reasoning is exposed product-side as **Clarifyd AI** (provider abstraction in `app/services/reasoning/`, swappable via `Settings`). No model training in this repo.
+
+Frontend is **Broadsheet v6** — brutalist editorial. Warm ivory paper, coffee-black ink, single arterial red accent. Geist + Geist Mono, Phosphor duotone icons. Sharp edges, no gradients / glass / shadows. Per-user `localStorage` scoping via `lib/user-storage.ts`.
 
 Authoritative planning docs (read these before non-trivial changes):
 - `docs/slc/SLC_2_WEEK_WORK_DIVISION.md` — task matrix T1–T10 and exit criteria.

@@ -1,10 +1,13 @@
 "use client";
 
-/** Contact — dark editorial. Public route, no auth gate. */
+/** /contact — Broadsheet · v6 */
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
+import { motion } from "framer-motion";
+import { ArrowRight, CheckCircle, WarningCircle, EnvelopeSimple, Clock, Lightning } from "@phosphor-icons/react";
 
+import { PublicShell } from "../../components/public-shell";
 import { ApiClient, ApiError } from "../../lib/api";
 
 type Topic = "general" | "sales" | "support" | "press" | "legal";
@@ -18,6 +21,7 @@ const TOPICS: Array<{ v: Topic; label: string }> = [
 ];
 
 const STORAGE_KEY = "clarifyd.contacts";
+const EOQ = [0.23, 1, 0.32, 1] as const;
 
 export default function ContactPage() {
   const [name, setName] = useState("");
@@ -29,14 +33,6 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    const orig = document.body.style.background;
-    document.body.style.background = "#020617";
-    return () => {
-      document.body.style.background = orig;
-    };
-  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -67,121 +63,103 @@ export default function ContactPage() {
   }
 
   return (
-    <div
-      className="min-h-screen text-slate-200"
-      style={{
-        background:
-          "radial-gradient(ellipse 90% 50% at 50% -10%, rgba(99,102,241,0.10) 0%, transparent 50%), #020617",
-        fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
-      }}
-    >
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-slate-100 font-semibold tracking-tight cursor-pointer">
-            <span
-              className="inline-block h-5 w-5 rounded-[6px]"
-              style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
-              aria-hidden
-            />
-            Clarifyd
-          </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/pricing" className="text-slate-400 hover:text-slate-100 cursor-pointer">Pricing</Link>
-            <Link href="/faq" className="text-slate-400 hover:text-slate-100 cursor-pointer">FAQ</Link>
-          </div>
-        </div>
-      </nav>
-
-      <main className="pt-28 pb-20">
-        <div className="mx-auto max-w-5xl px-6 grid lg:grid-cols-[1fr_1.4fr] gap-10">
-          <div>
-            <div
-              className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
-              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-            >
-              ↳ contact
+    <PublicShell>
+      <section style={{ padding: "72px 32px 80px" }}>
+        <div
+          style={{
+            maxWidth: 1280, margin: "0 auto",
+            display: "grid", gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)", gap: 56,
+          }}
+          className="grid-cols-1 lg:grid-cols-[5fr_7fr]"
+        >
+          <motion.aside
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: EOQ }}
+            style={{ display: "flex", flexDirection: "column", gap: 32 }}
+          >
+            <div>
+              <span className="bsd-kicker">§ Correspondence</span>
+              <h1 style={{ margin: "12px 0 0", fontSize: "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>
+                Talk to <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>us.</span>
+              </h1>
+              <p style={{ marginTop: 16, color: "var(--bsd-body)", fontSize: 15.5, lineHeight: 1.65, maxWidth: 380 }}>
+                Most threads get a reply same day. You&rsquo;ll usually get the person who built the thing.
+              </p>
             </div>
-            <h1 className="mt-3 text-4xl text-white font-semibold tracking-tight">
-              Talk to us.
-            </h1>
-            <p className="mt-4 text-slate-400 max-w-md">
-              Most threads get a reply same day. We're a small team — you'll get
-              the person who built the thing, not a ticket queue.
-            </p>
 
-            <div className="mt-8 space-y-3">
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", borderTop: "2px solid var(--bsd-ink)" }}>
               {[
-                { label: "Email", value: "hello@clarifyd.com", href: "mailto:hello@clarifyd.com" },
-                { label: "Hours", value: "Mon–Fri · 9–5 PKT" },
-                { label: "Response", value: "usually < 24h" },
+                { Icon: EnvelopeSimple, label: "Email",    value: "hello@clarifyd.com", href: "mailto:hello@clarifyd.com" },
+                { Icon: Clock,           label: "Hours",    value: "Mon–Fri · 9–5 PKT" },
+                { Icon: Lightning,       label: "Response", value: "usually < 24h" },
               ].map((c) => (
-                <div key={c.label} className="rounded-xl border border-white/10 bg-slate-900/40 px-4 py-3">
-                  <div
-                    className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
-                    style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                  >
-                    {c.label}
+                <li key={c.label} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 0", borderBottom: "1px solid var(--bsd-hairline)" }}>
+                  <c.Icon weight="duotone" size={18} color="var(--bsd-red)" aria-hidden />
+                  <div style={{ minWidth: 0 }}>
+                    <div className="cf-eyebrow" style={{ color: "var(--bsd-muted)" }}>{c.label}</div>
+                    {c.href ? (
+                      <a href={c.href} className="bsd-link" style={{ display: "inline-block", marginTop: 2, fontSize: 15, color: "var(--bsd-ink)", fontWeight: 500 }}>
+                        {c.value}
+                      </a>
+                    ) : (
+                      <div style={{ marginTop: 2, fontSize: 15, color: "var(--bsd-ink)", fontWeight: 500 }}>{c.value}</div>
+                    )}
                   </div>
-                  {c.href ? (
-                    <a
-                      href={c.href}
-                      className="mt-0.5 inline-block text-sm text-slate-100 hover:text-indigo-200 cursor-pointer"
-                    >
-                      {c.value} →
-                    </a>
-                  ) : (
-                    <div className="mt-0.5 text-sm text-slate-100">{c.value}</div>
-                  )}
-                </div>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </motion.aside>
 
           {done ? (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center flex flex-col justify-center">
-              <div className="text-5xl mb-3">✓</div>
-              <h2 className="text-2xl text-white font-semibold tracking-tight">Message sent</h2>
-              <p className="mt-2 text-sm text-slate-400 max-w-sm mx-auto">
-                We'll reply to <span className="text-slate-200 font-semibold">{email}</span> shortly.
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: EOQ }}
+              style={{ background: "var(--bsd-paper-deep)", border: "2px solid var(--bsd-ink)", padding: 40, textAlign: "center" }}
+            >
+              <CheckCircle weight="duotone" size={44} color="var(--bsd-red)" />
+              <h2 style={{ marginTop: 14, fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--bsd-ink)" }}>Message sent.</h2>
+              <p style={{ marginTop: 10, color: "var(--bsd-muted)", fontSize: 14.5, lineHeight: 1.55 }}>
+                We&rsquo;ll reply to <span className="cf-mono" style={{ color: "var(--bsd-ink)", fontWeight: 700 }}>{email}</span> shortly.
               </p>
-              <Link
-                href="/"
-                className="mt-6 inline-flex justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-slate-100 px-4 py-2 text-sm cursor-pointer transition-colors duration-200 mx-auto"
-              >
-                ← Back to landing
+              <Link href="/" className="bsd-btn cursor-pointer" style={{ marginTop: 22 }}>
+                Back to landing <ArrowRight weight="bold" size={11} />
               </Link>
-            </div>
+            </motion.div>
           ) : (
-            <form onSubmit={onSubmit} className="rounded-xl border border-white/10 bg-slate-900/50 p-7 space-y-4">
-              {/* honeypot */}
+            <motion.form
+              onSubmit={onSubmit}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, ease: EOQ, delay: 0.08 }}
+              style={{ background: "var(--bsd-paper-deep)", border: "2px solid var(--bsd-ink)", padding: 32, display: "flex", flexDirection: "column", gap: 20 }}
+            >
               <input type="text" value={honey} onChange={(e) => setHoney(e.target.value)} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden />
-
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }} className="grid-cols-1 sm:grid-cols-2">
                 <Field label="Name" value={name} onChange={setName} required />
                 <Field label="Email" type="email" value={email} onChange={setEmail} required />
               </div>
               <Field label="Company (optional)" value={company} onChange={setCompany} />
-
               <div>
                 <Lbl>Topic</Lbl>
-                <div className="mt-1.5 flex flex-wrap gap-2">
-                  {TOPICS.map((t) => (
-                    <button
-                      key={t.v}
-                      type="button"
-                      onClick={() => setTopic(t.v)}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors duration-200 cursor-pointer ${
-                        topic === t.v
-                          ? "border-indigo-400/40 bg-indigo-500/15 text-indigo-200"
-                          : "border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {TOPICS.map((t) => {
+                    const active = topic === t.v;
+                    return (
+                      <button
+                        key={t.v}
+                        type="button"
+                        onClick={() => setTopic(t.v)}
+                        className={`bsd-chip cf-mono${active ? " is-active" : ""}`}
+                        style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-
               <div>
                 <Lbl>Message</Lbl>
                 <textarea
@@ -189,83 +167,53 @@ export default function ContactPage() {
                   onChange={(e) => setMessage(e.target.value)}
                   required
                   rows={6}
-                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/60 px-3.5 py-2.5 text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all resize-y"
                   placeholder="What's on your mind?"
+                  className="bsd-input"
+                  style={{ marginTop: 10, resize: "vertical", lineHeight: 1.55 }}
                 />
               </div>
-
               {error ? (
-                <div className="rounded-lg border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs text-rose-300">
-                  ⚠ {error} — saved locally; we'll retry on next visit.
+                <div style={{ background: "var(--bsd-red-soft)", border: "1.5px solid var(--bsd-red)", padding: "10px 12px", fontSize: 12.5, color: "var(--bsd-red)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <WarningCircle weight="duotone" size={14} /> {error} — saved locally; we&rsquo;ll retry on next visit.
                 </div>
               ) : null}
-
-              <div className="flex items-center justify-between gap-4">
-                <p
-                  className="text-[11px] text-slate-500"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                >
-                  ↳ never shared. only used to reply.
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+                <p className="cf-mono" style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--bsd-muted)", fontWeight: 700, margin: 0 }}>
+                  Never shared · only used to reply.
                 </p>
                 <button
                   type="submit"
                   disabled={submitting || !name || !email || !message}
-                  className="rounded-lg bg-white text-slate-950 px-5 py-2.5 text-sm font-semibold hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors duration-200"
+                  className="bsd-btn cursor-pointer"
                 >
-                  {submitting ? "Sending…" : "Send →"}
+                  {submitting ? "Sending…" : "Send"} <ArrowRight weight="bold" size={11} />
                 </button>
               </div>
-            </form>
+            </motion.form>
           )}
         </div>
-      </main>
-
-      <footer className="border-t border-white/5 bg-slate-950/90">
-        <div
-          className="mx-auto max-w-6xl px-6 py-6 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2"
-          style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-        >
-          <span>© 2026 Clarifyd. Not legal advice.</span>
-          <Link href="/" className="hover:text-slate-300 cursor-pointer">← landing</Link>
-        </div>
-      </footer>
-    </div>
+      </section>
+    </PublicShell>
   );
 }
 
 function Lbl({ children }: { children: React.ReactNode }) {
-  return (
-    <label
-      className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
-      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-    >
-      {children}
-    </label>
-  );
+  return <label className="cf-eyebrow" style={{ color: "var(--bsd-muted)" }}>{children}</label>;
 }
 
 function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required,
-}: {
-  label: string;
-  value: string;
-  onChange: (s: string) => void;
-  type?: string;
-  required?: boolean;
-}) {
+  label, value, onChange, type = "text", required,
+}: { label: string; value: string; onChange: (s: string) => void; type?: string; required?: boolean }) {
   return (
-    <div>
+    <div className="bsd-field">
       <Lbl>{label}</Lbl>
       <input
         type={type}
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/60 px-3.5 py-2.5 text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all"
+        className="bsd-input"
+        style={{ marginTop: 10 }}
       />
     </div>
   );

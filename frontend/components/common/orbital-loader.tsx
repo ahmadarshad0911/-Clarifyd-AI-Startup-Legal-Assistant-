@@ -1,102 +1,215 @@
 "use client";
 
-import { useEffect, useState } from "react";
+/**
+ * OrbitalLoader — cream + oxblood, library aesthetic.
+ *
+ * Built per emil-design-eng:
+ *   - Rotation: linear 1100ms (constant motion = linear, not eased)
+ *   - Cross-fade status: 220ms ease-out (0.23, 1, 0.32, 1)
+ *   - Only animates `transform` + `opacity` (GPU path)
+ *   - prefers-reduced-motion: spinner becomes static glyph, status pins
+ *     to first line
+ *   - No glow, no blur, no orbital fluff. Single thin oxblood arc, one
+ *     ink-serif glyph at center, mono caption beneath.
+ *
+ * Public API unchanged so every existing caller keeps working.
+ */
+
+import { CSSProperties, useEffect, useState } from "react";
 
 type Props = {
-  /** Cover the whole viewport with a fixed overlay. Default true. */
   fullscreen?: boolean;
-  /** Optional override for the rotating status lines. */
   statusLines?: string[];
-  /** Single static label instead of the cycling lines. */
   label?: string;
 };
 
+const INK = "#1F0F0F";
+const INK_MUTED = "#6F5C5C";
+const CREAM = "#F7F1E8";
+const RULE = "rgba(31, 15, 15, 0.14)";
+const OXBLOOD = "#6B1F1F";
+const SERIF = "'Fraunces', 'PP Editorial', Georgia, serif";
+const MONO = "'IBM Plex Mono', 'JetBrains Mono', Menlo, monospace";
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
+
 const DEFAULT_STATUS = ["Decrypting…", "Analyzing architecture…", "Mapping risk…"];
 
-/** Cycles through `lines` every 2.2s with a soft cross-fade.
- *  Only ONE line is in the DOM at a time — no stacking / overlap possible. */
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Cycles through `lines` every 2.2s with a 220ms cross-fade.
+ *  Only ONE line in DOM at a time. */
 function RotatingStatus({ lines }: { lines: string[] }) {
   const [idx, setIdx] = useState(0);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     if (lines.length <= 1) return;
-    // Respect prefers-reduced-motion: pin to first line, no rotation.
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return;
-    }
+    if (prefersReducedMotion()) return;
     const id = window.setInterval(() => {
-      // Fade out, swap text, fade in.
       setVisible(false);
       window.setTimeout(() => {
-        setIdx((p) => (p + 1) % lines.length);
+        setIdx((i) => (i + 1) % lines.length);
         setVisible(true);
-      }, 250);
+      }, 220);
     }, 2200);
     return () => clearInterval(id);
-  }, [lines]);
+  }, [lines.length]);
 
   return (
-    <p
-      className="font-display-hero text-h3 text-onboarding-navy italic tracking-wide m-0"
+    <span
       style={{
+        fontFamily: MONO,
+        fontSize: 11,
+        letterSpacing: "0.22em",
+        textTransform: "uppercase",
+        color: INK_MUTED,
+        fontWeight: 600,
         opacity: visible ? 1 : 0,
-        transition: "opacity 0.25s ease",
+        transition: `opacity 220ms ${EASE_OUT}`,
+        display: "inline-block",
       }}
     >
-      {lines[idx]}
-    </p>
+      {lines[idx] ?? ""}
+    </span>
   );
 }
 
 export function OrbitalLoader({ fullscreen = true, statusLines, label }: Props) {
-  const lines = statusLines ?? DEFAULT_STATUS;
-  const wrapper = fullscreen
-    ? "fixed inset-0 z-[200] flex flex-col items-center justify-center aurora-bg"
-    : "relative flex flex-col items-center justify-center py-12";
+  const status = statusLines && statusLines.length > 0 ? statusLines : DEFAULT_STATUS;
+
+  const wrap: CSSProperties = fullscreen
+    ? {
+        position: "fixed",
+        inset: 0,
+        zIndex: 60,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(247, 241, 232, 0.92)",
+        backdropFilter: "blur(2px)",
+        WebkitBackdropFilter: "blur(2px)",
+        fontFamily: SERIF,
+      }
+    : {
+        display: "inline-flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 14,
+        padding: 12,
+        fontFamily: SERIF,
+      };
 
   return (
-    <div className={wrapper} role="status" aria-live="polite">
-      {fullscreen ? (
-        <div className="absolute inset-0 bg-on-surface/5 backdrop-blur-[2px] pointer-events-none" />
-      ) : null}
-
-      <div className="relative flex items-center justify-center w-64 h-64 md:w-80 md:h-80">
-        <div className="absolute inset-0 bg-accent-violet/10 blur-[80px] rounded-full" />
-        <div className="absolute w-60 h-60 md:w-72 md:h-72 rounded-full border border-primary/20 orbital-ring-1" />
-        <div className="absolute w-48 h-48 md:w-60 md:h-60 rounded-full border-[3px] border-transparent border-t-accent-violet/60 border-l-primary/40 orbital-ring-2" />
-        <div className="absolute w-36 h-36 md:w-44 md:h-44 rounded-full border-[4px] border-transparent border-t-primary border-b-accent-indigo orbital-ring-3" />
-        <div className="absolute w-64 h-64 md:w-80 md:h-80 rounded-full scanning-beam z-30 pointer-events-none" />
-        <div className="absolute w-28 h-28 md:w-32 md:h-32 rounded-full bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl z-40 flex items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 bg-[#22d3ee]/5 blur-xl" />
-          <div className="pulse-soft relative">
-            <span
-              className="material-symbols-outlined text-5xl text-onboarding-navy"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              security
-            </span>
-          </div>
-        </div>
+    <div style={wrap} role="status" aria-live="polite">
+      <div className="flex flex-col items-center" style={{ gap: 18 }}>
+        <Spinner />
+        {label ? (
+          <span
+            style={{
+              fontFamily: MONO,
+              fontSize: 11,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: INK_MUTED,
+              fontWeight: 600,
+            }}
+          >
+            {label}
+          </span>
+        ) : (
+          <RotatingStatus lines={status} />
+        )}
       </div>
 
-      <div className="mt-10 text-center z-50">
-        <div className="h-8 flex items-center justify-center">
-          {label ? (
-            <p className="font-display-hero text-h3 text-onboarding-navy italic tracking-wide m-0">
-              {label}
-            </p>
-          ) : (
-            <RotatingStatus lines={lines} />
-          )}
-        </div>
-        <p className="mt-6 text-body-sm text-on-surface-variant max-w-xs mx-auto opacity-80">
-          Your documents are encrypted with banking-grade security and processed for analysis.
-        </p>
-      </div>
+      {/* Inline keyframes — `transform: rotate` only (GPU path).
+          Gated on prefers-reduced-motion: animation becomes none, glyph
+          stays still. */}
+      <style jsx>{`
+        @keyframes ol-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :global(.ol-arc) { animation: none !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/** Thin oxblood arc rotating once every 1100ms (linear, per emil's
+ *  "constant motion = linear" rule). Center holds a static serif glyph. */
+function Spinner() {
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: 56,
+        height: 56,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {/* Background ring — full circle, very faint */}
+      <svg
+        viewBox="0 0 56 56"
+        width={56}
+        height={56}
+        style={{ position: "absolute", inset: 0 }}
+        aria-hidden
+      >
+        <circle
+          cx={28}
+          cy={28}
+          r={24}
+          fill="none"
+          stroke={RULE}
+          strokeWidth={1.5}
+        />
+      </svg>
+      {/* Rotating arc — single quarter, oxblood */}
+      <svg
+        viewBox="0 0 56 56"
+        width={56}
+        height={56}
+        className="ol-arc"
+        style={{
+          position: "absolute",
+          inset: 0,
+          animation: `ol-spin 1100ms linear infinite`,
+          willChange: "transform",
+        }}
+        aria-hidden
+      >
+        <circle
+          cx={28}
+          cy={28}
+          r={24}
+          fill="none"
+          stroke={OXBLOOD}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeDasharray={`28 122`}
+          transform="rotate(-90 28 28)"
+        />
+      </svg>
+      {/* Static center glyph — serif ampersand for editorial feel */}
+      <span
+        aria-hidden
+        style={{
+          fontFamily: SERIF,
+          fontSize: 22,
+          color: INK,
+          fontWeight: 500,
+          lineHeight: 1,
+        }}
+      >
+        &amp;
+      </span>
     </div>
   );
 }

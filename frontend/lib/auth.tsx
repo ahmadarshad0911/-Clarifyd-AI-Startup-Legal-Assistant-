@@ -12,9 +12,11 @@ import {
 
 import { ApiClient } from "./api";
 import type { Me, Role } from "./contracts";
+import { clearLegacyGlobals } from "./user-storage";
 
 const TOKEN_KEY = "clarifyd.token";
 const ROLE_KEY = "clarifyd.role";
+const USER_KEY = "clarifyd.user-key";
 
 type AuthState = {
   token: string | null;
@@ -65,7 +67,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     client
       .me()
       .then((m) => {
-        if (!cancelled) setMe(m);
+        if (!cancelled) {
+          setMe(m);
+          if (typeof window !== "undefined" && m?.email) {
+            const prev = window.localStorage.getItem(USER_KEY);
+            window.localStorage.setItem(USER_KEY, m.email);
+            if (prev !== m.email) {
+              // First time we see this user (or a switch) — drop any legacy
+              // global-scope leftovers so they don't bleed into this account.
+              clearLegacyGlobals();
+            }
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -75,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (typeof window !== "undefined") {
             window.localStorage.removeItem(TOKEN_KEY);
             window.localStorage.removeItem(ROLE_KEY);
+            window.localStorage.removeItem(USER_KEY);
           }
         }
       });
@@ -136,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(TOKEN_KEY);
       window.localStorage.removeItem(ROLE_KEY);
+      window.localStorage.removeItem(USER_KEY);
+      clearLegacyGlobals();
     }
   }, []);
 

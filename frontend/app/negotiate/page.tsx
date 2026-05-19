@@ -279,7 +279,7 @@ function NegotiatePageInner() {
           return;
         }
       }
-      // Path B — fallback when extracted_text missing. Ask Kimi to rebuild
+      // Path B — fallback when extracted_text missing. Ask Clarifyd AI to rebuild
       // the document, preserving everything it isn't replacing.
       const ctx = profileContextLine();
       const block = chosen
@@ -542,7 +542,7 @@ Return ONLY the full revised document text. No commentary.`;
                         on the table
                       </span>
                       <span className="font-label-caps text-label-caps uppercase tracking-widest text-on-surface-variant mt-1">
-                        Kimi reasoning · {active.file_name}
+                        Clarifyd AI reasoning · {active.file_name}
                       </span>
                     </div>
                   </div>
@@ -595,13 +595,13 @@ Return ONLY the full revised document text. No commentary.`;
             {loopholes.length === 0 ? (
               <div className="crystal-glass rounded-3xl p-10 text-center">
                 <p className="text-on-surface-variant m-0">
-                  Kimi found no critical loopholes in this document — nothing to negotiate.
+                  Clarifyd AI found no critical loopholes in this document — nothing to negotiate.
                 </p>
               </div>
             ) : (
               <ul className="flex flex-col gap-6 m-0 p-0 list-none">
                 {loopholes.map((lp, i) => {
-                  // Defensive: Kimi sometimes emits "Low"/"HIGH"/null. Normalize so
+                  // Defensive: Clarifyd AI sometimes emits "Low"/"HIGH"/null. Normalize so
                   // an out-of-spec severity can never crash the whole list and
                   // hide every loophole behind a sibling export panel.
                   const rawSev = String(lp.severity ?? "low").toLowerCase();

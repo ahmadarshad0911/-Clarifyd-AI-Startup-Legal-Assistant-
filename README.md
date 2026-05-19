@@ -1,10 +1,10 @@
 # Clarifyd — AI Startup Legal Assistant
 
-> AI-assisted contract risk review for early-stage founders. Upload a PDF / DOCX, get clause-level risk findings, founder-friendly guidance, and an exportable redlined draft — without paying for an hour of legal counsel before you know the questions to ask.
+> AI-assisted contract risk review for **pre-seed founders**. Upload a PDF / DOCX, get clause-level risk findings, founder-friendly rewrites, and an exportable redlined draft — without paying for an hour of legal counsel before you know the questions to ask.
 
-**Status:** SLC (Simple, Loveable, Complete) — Week 2 backend + reskinned frontend integrated. Reasoning runs against an external provider (Kimi via NVIDIA NIM). No model training in this repo.
+**Status:** SLC (Simple, Loveable, Complete) — Week 2 backend + **Broadsheet v6** frontend (editorial / brutalist, ivory paper + ink + arterial red, Geist + Geist Mono, Phosphor duotone icons). Reasoning is exposed under the **Clarifyd AI** brand; no model training in this repo.
 
-> ⚠️ Decision-support tool only. Not legal advice. Every reasoning response is tagged `not_legal_advice: true` and recommends licensed counsel for jurisdiction-specific opinions.
+> The platform is decision-support only. Clarifyd is not a law firm and does not provide legal advice. The full notice lives on `/terms` (Article 06 — AI limitations).
 
 ---
 
@@ -23,11 +23,12 @@
 
 | Layer | Tech |
 |---|---|
-| Backend | FastAPI · SQLAlchemy async · SQLite (`clarifyd.db`) · Pydantic v2 · `pydantic-settings` |
-| Reasoning | NVIDIA NIM endpoint (`integrate.api.nvidia.com/v1`), `meta/llama-3.3-70b-instruct` (Kimi K2.6 swappable via env), with a `RulesBasedProvider` fallback chain |
-| Auth | Local email/password (bcrypt + JWT HS256) **and** OAuth 2.0 for Google + Facebook (HMAC-signed state, JWT issued by us) |
-| Frontend | Next.js 14 (App Router) · React 18 · TypeScript · Tailwind via CDN · Plus Jakarta Sans + Fraunces + JetBrains Mono |
-| Storage | Local filesystem + SQLite for dev. S3/Postgres are scaffolded in config but not active. |
+| Backend | FastAPI · SQLAlchemy async · SQLite / Postgres · Pydantic v2 · `pydantic-settings` |
+| Reasoning | Clarifyd AI engine (model + endpoint configurable through `Settings`) with a `RulesBasedProvider` fallback chain. Internal provider abstraction lives in `services/reasoning/`. |
+| Auth | Local email/password (bcrypt + JWT HS256) **and** OAuth 2.0 for Google + Facebook (HMAC-signed state, JWT issued by us). Per-user `clarifyd.user-key` scopes all local storage in the frontend. |
+| Frontend | Next.js 14 (App Router) · React 18 · TypeScript · **Geist Sans + Geist Mono** (via `next/font`) · **Phosphor Icons** (duotone) · Framer Motion 11 · Tailwind via CDN |
+| Aesthetic | **The Broadsheet** — brutalist editorial. Warm ivory paper (`#f4ede1`), coffee-black ink (`#0c0a08`), single arterial red accent (`#b8260f`). Sharp edges, no gradients, no glass, oversize display type. |
+| Storage | Local filesystem + SQLite for dev. Postgres + S3 are scaffolded in config. |
 
 ---
 
@@ -58,17 +59,35 @@ ai-contract-risk-analyzer/
 │   ├── tests/                      # pytest
 │   └── .env                        # NEVER COMMITTED — see backend/.env.example
 ├── frontend/
-│   └── app/
-│       ├── login/                  # Email/password + Google + Facebook OAuth buttons
-│       ├── oauth/callback/         # Receives ?token from backend, persists, redirects
-│       ├── onboarding/             # Identity → Venture → Workspace 3-step flow
-│       ├── terms/                  # Terms + Privacy + Cookies acceptance (gates new users)
-│       ├── dashboard/              # Founder-profile-aware home
-│       ├── findings/               # Unified risky-clauses / loopholes / suggestions tab
-│       ├── copilot/                # Smart Builder — clause-by-clause draft generation
-│       ├── negotiation-lab/        # Command-center view for live deals
-│       ├── pricing/  terms/  founder/
-│       └── globals.css             # Crystal-glass, aurora, bubbly-easing primitives
+│   ├── app/
+│   │   ├── page.tsx                # Landing — "The Broadsheet" (Vol. I)
+│   │   ├── login/  login/verify/   # Email/password + Google + Facebook OAuth + OTP
+│   │   ├── oauth/callback/         # Receives ?token from backend, persists, redirects
+│   │   ├── onboarding/profile/     # Pre-seed lock-in venture + workspace profile
+│   │   ├── terms/                  # Terms · Privacy · Cookies (Article 06 = AI limitations)
+│   │   ├── dashboard/  findings/   # Founder home + verdict ledger
+│   │   ├── copilot/                # Legal Co-Pilot draft room (templates + custom + Q&A)
+│   │   ├── negotiation/            # Negotiation lab — master + counter-party drop + finalize
+│   │   ├── compare/                # Comparative reading across 2+ drafts
+│   │   ├── reasoning/              # Engine deliberation + founder advisor Q&A
+│   │   ├── compliance/             # Regulatory desk (GDPR / CCPA / HIPAA / FCPA)
+│   │   ├── exports/                # Audit ledger + hash-chain timeline
+│   │   ├── monitor/                # Calendar of perils (vesting / IP / renewals)
+│   │   ├── lawyer/                 # "Article forthcoming" plate — vetting in progress
+│   │   ├── library/  integrations/ # Templates catalog + connector switchboard
+│   │   ├── pricing/  faq/  contact/
+│   │   └── globals.css             # Broadsheet design tokens + utility classes
+│   ├── components/
+│   │   ├── broadsheet-search.tsx    # § Index of … editorial search input
+│   │   ├── broadsheet-textfield.tsx # Ledger-line text field (drop-in)
+│   │   ├── public-shell.tsx         # Masthead + sitemap footer for public pages
+│   │   ├── shell/dark-app-shell.tsx # Workspace shell (top nav + tools dropdown + acct popover)
+│   │   └── …                        # health-gauge / risk-pill / clause-card / etc.
+│   └── lib/
+│       ├── user-storage.ts          # Per-user localStorage helper (scopes by clarifyd.user-key)
+│       ├── auth.tsx                 # AuthProvider — writes user-key on /auth/me, wipes legacy
+│       ├── recent.ts  founder-profile.ts  startup-templates.ts
+│       └── api.ts                   # Typed ApiClient
 ├── docs/slc/                       # Canonical SLC PRD + work-division + assumptions
 ├── CLAUDE.md                       # Engineering rules (read before non-trivial changes)
 └── docker-compose.yml
@@ -117,16 +136,16 @@ npm --prefix frontend run typecheck
 
 ### Reasoning
 ```ini
-REASONING_PROVIDER=kimi
-REASONING_BASE_URL=https://integrate.api.nvidia.com/v1
-REASONING_API_KEY=<nvapi-…>
-REASONING_MODEL=meta/llama-3.3-70b-instruct
-REASONING_MODEL_FALLBACK=meta/llama-3.3-70b-instruct
+REASONING_PROVIDER=clarifyd
+REASONING_BASE_URL=<your provider endpoint>
+REASONING_API_KEY=<api key>
+REASONING_MODEL=<configured model id>
+REASONING_MODEL_FALLBACK=<fallback model id>
 REASONING_TIMEOUT_SECONDS=60
 REASONING_MAX_RETRIES=1
 ```
 
-> Get a NIM key: https://build.nvidia.com/ → sign in → API Catalog → any Llama / Kimi model → **Get API Key**.
+> The reasoning surface is exposed product-side as **Clarifyd AI**. The provider abstraction lives in `app/services/reasoning/`; swap endpoints + models through `Settings` without touching call sites.
 
 ### OAuth — Google
 1. https://console.cloud.google.com/apis/credentials → **Create Credentials** → OAuth client ID → Web application.
@@ -205,11 +224,17 @@ Every reasoning response carries the mandatory disclaimer (`not_legal_advice: tr
 
 ## Frontend conventions
 
-- **Design system:** crystal-glass panels (`bg: rgba(255,255,255,0.35–0.55)` + `backdrop-filter: blur(20–25px) saturate(140–160%)`), aurora-blob background, bubbly easing `cubic-bezier(0.34, 1.56, 0.64, 1)`. Defined in `app/globals.css`.
-- **Motion:** all animations respect `prefers-reduced-motion`. Scroll reveals use `translate3d + opacity` (never `filter: blur()` — it's GPU-hostile against the backdrop-filter glass).
-- **State:** local-only for now. Keys live under the `clarifyd.*` namespace in `localStorage`:
-  `clarifyd.token`, `clarifyd.role`, `clarifyd.analyses`, `clarifyd.recent-drafts`, `clarifyd.founder-profile`, `clarifyd.onboarded`, `clarifyd.cookie-consent`, `clarifyd.terms-accepted`, `clarifyd.last-analysis`.
-- **Forms:** Tailwind forms plugin sets a grey border on every `[type='text']` and `<select>`. The `.glass-field` class in `globals.css` overrides this with `!important` to nuke `border` / `outline` / `box-shadow` / `--tw-ring-shadow`.
+- **Design system — The Broadsheet (v6).** Brutalist editorial. Tokens defined in `app/globals.css` under `--bsd-*`:
+  - Surface — `--bsd-paper #f4ede1` · `--bsd-paper-deep #ebe2d0`
+  - Ink — `--bsd-ink #0c0a08` · `--bsd-body #2b251f` · `--bsd-muted #6c6356`
+  - Accent — `--bsd-red #b8260f` (single accent, used sparingly)
+  - Rules — `--bsd-hairline 10%` · `--bsd-rule 20%` · masthead `3px double` ink
+  - Sharp edges (no `border-radius`), no gradients, no glass, no shadows.
+- **Type.** Geist Sans (display + body) + Geist Mono (kickers, captions, ledger numbers). Loaded via `next/font`.
+- **Icons.** Phosphor Icons (duotone weight).
+- **Motion.** Framer Motion 11. All entries `cubic-bezier(0.23, 1, 0.32, 1)` (ease-out-quart), 220–360ms, transform + opacity only. Hover gated `@media (hover: hover) and (pointer: fine)`. `prefers-reduced-motion` strips transforms via global override.
+- **Per-user state.** Local data is scoped through `lib/user-storage.ts` — every read/write suffixes the key with `clarifyd.user-key` (written by `AuthProvider` from `/auth/me.email`). On login or logout the helper wipes the 11 known legacy unscoped keys so a fresh account never sees prior-user data.
+- **Form chrome killed.** `.bsd-input` (transparent + 2px ink underline, 3px red on focus), `.bsd-range` (custom slider with red thumb + ring), `.bsd-search-input` (search-decoration suppressed), `<select>` styled inline. No browser blue rings anywhere.
 
 ---
 

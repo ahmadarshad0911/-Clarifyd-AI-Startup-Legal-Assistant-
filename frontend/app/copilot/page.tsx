@@ -1,6 +1,20 @@
 "use client";
 
+/**
+ * /copilot — Broadsheet · v6
+ *
+ * Editorial draft-room. Template ledger left, chat panel right.
+ * Preserves: useAuth.client.copilotGuidance, message thread, profile
+ * context, custom builder, doc generation + copy + download.
+ */
+
 import { useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  ArrowRight, Handshake, FileText, BriefcaseMetal, Receipt, Sparkle, Chat,
+  PaperPlaneRight, CheckCircle, X, Download, Copy, Hammer,
+  type Icon,
+} from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { OrbitalLoader } from "../../components/common/orbital-loader";
@@ -14,91 +28,28 @@ import { profileContextLine } from "../../lib/founder-profile";
 type Tile = {
   id: string;
   name: string;
-  icon: string;
-  iconClass: string;
+  Icon: Icon;
   blurb: string;
   footer: string;
-  score?: string;
-  scoreGlyph?: string;
   mode: CopilotMode;
 };
-
 type Active = { id: string; name: string; mode: CopilotMode };
 
-const TEMPLATE_TILES: Tile[] = [
-  {
-    id: "Mutual NDA",
-    name: "Mutual NDA",
-    icon: "handshake",
-    iconClass: "bg-primary/10 text-primary",
-    blurb:
-      "Foundational non-disclosure agreement with strict IP protection clauses for startup-investor discussions.",
-    footer: "12 deal terms",
-    score: "9.8",
-    scoreGlyph: "▪",
-    mode: "template",
-  },
-  {
-    id: "SAFE Note",
-    name: "SAFE Note",
-    icon: "description",
-    iconClass: "bg-accent-violet/10 text-accent-violet",
-    blurb:
-      "Standard Agreement for Future Equity, optimized for pre-seed and seed rounds with valuation cap logic.",
-    footer: "9 deal terms",
-    score: "8.4",
-    scoreGlyph: "▲",
-    mode: "template",
-  },
-  {
-    id: "Employment Offer",
-    name: "Employment Offer",
-    icon: "badge",
-    iconClass: "bg-status-success/10 text-status-success",
-    blurb:
-      "Executive-level employment letter including invention assignment and equity vesting schedules.",
-    footer: "18 deal terms",
-    score: "9.1",
-    scoreGlyph: "◆",
-    mode: "template",
-  },
-  {
-    id: "SaaS Master Agreement",
-    name: "SaaS Master Agreement",
-    icon: "receipt_long",
-    iconClass: "bg-status-info/10 text-status-info",
-    blurb:
-      "Comprehensive services agreement covering uptime SLAs, data privacy, and termination rights.",
-    footer: "25 deal terms",
-    score: "7.9",
-    scoreGlyph: "⬣",
-    mode: "template",
-  },
-  {
-    id: "__custom__",
-    name: "Custom Template",
-    icon: "auto_fix",
-    iconClass: "bg-onboarding-gold/10 text-onboarding-gold",
-    blurb:
-      "Describe any document you need — Clarifyd Assistant designs the clauses with you, then drafts it from scratch.",
-    footer: "Built to order",
-    mode: "custom",
-  },
-  {
-    id: "__chat__",
-    name: "Startup Q&A",
-    icon: "forum",
-    iconClass: "bg-status-info/10 text-status-info",
-    blurb:
-      "Open chat for any legal, fundraising, hiring, IP, or compliance question — guidance, not documents.",
-    footer: "Ask anything",
-    mode: "chat",
-  },
+const TILES: Tile[] = [
+  { id: "Mutual NDA",            name: "Mutual NDA",            Icon: Handshake,      blurb: "Foundational NDA with strict IP protection for startup-investor talks.", footer: "12 deal terms · score 9.8", mode: "template" },
+  { id: "SAFE Note",             name: "SAFE Note",             Icon: FileText,       blurb: "Pre-seed / seed standard agreement, with valuation cap logic.",         footer: "9 deal terms · score 8.4",  mode: "template" },
+  { id: "Employment Offer",      name: "Employment Offer",      Icon: BriefcaseMetal, blurb: "Executive letter, invention assignment, equity vesting schedules.",     footer: "18 deal terms · score 9.1", mode: "template" },
+  { id: "SaaS Master Agreement", name: "SaaS Master Agreement", Icon: Receipt,        blurb: "MSA covering uptime SLAs, data privacy, and termination rights.",       footer: "25 deal terms · score 7.9", mode: "template" },
+  { id: "__custom__",            name: "Custom Template",       Icon: Sparkle,        blurb: "Describe any document. Co-Pilot designs the clauses with you, drafts it from scratch.", footer: "Built to order", mode: "custom" },
+  { id: "__chat__",              name: "Startup Q&A",           Icon: Chat,           blurb: "Open chat for legal, fundraising, hiring, IP, or compliance questions.", footer: "Ask anything",              mode: "chat" },
 ];
+
+const EOQ = [0.23, 1, 0.32, 1] as const;
 
 export default function CopilotPage() {
   const { client } = useAuth();
   const { push } = useToast();
+  const reduce = useReducedMotion() ?? false;
   const [active, setActive] = useState<Active | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -135,33 +86,17 @@ export default function CopilotPage() {
 
   function pickTile(t: Tile) {
     if (t.mode === "template") {
-      startSession(
-        t.id,
-        t.name,
-        "template",
-        `I want to build a ${t.name}. Walk me through the first deal term I need to provide.`
-      );
+      startSession(t.id, t.name, "template", `I want to build a ${t.name}. Walk me through the first deal term I need to provide.`);
     } else if (t.mode === "chat") {
-      startSession(
-        "Startup Q&A",
-        "Startup Q&A",
-        "chat",
-        "Hi — I'm a startup founder. Introduce yourself briefly and ask what I'd like guidance on."
-      );
+      startSession("Startup Q&A", "Startup Q&A", "chat", "Hi — I'm a startup founder. Introduce yourself briefly and ask what I'd like guidance on.");
     }
-    // custom handled by the custom-name form
   }
 
   function startCustom() {
     const name = customDraft.trim();
     if (!name) return;
     setCustomDraft("");
-    startSession(
-      name,
-      name,
-      "custom",
-      `I want to create a custom document: "${name}". Confirm the purpose and parties, then guide me through the clauses it should contain.`
-    );
+    startSession(name, name, "custom", `I want to create a custom document: "${name}". Confirm the purpose and parties, then guide me through the clauses it should contain.`);
   }
 
   async function send() {
@@ -218,7 +153,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
     if (!doc) return;
     try {
       await navigator.clipboard.writeText(doc);
-      push("Document copied to clipboard", "success");
+      push("Document copied", "success");
     } catch {
       push("Clipboard blocked — select and copy manually.", "error");
     }
@@ -236,295 +171,282 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
   }
 
   const statusLabel = active
-    ? active.mode === "chat"
-      ? "Startup Q&A — ask anything"
-      : active.mode === "custom"
-      ? `Custom builder: ${active.name}`
-      : `Active: ${active.name} Builder`
-    : "Pick a tile to start";
+    ? active.mode === "chat" ? "Startup Q&A — ask anything"
+      : active.mode === "custom" ? `Custom builder: ${active.name}`
+      : `Builder: ${active.name}`
+    : "Pick a column to begin";
 
   return (
     <AppShell>
       {generating ? (
-        <OrbitalLoader
-          fullscreen
-          statusLines={["Drafting clauses…", "Filling deal terms…", "Cross-checking…"]}
-        />
+        <OrbitalLoader fullscreen statusLines={["Drafting clauses…", "Filling deal terms…", "Cross-checking…"]} />
       ) : null}
 
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="max-w-2xl">
-          <span className="font-label-caps text-label-caps text-primary tracking-widest uppercase mb-2 block">
-            Legal Co-Pilot
+      {/* Plate header */}
+      <section style={{ paddingBottom: 22, borderBottom: "1px solid var(--bsd-hairline)" }}>
+        <motion.div
+          initial={{ opacity: 0, y: reduce ? 0 : 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EOQ }}
+          style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
+        >
+          <div>
+            <span className="bsd-kicker">§ Legal Co-Pilot</span>
+            <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
+              Draft with <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>precision.</span>
+            </h1>
+            <p style={{ margin: "12px 0 0", color: "var(--bsd-body)", fontSize: 15, lineHeight: 1.6, maxWidth: 620 }}>
+              Pick a vetted template, design a custom document, or open Startup Q&amp;A. Clarifyd Assistant builds with you, clause by clause.
+            </p>
+          </div>
+          <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
+            ◆ Audited 2026
           </span>
-          <h2 className="font-display-hero text-3xl md:text-4xl text-onboarding-navy mb-3">
-            Draft with precision
-          </h2>
-          <p className="text-on-surface-variant leading-relaxed">
-            Pick a vetted template, design a custom document from scratch, or just ask the
-            Kimi-powered assistant any startup legal question.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full crystal-glass border-onboarding-gold/30 w-fit">
-          <span
-            className="material-symbols-outlined text-onboarding-gold text-sm"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            verified
-          </span>
-          <span className="text-xs font-bold text-onboarding-gold font-label-caps uppercase">
-            Audited 2026
-          </span>
-        </div>
+        </motion.div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-        {/* Tile gallery */}
-        <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {TEMPLATE_TILES.map((t) => {
-            const selected =
-              (t.mode === "chat" && active?.mode === "chat") ||
-              (t.mode === "template" && active?.id === t.id) ||
-              (t.mode === "custom" && active?.mode === "custom");
-
-            if (t.mode === "custom") {
-              return (
-                <div
-                  key={t.id}
-                  className={`crystal-glass p-6 rounded-3xl text-left transition-all ${
-                    selected ? "ring-2 ring-primary ring-offset-2" : ""
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${t.iconClass}`}
-                    >
-                      <span className="material-symbols-outlined text-h2">{t.icon}</span>
-                    </div>
-                  </div>
-                  <h3 className="font-h3 text-h3 text-on-surface mb-2">{t.name}</h3>
-                  <p className="text-on-surface-variant text-body-sm mb-4">{t.blurb}</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={customDraft}
-                      onChange={(e) => setCustomDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") startCustom();
-                      }}
-                      placeholder="e.g. Advisor Agreement, Co-Founder Vesting…"
-                      className="flex-1 min-w-0 bg-white border border-white/70 rounded-full px-4 py-2 outline-none focus:ring-2 focus:ring-primary text-body-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={startCustom}
-                      disabled={!customDraft.trim()}
-                      className="w-10 h-10 shrink-0 bg-onboarding-gold text-white rounded-full flex items-center justify-center hover:scale-105 transition-all disabled:opacity-50"
-                      aria-label="Start custom builder"
-                    >
-                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => pickTile(t)}
-                className={`crystal-glass p-6 rounded-3xl text-left transition-all group hover:-translate-y-1 ${
-                  selected ? "ring-2 ring-primary ring-offset-2" : ""
-                }`}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center ${t.iconClass}`}
-                  >
-                    <span className="material-symbols-outlined text-h2">{t.icon}</span>
-                  </div>
-                  {t.score ? (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-white/60 rounded text-[10px] font-bold text-on-surface-variant uppercase">
-                      <span>{t.scoreGlyph}</span>
-                      <span>Score {t.score}</span>
-                    </div>
-                  ) : null}
-                </div>
-                <h3 className="font-h3 text-h3 text-on-surface mb-2">{t.name}</h3>
-                <p className="text-on-surface-variant text-body-sm mb-6">{t.blurb}</p>
-                <div className="flex items-center justify-between border-t border-white/50 pt-4">
-                  <span className="text-xs text-on-surface-variant font-label-caps uppercase">
-                    {selected ? "Active" : t.footer}
-                  </span>
-                  <span className="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">
-                    {selected ? "check_circle" : "arrow_forward"}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Builder / chat */}
-        <div className="lg:col-span-5 lg:sticky lg:top-[120px] flex flex-col crystal-glass rounded-3xl overflow-hidden border-2 border-primary/20 h-[600px]">
-          <div className="p-4 bg-white/40 border-b border-white/50 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-lg">
-                  <span className="material-symbols-outlined">auto_awesome</span>
-                </div>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-status-success rounded-full border-2 border-white" />
-              </div>
-              <div>
-                <p className="font-bold text-body-sm m-0">Clarifyd Assistant</p>
-                <p className="text-[10px] text-on-surface-variant flex items-center gap-1 m-0">
-                  <span className="inline-block w-1.5 h-1.5 bg-status-success rounded-full" />
-                  {statusLabel}
-                </p>
-              </div>
-            </div>
-            {active ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setActive(null);
-                  setMessages([]);
-                }}
-                className="material-symbols-outlined text-on-surface-variant p-1 hover:bg-black/5 rounded"
-                aria-label="Close builder"
-              >
-                close
-              </button>
-            ) : null}
+      {/* Body */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 56, marginTop: 40 }} className="grid-cols-1 lg:grid-cols-[7fr_5fr]">
+        {/* Template ledger */}
+        <section>
+          <div className="cf-mono" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, marginBottom: 14, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
+            <span>Templates &amp; modes</span>
+            <span>06 entries</span>
           </div>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+            {TILES.map((t, i) => {
+              const selected =
+                (t.mode === "chat" && active?.mode === "chat") ||
+                (t.mode === "template" && active?.id === t.id) ||
+                (t.mode === "custom" && active?.mode === "custom");
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-5">
-            {!active ? (
-              <div className="h-full flex flex-col items-center justify-center text-center gap-3">
-                <span className="material-symbols-outlined text-primary/40 text-[56px]">
-                  smart_toy
-                </span>
-                <p className="text-on-surface-variant text-body-sm max-w-[240px]">
-                  Pick a template, name a custom document, or open Startup Q&amp;A — Clarifyd Assistant
-                  takes it from there.
-                </p>
+              if (t.mode === "custom") {
+                return (
+                  <motion.li
+                    key={t.id}
+                    initial={{ opacity: 0, y: reduce ? 0 : 6 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.3, ease: EOQ, delay: i * 0.04 }}
+                    style={{ borderBottom: "1px solid var(--bsd-hairline)", padding: "20px 4px", background: selected ? "var(--bsd-paper-deep)" : "transparent" }}
+                  >
+                    <div style={{ display: "grid", gridTemplateColumns: "44px 1fr auto", gap: 18, alignItems: "center" }}>
+                      <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 20, letterSpacing: "-0.02em", fontWeight: 800 }}>
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <t.Icon weight="duotone" size={18} color="var(--bsd-red)" aria-hidden />
+                          <span style={{ fontSize: 18, fontWeight: 600, color: "var(--bsd-ink)", letterSpacing: "-0.01em" }}>{t.name}</span>
+                        </div>
+                        <p style={{ margin: "4px 0 12px", fontSize: 13.5, color: "var(--bsd-body)", lineHeight: 1.5 }}>{t.blurb}</p>
+                        <div className="bsd-field" style={{ display: "flex", alignItems: "flex-end", gap: 10, maxWidth: 460 }}>
+                          <input
+                            type="text"
+                            value={customDraft}
+                            onChange={(e) => setCustomDraft(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") startCustom(); }}
+                            placeholder="Advisor Agreement, Co-Founder Vesting…"
+                            className="bsd-input"
+                            style={{ flex: 1, fontSize: 15 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={startCustom}
+                            disabled={!customDraft.trim()}
+                            className="bsd-btn bsd-btn--sm cursor-pointer"
+                          >
+                            Start <ArrowRight weight="bold" size={11} />
+                          </button>
+                        </div>
+                      </div>
+                      <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, alignSelf: "start" }}>
+                        {t.footer}
+                      </span>
+                    </div>
+                  </motion.li>
+                );
+              }
+
+              return (
+                <motion.li
+                  key={t.id}
+                  initial={{ opacity: 0, y: reduce ? 0 : 6 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.3, ease: EOQ, delay: i * 0.04 }}
+                  style={{ borderBottom: "1px solid var(--bsd-hairline)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => pickTile(t)}
+                    className={`bsd-row cursor-pointer${selected ? " is-active" : ""}`}
+                    style={{
+                      width: "100%", textAlign: "left",
+                      display: "grid", gridTemplateColumns: "44px 1fr auto 24px",
+                      gap: 18, alignItems: "center",
+                      padding: "22px 4px",
+                      background: selected ? "var(--bsd-paper-deep)" : "transparent",
+                      border: "none",
+                    }}
+                  >
+                    <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 20, letterSpacing: "-0.02em", fontWeight: 800 }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <t.Icon weight="duotone" size={18} color={selected ? "var(--bsd-red)" : "var(--bsd-muted)"} aria-hidden />
+                        <span style={{ fontSize: 18, fontWeight: 600, color: "var(--bsd-ink)", letterSpacing: "-0.01em" }}>{t.name}</span>
+                      </div>
+                      <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "var(--bsd-body)", lineHeight: 1.5 }}>{t.blurb}</p>
+                    </div>
+                    <span className="cf-mono" style={{ color: selected ? "var(--bsd-red)" : "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      {selected ? "Active" : t.footer}
+                    </span>
+                    {selected ? (
+                      <CheckCircle weight="duotone" size={16} color="var(--bsd-red)" aria-hidden />
+                    ) : (
+                      <ArrowRight className="bsd-row__caret" weight="bold" size={14} color="var(--bsd-soft)" aria-hidden />
+                    )}
+                  </button>
+                </motion.li>
+              );
+            })}
+          </ul>
+        </section>
+
+        {/* Chat panel */}
+        <section style={{ position: "sticky", top: 120, alignSelf: "start" }}>
+          <div style={{ border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper)", display: "flex", flexDirection: "column", height: 620 }}>
+            <div style={{ borderBottom: "2px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--bsd-paper-deep)" }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+                  § Clarifyd Assistant
+                </div>
+                <div style={{ marginTop: 2, fontSize: 12.5, color: "var(--bsd-body)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {statusLabel}
+                </div>
               </div>
-            ) : (
-              messages.map((m, i) => (
+              {active ? (
+                <button
+                  type="button"
+                  onClick={() => { setActive(null); setMessages([]); setDoc(null); }}
+                  className="cursor-pointer cf-mono"
+                  style={{ background: "transparent", border: "none", color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, padding: 4 }}
+                >
+                  Close ✕
+                </button>
+              ) : null}
+            </div>
+
+            <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {!active ? (
+                <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center" }}>
+                  <Hammer weight="duotone" size={36} color="var(--bsd-red)" />
+                  <p style={{ margin: 0, color: "var(--bsd-muted)", fontSize: 13.5, maxWidth: 260, lineHeight: 1.55 }}>
+                    Pick a column or open Startup Q&amp;A. Clarifyd Assistant takes it from there.
+                  </p>
+                </div>
+              ) : messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col gap-1 max-w-[85%] ${
-                    m.role === "user" ? "self-end items-end ml-auto" : ""
-                  }`}
+                  style={{
+                    alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                    maxWidth: "88%",
+                    padding: "12px 14px",
+                    background: m.role === "user" ? "var(--bsd-ink)" : "var(--bsd-paper-deep)",
+                    color: m.role === "user" ? "var(--bsd-paper)" : "var(--bsd-ink)",
+                    border: m.role === "user" ? "none" : "1px solid var(--bsd-hairline)",
+                    fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap",
+                  }}
                 >
-                  <div
-                    className={`p-4 text-body-sm whitespace-pre-wrap ${
-                      m.role === "user"
-                        ? "bg-primary text-white rounded-2xl rounded-tr-none shadow-md"
-                        : "bg-white rounded-2xl rounded-tl-none shadow-sm border border-white/80"
-                    }`}
-                  >
-                    {m.content}
-                  </div>
+                  {m.role === "assistant" ? (
+                    <div className="cf-mono" style={{ fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 800, color: "var(--bsd-red)", marginBottom: 6 }}>
+                      Reply
+                    </div>
+                  ) : null}
+                  {m.content}
                 </div>
-              ))
-            )}
-            {busy ? (
-              <div className="flex items-center gap-2 text-on-surface-variant text-body-sm">
-                <span className="material-symbols-outlined animate-spin text-[18px]">
-                  progress_activity
-                </span>
-                Clarifyd Assistant is thinking…
-              </div>
-            ) : null}
-          </div>
+              ))}
+              {busy ? (
+                <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--bsd-red)", animation: "cf-pulse 1s ease-in-out infinite" }} />
+                  Composing…
+                </div>
+              ) : null}
+            </div>
 
-          <div className="p-4 bg-white/40 border-t border-white/50 space-y-3">
-            {active && active.mode !== "chat" ? (
-              <button
-                type="button"
-                onClick={generateDocument}
-                disabled={generating || busy}
-                className="btn-capsule btn-capsule-primary w-full text-sm"
-              >
-                <span className="material-symbols-outlined text-[18px]">draft</span>
-                {generating ? "Drafting document…" : "Generate document"}
-              </button>
-            ) : null}
-            <div className="relative">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") send();
-                }}
-                disabled={!active || busy}
-                placeholder={
-                  active
-                    ? active.mode === "chat"
-                      ? "Ask a startup legal question…"
-                      : "Type a deal term or ask a question…"
-                    : "Pick a tile first"
-                }
-                className="w-full bg-white border border-white/70 rounded-full px-6 py-3 pr-12 outline-none focus:ring-2 focus:ring-primary shadow-sm text-body-sm disabled:opacity-60"
-              />
-              <button
-                type="button"
-                onClick={send}
-                disabled={!active || busy || !input.trim()}
-                className="absolute right-2 top-1.5 w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center hover:scale-105 transition-all disabled:opacity-50"
-                aria-label="Send"
-              >
-                <span className="material-symbols-outlined text-sm">send</span>
-              </button>
+            <div style={{ borderTop: "1.5px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10, background: "var(--bsd-paper-deep)" }}>
+              {active && active.mode !== "chat" ? (
+                <button
+                  type="button"
+                  onClick={generateDocument}
+                  disabled={generating || busy}
+                  className="bsd-btn cursor-pointer"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  <FileText weight="duotone" size={12} />
+                  {generating ? "Drafting…" : "Generate document"}
+                </button>
+              ) : null}
+              <div className="bsd-field" style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+                  disabled={!active || busy}
+                  placeholder={active ? (active.mode === "chat" ? "Ask a startup legal question…" : "Type a deal term or a question…") : "Pick a column first"}
+                  className="bsd-input"
+                  style={{ flex: 1, fontSize: 15 }}
+                />
+                <button
+                  type="button"
+                  onClick={send}
+                  disabled={!active || busy || !input.trim()}
+                  className="bsd-btn bsd-btn--sm cursor-pointer"
+                  aria-label="Send"
+                  style={{ flexShrink: 0 }}
+                >
+                  <PaperPlaneRight weight="bold" size={12} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
       </div>
 
+      {/* Generated document */}
       {doc ? (
-        <section className="crystal-glass rounded-3xl p-6 md:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary">description</span>
-              <h3 className="font-h3 text-h3 text-onboarding-navy m-0">
-                {active?.name ?? "Generated document"} — draft
-              </h3>
+        <motion.section
+          initial={{ opacity: 0, y: reduce ? 0 : 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EOQ }}
+          style={{ marginTop: 56, border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper-deep)" }}
+        >
+          <div style={{ padding: "16px 20px", borderBottom: "1.5px solid var(--bsd-ink)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+              <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+                § Galley proof
+              </span>
+              <span style={{ fontSize: 16, color: "var(--bsd-ink)", fontWeight: 600 }}>
+                {active?.name ?? "Generated"} · draft
+              </span>
             </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={copyDocument}
-                className="btn-capsule glass-semi-clear text-primary text-sm px-5"
-              >
-                <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                Copy
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={copyDocument} className="bsd-btn bsd-btn--ghost bsd-btn--sm cursor-pointer">
+                <Copy weight="bold" size={11} /> Copy
               </button>
-              <button
-                type="button"
-                onClick={downloadDocument}
-                className="btn-capsule btn-capsule-primary text-sm px-5"
-              >
-                <span className="material-symbols-outlined text-[18px]">download</span>
-                Download
+              <button type="button" onClick={downloadDocument} className="bsd-btn bsd-btn--sm cursor-pointer">
+                <Download weight="bold" size={11} /> Download
               </button>
             </div>
           </div>
-          <pre className="bg-white/70 rounded-2xl p-6 text-body-sm whitespace-pre-wrap font-code-snippet text-on-surface max-h-[600px] overflow-y-auto m-0">
+          <pre style={{ margin: 0, padding: "22px 24px", background: "var(--bsd-paper)", fontFamily: "Geist Mono, monospace", fontSize: 13.5, color: "var(--bsd-ink)", lineHeight: 1.7, whiteSpace: "pre-wrap", maxHeight: 600, overflowY: "auto" }}>
             {doc}
           </pre>
-        </section>
+        </motion.section>
       ) : null}
-
-      <div className="rounded-2xl bg-[#B45309]/80 text-white py-3 px-6 text-center" role="note">
-        <p className="text-xs font-bold tracking-tight m-0">
-          <span className="material-symbols-outlined align-middle mr-1 text-sm">gavel</span>
-          NOT LEGAL ADVICE: Clarifyd Assistant is an AI tool, not a law firm. Consult a qualified attorney
-          before executing any document.
-        </p>
-      </div>
     </AppShell>
   );
 }

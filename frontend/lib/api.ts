@@ -31,6 +31,62 @@ import type {
 } from "./contracts";
 
 const DEFAULT_BASE_URL = "http://localhost:8000";
+const LEGACY_BACKEND_HOST = "clarifyd-backend.vercel.app";
+
+function firstValidationIssueMessage(details: Record<string, unknown>): string | null {
+  const issues = details.issues;
+  if (Array.isArray(issues) && issues.length > 0) {
+    const first = issues[0];
+    if (first && typeof first === "object") {
+      const obj = first as Record<string, unknown>;
+      const msg = typeof obj.msg === "string" ? obj.msg : null;
+      const loc = Array.isArray(obj.loc)
+        ? obj.loc.filter((v): v is string | number => typeof v === "string" || typeof v === "number")
+        : [];
+      if (msg && loc.length > 1) {
+        return `${loc.slice(1).join(" -> ")}: ${msg}`;
+      }
+      if (msg) return msg;
+    }
+  }
+
+  // Backward compatibility: some backend builds stringify validation issues.
+  if (typeof issues === "string") {
+    const m = /'msg':\s*'([^']+)'/.exec(issues);
+    if (m && m[1]) return m[1];
+  }
+  return null;
+}
+
+function normalizeBaseUrl(value?: string): string | undefined {
+  if (!value) return undefined;
+  return value.trim().replace(/\/+$/, "");
+}
+
+export function resolveApiBaseUrl(baseUrl?: string): string {
+  const explicitBase = normalizeBaseUrl(baseUrl);
+  if (explicitBase) return explicitBase;
+
+  const envBase = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+  if (!envBase) return DEFAULT_BASE_URL;
+
+  if (typeof window !== "undefined") {
+    const isLocalFrontend = ["localhost", "127.0.0.1", "0.0.0.0"].includes(
+      window.location.hostname
+    );
+    if (isLocalFrontend) {
+      try {
+        const host = new URL(envBase).hostname;
+        if (host === LEGACY_BACKEND_HOST) return DEFAULT_BASE_URL;
+      } catch {
+        // If NEXT_PUBLIC_API_URL is malformed, default to local backend in local dev.
+        return DEFAULT_BASE_URL;
+      }
+    }
+  }
+
+  return envBase;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -40,11 +96,16 @@ export class ApiError extends Error {
 
   constructor(status: number, body: StructuredApiError | { detail?: unknown } | unknown) {
     const envelope = (body as StructuredApiError)?.error;
-    const message = envelope?.message ?? `Request failed with status ${status}`;
+    const details = (envelope?.details ?? {}) as Record<string, unknown>;
+    const validationMessage =
+      envelope?.code === "request_validation_error"
+        ? firstValidationIssueMessage(details)
+        : null;
+    const message = validationMessage ?? envelope?.message ?? `Request failed with status ${status}`;
     super(message);
     this.status = status;
     this.code = envelope?.code ?? "unknown_error";
-    this.details = envelope?.details ?? {};
+    this.details = details;
     this.requestId = envelope?.request_id ?? "";
   }
 }
@@ -56,8 +117,7 @@ export class ApiClient {
   private getToken: TokenProvider;
 
   constructor(getToken: TokenProvider, baseUrl?: string) {
-    this.baseUrl =
-      baseUrl ?? process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_BASE_URL;
+    this.baseUrl = resolveApiBaseUrl(baseUrl);
     this.getToken = getToken;
   }
 

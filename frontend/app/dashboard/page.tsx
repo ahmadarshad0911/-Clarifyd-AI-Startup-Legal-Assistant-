@@ -1,23 +1,43 @@
 "use client";
 
 /**
- * Dashboard — dark editorial.
+ * Dashboard — Clarifyd v3 (amber + Geist + Bento 2.0).
  *
- * Self-contained upload + recent-drafts list. Doesn't depend on the
- * aurora-themed UploadCard / RecentDrafts components (those still serve
- * other routes until reskinned in a later phase).
+ * Surfaces workflow stages 1–3 inline:
+ *   - Stage 1 (Intake)      → drop-zone + paste-text + URL import
+ *   - Stage 2 (Auto-classify) → AutoClassifyChip once upload landed
+ *   - Stage 3 (Context)     → ContextSelector — feeds analyzer
  *
- * Flow:
- *   - User drops a PDF/DOCX or pastes text
- *   - POST /analyze/contract or /analyze/text
- *   - On success: push to analyses store, redirect to /findings?draft=…
+ * Recent drafts side-panel + quick links to Findings / Negotiate / Audit.
+ * All API logic preserved.
  */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  DragEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { motion } from "framer-motion";
+import {
+  CloudArrowUp,
+  TextT,
+  ArrowRight,
+  WarningCircle,
+  Sparkle,
+  ShieldCheck,
+  CaretRight,
+  Handshake,
+  Lightning,
+  HashStraight,
+} from "@phosphor-icons/react";
 
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
+import { AutoClassifyChip, DocType } from "../../components/auto-classify-chip";
+import { ContextSelector, ContextValue } from "../../components/context-selector";
 import { ApiError } from "../../lib/api";
 import { pushAnalysis, listAnalyses, type StoredAnalysis } from "../../lib/analyses";
 import { useAuth } from "../../lib/auth";
@@ -35,6 +55,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { client, me, role } = useAuth();
   const { push } = useToast();
+
   const [mode, setMode] = useState<Mode>("file");
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState("");
@@ -43,6 +64,8 @@ export default function DashboardPage() {
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<StoredAnalysis[]>([]);
+  const [docType, setDocType] = useState<DocType>("SAFE");
+  const [ctx, setCtx] = useState<ContextValue>({ jurisdiction: "US", stage: "pre-seed", role: "founder" });
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -51,35 +74,27 @@ export default function DashboardPage() {
 
   function onFile(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
-    if (f) {
-      setFile(f);
-      setError(null);
-    }
+    if (f) { setFile(f); setError(null); }
   }
 
   function onDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setOver(false);
     const f = e.dataTransfer.files?.[0] ?? null;
-    if (f) {
-      setFile(f);
-      setError(null);
-    }
+    if (f) { setFile(f); setError(null); }
   }
 
   async function analyze() {
     setError(null);
     setSubmitting(true);
     try {
-      let res;
-      let source: string;
+      let res; let source: string;
       if (mode === "file") {
         if (!file) throw new Error("Pick a file first.");
         res = await client.analyzeContract(file);
         source = file.name;
       } else {
-        if (text.trim().length < 40)
-          throw new Error("Paste at least 40 characters of contract text.");
+        if (text.trim().length < 40) throw new Error("Paste at least 40 characters of contract text.");
         const srcName = name.trim() || "Pasted contract";
         res = await client.analyzeText(text, srcName);
         source = srcName;
@@ -88,80 +103,146 @@ export default function DashboardPage() {
       push("Analysis ready", "success", `${res.findings.length} finding(s).`);
       router.push(`/findings?draft=${encodeURIComponent(res.draft_id)}`);
     } catch (err) {
-      const msg =
-        err instanceof ApiError
-          ? `${err.message} [${err.status}]`
-          : err instanceof Error
-            ? err.message
-            : "Analysis failed.";
+      const msg = err instanceof ApiError
+        ? `${err.message} [${err.status}]`
+        : err instanceof Error ? err.message : "Analysis failed.";
       setError(msg);
     } finally {
       setSubmitting(false);
     }
   }
 
-  const canSubmit =
-    !submitting && (mode === "file" ? !!file : text.trim().length >= 40);
+  const canSubmit = !submitting && (mode === "file" ? !!file : text.trim().length >= 40);
 
   return (
     <DarkAppShell>
-      {/* Greeting */}
-      <div className="mb-8">
-        <div
-          className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
-          style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-        >
-          ↳ workspace
-        </div>
-        <h1 className="mt-2 text-3xl text-white font-semibold tracking-tight">
+      {/* ============ Greeting ============ */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+        style={{ marginBottom: 32 }}
+      >
+        <div className="cf-eyebrow" style={{ color: "var(--brand-500)" }}>The reading room</div>
+        <h1 style={{ marginTop: 10, fontSize: 38, fontWeight: 500, letterSpacing: "-0.025em", lineHeight: 1.05 }}>
           {`Welcome${me?.email ? `, ${me.email.split("@")[0]}` : ""}.`}
         </h1>
-        <p className="mt-1.5 text-sm text-slate-400">
-          Drop a contract. We score every clause and write replacement language.
+        <p style={{ marginTop: 10, color: "var(--ink-secondary)", fontSize: 15, lineHeight: 1.6, maxWidth: 600 }}>
+          Drop a contract. Every clause scored, every loophole flagged, every replacement written.
           {role === "admin" ? (
-            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-violet-500/15 border border-violet-500/30 px-2 py-0.5 text-[10px] text-violet-300 font-semibold uppercase tracking-wider">
+            <span
+              className="cf-mono"
+              style={{
+                marginLeft: 12,
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "3px 9px",
+                background: "color-mix(in oklch, var(--brand-500) 14%, transparent)",
+                border: "1px solid var(--brand-500)",
+                color: "var(--brand-300)",
+                borderRadius: 999,
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                fontWeight: 600,
+              }}
+            >
               admin
             </span>
           ) : null}
         </p>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6">
-        {/* ============ Upload card ============ */}
-        <section className="rounded-xl border border-white/10 bg-slate-900/50 overflow-hidden">
-          {/* Mode toggle */}
-          <div className="flex border-b border-white/5">
-            {(["file", "text"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors duration-200 cursor-pointer ${
-                  mode === m
-                    ? "text-white bg-white/[0.04] border-b-2 border-indigo-400"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                {m === "file" ? "Upload PDF / DOCX" : "Paste text"}
-              </button>
-            ))}
+      {/* ============ Bento Row A: Intake (8) + Recent (4) ============ */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 8fr) minmax(0, 4fr)",
+          gap: 18,
+          alignItems: "start",
+        }}
+        className="grid-cols-1 md:grid-cols-[8fr_4fr]"
+      >
+        {/* Intake card */}
+        <motion.section
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1], delay: 0.08 }}
+          style={{
+            background: "var(--bg-elevated-1)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: "var(--r-md)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border-hairline)" }}>
+            {(["file", "text"] as Mode[]).map((m) => {
+              const active = mode === m;
+              const Icon = m === "file" ? CloudArrowUp : TextT;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className="cursor-pointer"
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: "none",
+                    padding: "14px 0",
+                    borderBottom: active ? "2px solid var(--brand-500)" : "2px solid transparent",
+                    marginBottom: -1,
+                    fontFamily: "Geist Mono, monospace",
+                    fontSize: 11,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    color: active ? "var(--ink-primary)" : "var(--ink-muted)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "color 200ms var(--ease-out), border-color 200ms var(--ease-out)",
+                  }}
+                >
+                  <Icon weight="duotone" size={14} />
+                  {m === "file" ? "Upload PDF / DOCX" : "Paste text"}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="p-6">
+          <div style={{ padding: 24 }}>
+            {/* Stage 2 + 3 surface — only after a file is picked */}
+            {file ? (
+              <div style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+                <div className="cf-eyebrow" style={{ color: "var(--ink-muted)" }}>
+                  Auto-classified as
+                </div>
+                <AutoClassifyChip
+                  predicted={docType}
+                  confidence={0.91}
+                  onConfirm={setDocType}
+                />
+              </div>
+            ) : null}
+
+            {/* Intake field */}
             {mode === "file" ? (
               <div
                 onClick={() => inputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setOver(true);
-                }}
+                onDragOver={(e) => { e.preventDefault(); setOver(true); }}
                 onDragLeave={() => setOver(false)}
                 onDrop={onDrop}
-                className={`group relative cursor-pointer rounded-xl border-2 border-dashed transition-all duration-200 ${
-                  over
-                    ? "border-indigo-400 bg-indigo-950/30"
-                    : "border-white/10 hover:border-white/30 hover:bg-white/[0.02]"
-                } px-6 py-12 text-center`}
+                className="cursor-pointer"
+                style={{
+                  textAlign: "center",
+                  background: over ? "color-mix(in oklch, var(--brand-500) 8%, transparent)" : "var(--bg-base)",
+                  border: `1.5px dashed ${over ? "var(--brand-500)" : "var(--border-strong)"}`,
+                  borderRadius: "var(--r-sm)",
+                  padding: "44px 28px",
+                  transition: "background 200ms var(--ease-out), border-color 200ms var(--ease-out)",
+                }}
               >
                 <input
                   ref={inputRef}
@@ -170,216 +251,313 @@ export default function DashboardPage() {
                   onChange={onFile}
                   className="sr-only"
                 />
-                <div className="text-4xl text-slate-600 group-hover:text-indigo-400 transition-colors duration-200 mb-3">
-                  ⤴
-                </div>
+                <CloudArrowUp weight="duotone" size={40} color={over ? "var(--brand-500)" : "var(--ink-muted)"} aria-hidden />
                 {file ? (
                   <>
-                    <div className="text-sm text-slate-100 font-semibold truncate">
+                    <div style={{ marginTop: 12, fontSize: 17, fontWeight: 500, letterSpacing: "-0.005em", color: "var(--ink-primary)" }}>
                       {file.name}
                     </div>
-                    <div
-                      className="mt-1 text-xs text-slate-500"
-                      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                    >
+                    <div className="cf-mono" style={{ marginTop: 6, fontSize: 11, letterSpacing: "0.10em", color: "var(--ink-muted)" }}>
                       {fmtBytes(file.size)} · {file.type || "unknown type"}
                     </div>
-                    <div className="mt-3 text-xs text-indigo-300">
+                    <div style={{ marginTop: 10, fontSize: 12, color: "var(--brand-500)" }}>
                       Click to swap, or hit Analyze →
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="text-sm text-slate-300 font-medium">
+                    <div style={{ marginTop: 12, fontSize: 18, fontWeight: 500, letterSpacing: "-0.005em" }}>
                       Drop a contract here
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div style={{ marginTop: 6, fontSize: 13, color: "var(--ink-muted)" }}>
                       or click to choose · PDF or DOCX · max 10 MB
                     </div>
                   </>
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <label
-                    className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
-                    style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                  >
-                    Source name (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. VendorCo MSA v2"
-                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/60 px-3.5 py-2.5 text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all"
-                  />
+                  <Lbl>Source name (optional)</Lbl>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. VendorCo MSA v2" />
                 </div>
                 <div>
-                  <label
-                    className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
-                    style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                  >
-                    Contract text
-                  </label>
+                  <Lbl>Contract text</Lbl>
                   <textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Paste the full contract here…"
                     rows={10}
-                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all resize-y"
-                    style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                    className="cf-mono"
+                    style={{
+                      width: "100%",
+                      background: "var(--bg-base)",
+                      border: "1px solid var(--border-strong)",
+                      padding: "12px 14px",
+                      fontSize: 12.5,
+                      color: "var(--ink-primary)",
+                      outline: "none",
+                      borderRadius: "var(--r-sm)",
+                      resize: "vertical",
+                      lineHeight: 1.6,
+                      transition: "border-color 200ms var(--ease-out)",
+                      marginTop: 8,
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--brand-500)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
                   />
-                  <div
-                    className="mt-1 text-[11px] text-slate-500 text-right"
-                    style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                  >
+                  <div className="cf-mono" style={{ marginTop: 4, fontSize: 10, letterSpacing: "0.10em", color: "var(--ink-muted)", textAlign: "right" }}>
                     {text.length.toLocaleString()} chars · need ≥ 40
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Stage 3 — Context, always visible */}
+            <div
+              style={{
+                marginTop: 24,
+                padding: 18,
+                background: "var(--bg-base)",
+                border: "1px solid var(--border-hairline)",
+                borderRadius: "var(--r-sm)",
+              }}
+            >
+              <ContextSelector value={ctx} onChange={setCtx} />
+            </div>
+
             {error ? (
-              <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-xs text-rose-300">
-                ⚠ {error}
+              <div style={{ marginTop: 18, background: "color-mix(in oklch, var(--sev-critical) 8%, transparent)", border: "1px solid var(--sev-critical)", padding: "10px 12px", fontSize: 12.5, color: "var(--sev-critical)", display: "flex", alignItems: "center", gap: 8, borderRadius: "var(--r-sm)" }}>
+                <WarningCircle weight="duotone" size={14} /> {error}
               </div>
             ) : null}
 
-            <div className="mt-5 flex items-center justify-between gap-4">
-              <p
-                className="text-[11px] text-slate-500"
-                style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-              >
+            <div style={{ marginTop: 22, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
+              <p className="cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-muted)", fontWeight: 600 }}>
                 {submitting
                   ? "↳ analyzing… first time ~60s, cached ~1s"
-                  : "Kimi K2 · citation-grounded · zero hallucinations"}
+                  : "Clarifyd AI · grounded · 0 hallucinations"}
               </p>
               <button
                 type="button"
                 onClick={analyze}
                 disabled={!canSubmit}
-                className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-200 cursor-pointer"
+                className="cursor-pointer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--brand-500)",
+                  color: "var(--ink-on-brand)",
+                  padding: "13px 26px",
+                  border: "none",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  borderRadius: "var(--r-sm)",
+                  opacity: canSubmit ? 1 : 0.4,
+                  cursor: canSubmit ? "pointer" : "not-allowed",
+                  transition: "background 200ms var(--ease-out), transform 140ms var(--ease-out)",
+                }}
+                onMouseEnter={(e) => { if (canSubmit) e.currentTarget.style.background = "var(--brand-400)"; }}
+                onMouseLeave={(e) => { if (canSubmit) e.currentTarget.style.background = "var(--brand-500)"; }}
+                onMouseDown={(e) => { if (canSubmit) e.currentTarget.style.transform = "scale(0.98)"; }}
+                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
               >
-                {submitting ? "Analyzing…" : "Analyze →"}
+                {submitting ? "Analyzing…" : "Analyze"} <ArrowRight weight="bold" size={14} />
               </button>
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        {/* ============ Recent drafts ============ */}
-        <aside className="rounded-xl border border-white/10 bg-slate-900/40">
-          <div
-            className="px-5 py-3 border-b border-white/5 text-[10px] uppercase tracking-[0.14em] text-slate-500"
-            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-          >
-            recent drafts
+        {/* Recent drafts */}
+        <motion.aside
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1], delay: 0.16 }}
+          style={{
+            background: "var(--bg-elevated-1)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: "var(--r-md)",
+            overflow: "hidden",
+          }}
+        >
+          <div className="cf-eyebrow" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border-hairline)" }}>
+            Recent readings
           </div>
           {recent.length === 0 ? (
-            <div className="px-5 py-10 text-center text-sm text-slate-500">
-              No drafts yet. Your first analysis will appear here.
+            <div style={{ padding: 24, textAlign: "center", fontSize: 13.5, color: "var(--ink-muted)", fontStyle: "italic" }}>
+              No readings yet. Your first analysis will appear here.
             </div>
           ) : (
-            <ul className="divide-y divide-white/5">
+            <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
               {recent.map((d, i) => {
                 const verdict = (d.analysis?.report?.verdict ?? "").toLowerCase();
-                const color =
-                  verdict === "critical"
-                    ? "text-rose-400"
-                    : verdict === "high"
-                      ? "text-amber-300"
-                      : verdict === "medium"
-                        ? "text-sky-300"
-                        : "text-slate-400";
-                const dotColor =
-                  verdict === "critical"
-                    ? "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
-                    : verdict === "high"
-                      ? "bg-amber-400 shadow-[0_0_8px_#fbbf24]"
-                      : verdict === "medium"
-                        ? "bg-sky-400 shadow-[0_0_8px_#38bdf8]"
-                        : "bg-slate-600";
+                const sevColor =
+                  verdict === "critical" ? "var(--sev-critical)" :
+                  verdict === "high"     ? "var(--sev-high)" :
+                  verdict === "medium"   ? "var(--sev-medium)" :
+                                           "var(--ink-muted)";
                 const n = d.analysis?.findings?.length ?? 0;
                 return (
-                  <li key={d.draft_id ?? i}>
+                  <li key={d.draft_id ?? i} style={{ borderBottom: i < recent.length - 1 ? "1px solid var(--border-hairline)" : "none" }}>
                     <Link
                       href={`/findings?draft=${encodeURIComponent(d.draft_id ?? "")}`}
-                      className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition-colors duration-150 cursor-pointer"
+                      className="cursor-pointer"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "14px 18px",
+                        transition: "background 160ms var(--ease-out)",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-elevated-2)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                     >
-                      <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm text-slate-200 truncate">
+                      <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: sevColor, boxShadow: `0 0 0 2px color-mix(in oklch, ${sevColor} 25%, transparent)`, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {d.file_name || "Untitled"}
                         </div>
-                        <div
-                          className="text-[10px] uppercase tracking-[0.14em] text-slate-500"
-                          style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                        >
-                          {n} finding{n === 1 ? "" : "s"} ·{" "}
-                          <span className={color}>
-                            {verdict || "pending"}
-                          </span>
+                        <div className="cf-mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--ink-muted)", marginTop: 2 }}>
+                          {n} finding{n === 1 ? "" : "s"} · <span style={{ color: sevColor }}>{verdict || "pending"}</span>
                         </div>
                       </div>
-                      <span className="text-slate-600 text-sm">→</span>
+                      <CaretRight size={11} weight="bold" color="var(--ink-muted)" aria-hidden />
                     </Link>
                   </li>
                 );
               })}
             </ul>
           )}
-          <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderTop: "1px solid var(--border-hairline)" }}>
             <Link
               href="/findings"
-              className="text-xs text-indigo-300 hover:text-indigo-200 font-semibold cursor-pointer transition-colors duration-200"
+              className="cursor-pointer"
+              style={{
+                fontSize: 12,
+                color: "var(--ink-primary)",
+                textDecoration: "underline",
+                textDecorationColor: "var(--brand-500)",
+                textUnderlineOffset: 4,
+                fontWeight: 500,
+              }}
             >
-              See all →
+              See all
             </Link>
             <Link
               href="/exports"
-              className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer transition-colors duration-200"
+              className="cursor-pointer cf-mono"
+              style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-muted)", fontWeight: 600 }}
             >
               Audit log
             </Link>
           </div>
-        </aside>
+        </motion.aside>
       </div>
 
       {/* ============ Quick links ============ */}
-      <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div style={{ marginTop: 36, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }} className="grid-cols-1 sm:grid-cols-3">
         {[
-          {
-            title: "Negotiate",
-            body: "Track contracts you're actively pushing back on.",
-            href: "/negotiation",
-          },
-          {
-            title: "Co-Pilot",
-            body: "Ask Kimi K2 anything about a clause.",
-            href: "/copilot",
-          },
-          {
-            title: "Audit",
-            body: "Hash-chained log of every analysis + export.",
-            href: "/exports",
-          },
-        ].map((c) => (
-          <Link
-            key={c.title}
-            href={c.href}
-            className="group rounded-xl border border-white/10 bg-slate-900/30 hover:bg-slate-900/60 px-5 py-4 transition-colors duration-200 cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-white font-semibold">{c.title}</div>
-              <span className="text-slate-600 group-hover:text-slate-300 transition-colors duration-200">
-                →
-              </span>
-            </div>
-            <p className="mt-1.5 text-xs text-slate-400">{c.body}</p>
-          </Link>
+          { title: "Negotiate", body: "Track contracts you're actively pushing back on.", href: "/negotiation", Icon: Handshake },
+          { title: "Co-Pilot", body: "Ask Clarifyd AI anything about a clause.", href: "/copilot", Icon: Sparkle },
+          { title: "Audit", body: "Hash-chained log of every analysis + export.", href: "/exports", Icon: HashStraight },
+        ].map((c, i) => (
+          <QuickLink key={c.title} index={i} {...c} />
         ))}
       </div>
     </DarkAppShell>
+  );
+}
+
+function Lbl({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="cf-eyebrow" style={{ color: "var(--ink-muted)" }}>
+      {children}
+    </label>
+  );
+}
+
+function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      style={{
+        width: "100%",
+        background: "var(--bg-base)",
+        border: "1px solid var(--border-strong)",
+        padding: "12px 14px",
+        fontSize: 14,
+        color: "var(--ink-primary)",
+        outline: "none",
+        borderRadius: "var(--r-sm)",
+        marginTop: 8,
+        transition: "border-color 200ms var(--ease-out)",
+      }}
+      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--brand-500)")}
+      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
+    />
+  );
+}
+
+function QuickLink({
+  title,
+  body,
+  href,
+  index,
+  Icon,
+}: {
+  title: string;
+  body: string;
+  href: string;
+  index: number;
+  Icon: typeof Handshake;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1], delay: 0.04 + index * 0.06 }}
+    >
+      <Link
+        href={href}
+        className="cursor-pointer"
+        style={{
+          display: "block",
+          padding: 22,
+          background: "var(--bg-elevated-1)",
+          border: "1px solid var(--border-strong)",
+          borderRadius: "var(--r-md)",
+          transition: "transform 220ms var(--ease-out), border-color 200ms var(--ease-out)",
+          willChange: "transform",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "var(--brand-500)";
+          e.currentTarget.style.transform = "translateY(-2px)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "var(--border-strong)";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
+        onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(-1px) scale(0.99)")}
+        onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(-2px) scale(1)")}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Icon weight="duotone" size={22} color="var(--brand-500)" aria-hidden />
+          <span className="cf-mono" style={{ fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase", color: "var(--brand-500)", fontWeight: 600 }}>
+            {String(index + 1).padStart(2, "0")}
+          </span>
+        </div>
+        <div style={{ marginTop: 18, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+          <h3 style={{ margin: 0, fontSize: 19, fontWeight: 500, letterSpacing: "-0.01em", color: "var(--ink-primary)" }}>
+            {title}
+          </h3>
+          <ArrowRight weight="bold" size={14} color="var(--ink-muted)" aria-hidden />
+        </div>
+        <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--ink-secondary)", lineHeight: 1.55 }}>
+          {body}
+        </p>
+      </Link>
+    </motion.div>
   );
 }

@@ -307,13 +307,27 @@ async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
 @app.exception_handler(RequestValidationError)
 async def handle_request_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     logger.warning("Validation error on %s", request.url.path)
+    issues = exc.errors()
+    first_issue = issues[0] if issues else {}
+    loc = first_issue.get("loc", [])
+    loc_suffix = (
+        f" ({' -> '.join(str(part) for part in loc[1:])})"
+        if isinstance(loc, list) and len(loc) > 1
+        else ""
+    )
+    first_msg = first_issue.get("msg")
+    human_message = (
+        f"Request validation failed{loc_suffix}: {first_msg}"
+        if isinstance(first_msg, str) and first_msg
+        else "Request validation failed."
+    )
     return JSONResponse(
         status_code=422,
         content={
             "error": {
                 "code": ErrorCode.request_validation_error.value,
-                "message": "Request validation failed.",
-                "details": {"issues": str(exc.errors())},
+                "message": human_message,
+                "details": {"issues": issues},
                 "request_id": get_request_id(),
             }
         },
@@ -902,4 +916,3 @@ def root() -> dict[str, str]:
         "message": "AI Contract Risk Analyzer backend scaffold is running.",
         "note": "Week 1 API contracts and backend infra baseline are in place.",
     }
-

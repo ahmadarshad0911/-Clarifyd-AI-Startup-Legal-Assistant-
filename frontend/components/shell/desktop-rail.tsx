@@ -58,7 +58,7 @@ function planFor(role: string | null): Plan {
       name: "Pro",
       badge: "PRO",
       tone: "pro",
-      blurb: "50 drafts/mo · Kimi K2.6 · PDF export",
+      blurb: "50 drafts/mo · Clarifyd AI · PDF export",
       cta: { label: "Manage plan", href: "/pricing" },
     };
   }

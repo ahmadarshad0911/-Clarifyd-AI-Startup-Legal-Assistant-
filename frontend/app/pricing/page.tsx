@@ -1,264 +1,157 @@
 "use client";
 
-/** Pricing — dark editorial. */
+/** /pricing — Broadsheet · v6 */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { ArrowRight, Check } from "@phosphor-icons/react";
 
+import { PublicShell } from "../../components/public-shell";
 import { useAuth } from "../../lib/auth";
 
-type Plan = {
-  id: string;
-  name: string;
-  monthly: number | null;
-  features: string[];
-  cta: string;
-  popular?: boolean;
-};
+type Plan = { id: string; name: string; monthlyUsd: number | null; features: string[]; cta: string; featured?: boolean; hint: string };
 
 const PLANS: Plan[] = [
-  {
-    id: "founder",
-    name: "Founder",
-    monthly: 29,
-    features: [
-      "3 contracts / mo",
-      "Kimi K2 risk analysis",
-      "Suggested rewrites",
-      "Standard support",
-    ],
-    cta: "Start Founder",
-  },
-  {
-    id: "growth",
-    name: "Growth",
-    monthly: 99,
-    features: [
-      "20 contracts / mo",
-      "Priority Kimi reasoning + cache",
-      "Co-Pilot + templates",
-      "Negotiation tracker",
-      "Team sharing (up to 5)",
-      "Audit chain exports",
-    ],
-    cta: "Get Growth",
-    popular: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    monthly: null,
-    features: [
-      "Unlimited analysis",
-      "Custom risk rulesets",
-      "SOC-2 tamper-evident exports",
-      "Dedicated success partner",
-      "SLA",
-    ],
-    cta: "Contact sales",
-  },
+  { id: "reader",  name: "Reader",  monthlyUsd: 0,    hint: "3 contracts / month, forever",
+    features: ["Clarifyd AI risk analysis", "Citation-grounded findings", "Suggested rewrites", "PDF export", "Community support"],
+    cta: "Start free" },
+  { id: "founder", name: "Founder", monthlyUsd: 29,   hint: "Billed monthly · cancel anytime", featured: true,
+    features: ["Everything in Reader", "Unlimited contracts", "Collaborator doc export", "Free cached re-reads", "Negotiation tracker", "Email support · same-day"],
+    cta: "Get Founder" },
+  { id: "counsel", name: "Counsel", monthlyUsd: null, hint: "For firms reading at volume",
+    features: ["Everything in Founder", "Custom jurisdiction templates", "SAML SSO", "SOC-2 exports", "Dedicated partner"],
+    cta: "Talk to sales" },
 ];
+
+const EOQ = [0.23, 1, 0.32, 1] as const;
 
 export default function PricingPage() {
   const { token } = useAuth();
   const [annual, setAnnual] = useState(true);
-
-  useEffect(() => {
-    const orig = document.body.style.background;
-    document.body.style.background = "#020617";
-    return () => {
-      document.body.style.background = orig;
-    };
-  }, []);
-
-  function priceLabel(p: Plan): { big: string; small: string } {
-    if (p.monthly === null) return { big: "Custom", small: "" };
-    const m = annual ? Math.round(p.monthly * 0.8) : p.monthly;
-    return { big: `$${m}`, small: "/mo" };
-  }
-
   const planHref = token ? "/dashboard" : "/login";
 
+  function price(p: Plan): { big: string; small: string } {
+    if (p.monthlyUsd === null) return { big: "Custom", small: "" };
+    if (p.monthlyUsd === 0) return { big: "$0", small: "forever" };
+    const m = annual ? Math.round(p.monthlyUsd * 0.8) : p.monthlyUsd;
+    return { big: `$${m}`, small: "/ month" };
+  }
+
   return (
-    <div
-      className="min-h-screen text-slate-200"
-      style={{
-        background:
-          "radial-gradient(ellipse 90% 50% at 50% -10%, rgba(99,102,241,0.10) 0%, transparent 50%), #020617",
-        fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
-      }}
-    >
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-slate-100 font-semibold tracking-tight cursor-pointer"
-          >
-            <span
-              className="inline-block h-5 w-5 rounded-[6px]"
-              style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-              }}
-              aria-hidden
-            />
-            Clarifyd
-          </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/faq" className="text-slate-400 hover:text-slate-100 cursor-pointer">
-              FAQ
-            </Link>
-            <Link
-              href={planHref}
-              className="rounded-lg bg-white text-slate-950 px-3.5 py-1.5 font-semibold hover:bg-slate-200 cursor-pointer transition-colors duration-200"
-            >
-              {token ? "Open app" : "Sign in"} →
-            </Link>
-          </div>
+    <PublicShell>
+      <section style={{ padding: "72px 32px 24px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 56, alignItems: "end" }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: EOQ }}>
+            <span className="bsd-kicker">§ Subscriptions</span>
+            <h1 style={{ margin: "12px 0 0", fontSize: "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>
+              Free until your <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>seed round.</span>
+            </h1>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: EOQ, delay: 0.1 }} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <p style={{ margin: 0, fontSize: 16, color: "var(--bsd-body)", lineHeight: 1.6, maxWidth: 420 }}>
+              Three contracts a month free. $29 when you outgrow it. No annual lock-in. No contact-sales wall on the first two tiers.
+            </p>
+            <div style={{ display: "inline-flex", border: "1.5px solid var(--bsd-ink)", padding: 3, alignSelf: "flex-start" }}>
+              {[{ v: true, label: "Annual −20%" }, { v: false, label: "Monthly" }].map((m) => {
+                const active = annual === m.v;
+                return (
+                  <button
+                    key={String(m.v)}
+                    type="button"
+                    onClick={() => setAnnual(m.v)}
+                    className="cursor-pointer cf-mono"
+                    style={{
+                      padding: "8px 16px",
+                      background: active ? "var(--bsd-ink)" : "transparent",
+                      color: active ? "var(--bsd-paper)" : "var(--bsd-ink)",
+                      border: "none",
+                      fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 800,
+                      transition: "background var(--dur-base) ease, color var(--dur-base) ease",
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
         </div>
-      </nav>
+      </section>
 
-      <main className="pt-28 pb-24">
-        <section className="mx-auto max-w-6xl px-6 text-center">
-          <div
-            className="text-[10px] uppercase tracking-[0.18em] text-violet-400"
-            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-          >
-            ↳ pricing
-          </div>
-          <h1 className="mt-3 text-4xl md:text-5xl text-white font-semibold tracking-tight">
-            Free until your seed round.
-          </h1>
-          <p className="mt-4 text-slate-400 max-w-xl mx-auto">
-            3 contracts free forever. Pay only when you outgrow it. No annual
-            lock-in, no contact-sales wall.
-          </p>
-
-          <div className="mt-9 inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 p-1">
-            {(["annual", "monthly"] as const).map((mode) => {
-              const isAnnual = mode === "annual";
-              const active = isAnnual === annual;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setAnnual(isAnnual)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors duration-200 ${
-                    active
-                      ? "bg-white text-slate-950"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  {mode === "annual" ? "Annual −20%" : "Monthly"}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-6xl px-6 mt-14 grid grid-cols-1 md:grid-cols-3 gap-5">
-          {PLANS.map((p) => {
-            const label = priceLabel(p);
-            const popular = !!p.popular;
+      <section style={{ padding: "56px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+        <div
+          style={{
+            maxWidth: 1280, margin: "0 auto",
+            display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+            borderTop: "2px solid var(--bsd-ink)", borderBottom: "2px solid var(--bsd-ink)",
+          }}
+          className="grid-cols-1 md:grid-cols-3"
+        >
+          {PLANS.map((p, i) => {
+            const lbl = price(p);
             return (
-              <div
+              <motion.div
                 key={p.id}
-                className={`relative rounded-2xl border p-7 flex flex-col transition-all duration-200 ${
-                  popular
-                    ? "border-indigo-400/40 bg-gradient-to-br from-indigo-950/40 via-slate-900/80 to-slate-900/40 md:scale-[1.03] shadow-2xl"
-                    : "border-white/10 bg-slate-900/40 hover:bg-slate-900/60"
-                }`}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.5, ease: EOQ, delay: i * 0.07 }}
+                style={{
+                  padding: 28,
+                  background: p.featured ? "var(--bsd-ink)" : "transparent",
+                  color: p.featured ? "var(--bsd-paper)" : "var(--bsd-ink)",
+                  borderRight: i < PLANS.length - 1 ? "1px solid var(--bsd-hairline)" : "none",
+                  position: "relative",
+                  display: "flex", flexDirection: "column", gap: 18,
+                  minHeight: 460,
+                }}
               >
-                {popular ? (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider"
-                      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-                    >
-                      most popular
-                    </span>
-                  </div>
-                ) : null}
-                <div className="text-sm text-slate-400 font-semibold">
-                  {p.name}
-                </div>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span className="text-4xl text-white font-semibold tracking-tight">
-                    {label.big}
+                {p.featured ? (
+                  <span
+                    className="cf-mono"
+                    style={{
+                      position: "absolute", top: -10, left: 28,
+                      background: "var(--bsd-red)", color: "var(--bsd-paper)",
+                      padding: "3px 10px",
+                      fontSize: 9.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 800,
+                    }}
+                  >
+                    Most chosen
                   </span>
-                  {label.small ? (
-                    <span className="text-sm text-slate-400">{label.small}</span>
-                  ) : null}
+                ) : null}
+                <span className="cf-mono" style={{ color: p.featured ? "var(--bsd-red)" : "var(--bsd-muted)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+                  {p.name}
+                </span>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span style={{ fontSize: 56, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1 }}>{lbl.big}</span>
+                  <span style={{ fontSize: 13, color: p.featured ? "#bbb" : "var(--bsd-muted)" }}>{lbl.small}</span>
                 </div>
-                {annual && p.monthly !== null ? (
-                  <div className="mt-1 text-xs text-slate-500">
-                    billed annually · save 20%
-                  </div>
-                ) : (
-                  <div className="mt-1 text-xs text-slate-500">&nbsp;</div>
-                )}
-
-                <ul className="mt-6 space-y-3 flex-1">
-                  {p.features.map((f, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-sm text-slate-300"
-                    >
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>{f}</span>
+                <div style={{ fontSize: 12.5, color: p.featured ? "#bbb" : "var(--bsd-muted)" }}>{p.hint}</div>
+                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+                  {p.features.map((f) => (
+                    <li key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: p.featured ? "#ddd" : "var(--bsd-body)", lineHeight: 1.5 }}>
+                      <Check weight="bold" size={12} color={p.featured ? "var(--bsd-red)" : "var(--bsd-ink)"} style={{ marginTop: 4, flexShrink: 0 }} aria-hidden />
+                      {f}
                     </li>
                   ))}
                 </ul>
-
                 <Link
-                  href={p.id === "enterprise" ? "/contact" : planHref}
-                  className={`mt-7 inline-flex justify-center items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold cursor-pointer transition-colors duration-200 ${
-                    popular
-                      ? "bg-white text-slate-950 hover:bg-slate-200"
-                      : "border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10"
-                  }`}
+                  href={p.id === "counsel" ? "/contact" : planHref}
+                  className="bsd-btn cursor-pointer"
+                  style={{
+                    background: p.featured ? "var(--bsd-red)" : "var(--bsd-ink)",
+                    borderColor: p.featured ? "var(--bsd-red)" : "var(--bsd-ink)",
+                    color: "var(--bsd-paper)",
+                  }}
                 >
-                  {p.cta} →
+                  {p.cta} <ArrowRight weight="bold" size={11} />
                 </Link>
-              </div>
+              </motion.div>
             );
           })}
-        </section>
-
-        <section className="mx-auto max-w-3xl px-6 mt-20 text-center">
-          <h2 className="text-2xl text-white font-semibold tracking-tight">
-            Questions?
-          </h2>
-          <p className="mt-2 text-sm text-slate-400">
-            See the FAQ or reach out — we usually reply in under a day.
-          </p>
-          <div className="mt-6 flex justify-center gap-3">
-            <Link
-              href="/faq"
-              className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-slate-100 px-4 py-2 text-sm cursor-pointer transition-colors duration-200"
-            >
-              Read FAQ →
-            </Link>
-            <Link
-              href="/contact"
-              className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-slate-100 px-4 py-2 text-sm cursor-pointer transition-colors duration-200"
-            >
-              Contact us →
-            </Link>
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-white/5 bg-slate-950/90">
-        <div
-          className="mx-auto max-w-6xl px-6 py-6 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2"
-          style={{ fontFamily: "'IBM Plex Mono', monospace" }}
-        >
-          <span>© 2026 Clarifyd. Not legal advice.</span>
-          <Link href="/" className="hover:text-slate-300 cursor-pointer">
-            ← landing
-          </Link>
         </div>
-      </footer>
-    </div>
+      </section>
+    </PublicShell>
   );
 }

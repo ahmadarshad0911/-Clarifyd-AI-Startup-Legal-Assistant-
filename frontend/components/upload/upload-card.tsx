@@ -297,7 +297,7 @@ export function UploadCard({ onAnalyzed }: Props) {
       {submitting ? (
         <OrbitalLoader
           fullscreen
-          statusLines={["Extracting clauses…", "Kimi reasoning…", "Mapping risk…"]}
+          statusLines={["Extracting clauses…", "Clarifyd AI reasoning…", "Mapping risk…"]}
         />
       ) : null}
     </section>

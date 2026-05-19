@@ -734,7 +734,7 @@ function Footer() {
         </div>
         <FootCol heading="Product" items={[["Plans", "/pricing"], ["FAQ", "/faq"], ["Sign in", "/login"]]} />
         <FootCol heading="Company" items={[["Contact", "/contact"], ["Privacy", "/terms?tab=privacy"], ["Terms", "/terms"]]} />
-        <FootCol heading="Resources" items={[["Status", "#"], ["Changelog", "#"], ["Security", "/terms?tab=privacy"]]} />
+        <FootCol heading="Resources" items={[["Status", "/status"], ["Changelog", "/changelog"], ["Security", "/security"]]} />
       </div>
       <div style={{ maxWidth: 1280, margin: "28px auto 0", paddingTop: 18, borderTop: "1px solid rgba(244, 237, 225, 0.18)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontFamily: "Geist Mono, monospace", fontSize: 10, color: "#9b9181", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600 }}>
         <span>© 2026 Clarifyd · v0.6.0</span>

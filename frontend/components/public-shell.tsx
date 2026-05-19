@@ -72,7 +72,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
           </div>
           <FootCol heading="Product" items={[["Plans", "/pricing"], ["FAQ", "/faq"], ["Sign in", "/login"]]} />
           <FootCol heading="Company" items={[["Contact", "/contact"], ["Privacy", "/terms?tab=privacy"], ["Terms", "/terms"]]} />
-          <FootCol heading="Resources" items={[["Status", "#"], ["Changelog", "#"], ["Security", "/terms?tab=privacy"]]} />
+          <FootCol heading="Resources" items={[["Status", "/status"], ["Changelog", "/changelog"], ["Security", "/security"]]} />
         </div>
         <div
           style={{

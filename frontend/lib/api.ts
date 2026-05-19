@@ -31,7 +31,16 @@ import type {
 } from "./contracts";
 
 const DEFAULT_BASE_URL = "http://localhost:8000";
-const LEGACY_BACKEND_HOST = "clarifyd-backend.vercel.app";
+/**
+ * Hosts that previously served the backend but no longer do. Any env
+ * value pointing at one of these is treated as dead and skipped — the
+ * resolver falls through to the local dev backend (or to whatever the
+ * surrounding context provides). Keep this list non-empty; that's how
+ * the dead `clarifyd-backend.vercel.app` URL never bites us again.
+ */
+const DEAD_BACKEND_HOSTS: ReadonlySet<string> = new Set([
+  "clarifyd-backend.vercel.app",
+]);
 
 function firstValidationIssueMessage(details: Record<string, unknown>): string | null {
   const issues = details.issues;
@@ -63,26 +72,32 @@ function normalizeBaseUrl(value?: string): string | undefined {
   return value.trim().replace(/\/+$/, "");
 }
 
+function isDeadHost(url: string): boolean {
+  try {
+    return DEAD_BACKEND_HOSTS.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function resolveApiBaseUrl(baseUrl?: string): string {
   const explicitBase = normalizeBaseUrl(baseUrl);
-  if (explicitBase) return explicitBase;
+  if (explicitBase && !isDeadHost(explicitBase)) return explicitBase;
 
   const envBase = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
   if (!envBase) return DEFAULT_BASE_URL;
 
-  if (typeof window !== "undefined") {
-    const isLocalFrontend = ["localhost", "127.0.0.1", "0.0.0.0"].includes(
-      window.location.hostname
-    );
-    if (isLocalFrontend) {
-      try {
-        const host = new URL(envBase).hostname;
-        if (host === LEGACY_BACKEND_HOST) return DEFAULT_BASE_URL;
-      } catch {
-        // If NEXT_PUBLIC_API_URL is malformed, default to local backend in local dev.
-        return DEFAULT_BASE_URL;
-      }
+  // Env points at a known-dead host (legacy deploy that returns 404 on
+  // every path). Never use it.
+  if (isDeadHost(envBase)) {
+    if (typeof window !== "undefined") {
+      const isLocalFrontend = ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
+      if (isLocalFrontend) return DEFAULT_BASE_URL;
+      // Same-origin fallback for deployed frontends — Next can be wired to
+      // proxy /api/* to the live backend via next.config.js rewrites.
+      return `${window.location.origin}/api`;
     }
+    return DEFAULT_BASE_URL;
   }
 
   return envBase;
@@ -132,10 +147,24 @@ export class ApiClient {
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers: this.headers(init.headers),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        headers: this.headers(init.headers),
+      });
+    } catch (err) {
+      // Network / DNS / CORS preflight failure. Surface the actual URL so
+      // the user (or an operator) can immediately tell what's wrong.
+      throw new ApiError(0, {
+        error: {
+          code: "backend_unreachable",
+          message: `Cannot reach backend at ${this.baseUrl}. Backend may be offline or NEXT_PUBLIC_API_URL is misconfigured.`,
+          details: { underlying: err instanceof Error ? err.message : String(err) },
+          request_id: "",
+        },
+      } satisfies StructuredApiError);
+    }
     if (!res.ok) {
       let body: unknown = null;
       try {

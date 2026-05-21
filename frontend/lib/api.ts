@@ -41,6 +41,7 @@ const DEFAULT_BASE_URL = "http://localhost:8000";
 const DEAD_BACKEND_HOSTS: ReadonlySet<string> = new Set([
   "clarifyd-backend.vercel.app",
 ]);
+const PUBLIC_PROXY = "/api";
 
 function firstValidationIssueMessage(details: Record<string, unknown>): string | null {
   const issues = details.issues;
@@ -85,7 +86,12 @@ export function resolveApiBaseUrl(baseUrl?: string): string {
   if (explicitBase && !isDeadHost(explicitBase)) return explicitBase;
 
   const envBase = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
-  if (!envBase) return DEFAULT_BASE_URL;
+  if (!envBase) {
+    if (typeof window !== "undefined") {
+      return PUBLIC_PROXY;
+    }
+    return DEFAULT_BASE_URL;
+  }
 
   // Env points at a known-dead host (legacy deploy that returns 404 on
   // every path). Never use it.
@@ -95,7 +101,7 @@ export function resolveApiBaseUrl(baseUrl?: string): string {
       if (isLocalFrontend) return DEFAULT_BASE_URL;
       // Same-origin fallback for deployed frontends — Next can be wired to
       // proxy /api/* to the live backend via next.config.js rewrites.
-      return `${window.location.origin}/api`;
+      return PUBLIC_PROXY;
     }
     return DEFAULT_BASE_URL;
   }
@@ -328,6 +334,15 @@ export class ApiClient {
     draftId: string
   ): Promise<{ draft_id: string; negotiated_at: string }> {
     return this.request(`/api/v1/analyses/${encodeURIComponent(draftId)}/negotiate`, {
+      method: "POST",
+    });
+  }
+
+  /** Re-run ContractReporter for a draft whose report was null (API key missing at analysis time). */
+  async regenerateReport(
+    draftId: string
+  ): Promise<{ draft_id: string; report_generated: boolean }> {
+    return this.request(`/api/v1/analyses/${encodeURIComponent(draftId)}/regenerate-report`, {
       method: "POST",
     });
   }

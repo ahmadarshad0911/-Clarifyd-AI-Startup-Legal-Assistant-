@@ -26,6 +26,7 @@ import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
 import {
   listAnalyses,
+  pushAnalysis,
   removeAnalysis,
   type StoredAnalysis,
 } from "../../lib/analyses";
@@ -68,6 +69,7 @@ function Inner() {
   const [loaded, setLoaded] = useState(false);
   const [picked, setPicked] = useState<Record<string, Set<number>>>({});
   const [exporting, setExporting] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [exportedDoc, setExportedDoc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,17 +92,29 @@ function Inner() {
         const reconciled: StoredAnalysis[] = local.map((d) => {
           const r = remoteById.get(d.draft_id);
           if (!r) return d;
-          return { ...d, negotiated_at: r.negotiated_at ?? null, analyzed_at: r.analyzed_at ?? d.analyzed_at };
+          // Always take analysis from remote — it may have a report the local
+          // copy lacks (e.g. analysis completed after a proxy timeout).
+          return {
+            ...d,
+            analysis: r.analysis,
+            negotiated_at: r.negotiated_at ?? null,
+            analyzed_at: r.analyzed_at ?? d.analyzed_at,
+          };
         });
         const seen = new Set(local.map((d) => d.draft_id));
-        const fresh: StoredAnalysis[] = res.items.filter((r) => !seen.has(r.draft_id)).map((r) => ({
-          draft_id: r.draft_id,
-          file_name: r.file_name,
-          analyzed_at: r.analyzed_at,
-          negotiated_at: r.negotiated_at ?? null,
-          analysis: r.analysis,
-        }));
-        settle([...reconciled, ...fresh]);
+        const fresh: StoredAnalysis[] = res.items
+          .filter((r) => !seen.has(r.draft_id))
+          .map((r) => ({
+            draft_id: r.draft_id,
+            file_name: r.file_name,
+            analyzed_at: r.analyzed_at,
+            negotiated_at: r.negotiated_at ?? null,
+            analysis: r.analysis,
+          }));
+        const merged = [...reconciled, ...fresh];
+        // Persist fresh remote items to localStorage so next visit is instant.
+        merged.forEach((d) => pushAnalysis(d.analysis, d.file_name));
+        settle(merged);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -124,6 +138,34 @@ function Inner() {
       push("Removed", "success", d.file_name);
     } catch {
       push("Removed locally — server delete failed", "info");
+    }
+  }
+
+  async function handleRegenerateReport() {
+    if (!active || regenerating) return;
+    setRegenerating(true);
+    try {
+      const res = await client.regenerateReport(active.draft_id);
+      if (!res.report_generated) {
+        push("AI report generation failed — check API key in backend.", "error");
+        return;
+      }
+      // Fetch updated analysis from backend and patch local state + localStorage.
+      const remote = await client.listStoredAnalyses();
+      const updated = remote.items.find((r) => r.draft_id === active.draft_id);
+      if (updated) {
+        pushAnalysis(updated.analysis, updated.file_name);
+        setDocs((prev) =>
+          prev.map((d) =>
+            d.draft_id === active.draft_id ? { ...d, analysis: updated.analysis } : d
+          )
+        );
+        push("AI report generated.", "success");
+      }
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "Regenerate failed.", "error");
+    } finally {
+      setRegenerating(false);
     }
   }
 
@@ -509,9 +551,36 @@ function Inner() {
                 textAlign: "center",
                 color: "var(--ink-muted)",
                 fontStyle: "italic",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 16,
               }}
             >
-              Clarifyd AI found no critical loopholes in this document.
+              <span>Clarifyd AI found no critical loopholes in this document.</span>
+              {active && (
+                <button
+                  type="button"
+                  onClick={handleRegenerateReport}
+                  disabled={regenerating}
+                  style={{
+                    padding: "8px 18px",
+                    background: "transparent",
+                    border: "1px solid var(--border-strong)",
+                    color: "var(--ink-primary)",
+                    fontFamily: "Geist Mono, monospace",
+                    fontSize: 10,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    borderRadius: "var(--r-sm)",
+                    cursor: regenerating ? "not-allowed" : "pointer",
+                    opacity: regenerating ? 0.5 : 1,
+                  }}
+                >
+                  {regenerating ? "Generating…" : "Regenerate AI Report"}
+                </button>
+              )}
             </div>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>

@@ -5,6 +5,8 @@ class ErrorCode(str, Enum):
     policy_violation = "policy_violation"
     request_validation_error = "request_validation_error"
     upload_rejected = "upload_rejected"
+    not_a_contract = "not_a_contract"
+    off_topic_question = "off_topic_question"
     internal_error = "internal_error"
 
 

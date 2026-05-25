@@ -38,6 +38,7 @@ import {
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
 import { AutoClassifyChip, DocType } from "../../components/auto-classify-chip";
 import { ContextSelector, ContextValue } from "../../components/context-selector";
+import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { ApiError } from "../../lib/api";
 import { pushAnalysis, listAnalyses, type StoredAnalysis } from "../../lib/analyses";
 import { useAuth } from "../../lib/auth";
@@ -63,6 +64,7 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<NoticeContent | null>(null);
   const [recent, setRecent] = useState<StoredAnalysis[]>([]);
   const [docType, setDocType] = useState<DocType>("SAFE");
   const [ctx, setCtx] = useState<ContextValue>({ jurisdiction: "US", stage: "pre-seed", role: "founder" });
@@ -103,10 +105,23 @@ export default function DashboardPage() {
       push("Analysis ready", "success", `${res.findings.length} finding(s).`);
       router.push(`/findings?draft=${encodeURIComponent(res.draft_id)}`);
     } catch (err) {
-      const msg = err instanceof ApiError
-        ? `${err.message} [${err.status}]`
-        : err instanceof Error ? err.message : "Analysis failed.";
-      setError(msg);
+      if (err instanceof ApiError && err.code === "not_a_contract") {
+        setNotice({
+          kind: "rejection",
+          caption: "STOP PRESS · UPLOAD REFUSED",
+          headline: "That document isn't a contract.",
+          body:
+            err.message ||
+            "Clarifyd only analyzes contracts, term sheets, NDAs, SAFEs, MSAs, leases, and similar legally binding documents.",
+          hint: "Try uploading an actual agreement — anything with parties, clauses, and signatures.",
+          primaryLabel: "Pick another file",
+        });
+      } else {
+        const msg = err instanceof ApiError
+          ? `${err.message} [${err.status}]`
+          : err instanceof Error ? err.message : "Analysis failed.";
+        setError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -465,6 +480,11 @@ export default function DashboardPage() {
           <QuickLink key={c.title} index={i} {...c} />
         ))}
       </div>
+      <NoticeModal
+        open={notice !== null}
+        notice={notice}
+        onClose={() => setNotice(null)}
+      />
     </DarkAppShell>
   );
 }

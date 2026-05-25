@@ -18,6 +18,7 @@ import {
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { OrbitalLoader } from "../../components/common/orbital-loader";
+import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
@@ -57,6 +58,7 @@ export default function CopilotPage() {
   const [generating, setGenerating] = useState(false);
   const [doc, setDoc] = useState<string | null>(null);
   const [customDraft, setCustomDraft] = useState("");
+  const [notice, setNotice] = useState<NoticeContent | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function scrollToBottom() {
@@ -111,8 +113,22 @@ export default function CopilotPage() {
       const res = await client.copilotGuidance(active.name, text, next, active.mode);
       setMessages([...next, { role: "assistant", content: res.reply }]);
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Co-Pilot request failed.", "error");
-      setMessages(next);
+      if (err instanceof ApiError && err.code === "off_topic_question") {
+        setNotice({
+          kind: "rejection",
+          caption: "STOP PRESS · OFF-TOPIC QUESTION",
+          headline: "Clarifyd Co-Pilot only answers legal & startup questions.",
+          body:
+            err.message ||
+            "I can help with contracts, term sheets, NDAs, fundraising, hiring, IP, equity, and compliance — not coding tasks, math problems, or general chat.",
+          hint: "Try: 'What should I look for in a SAFE valuation cap?' or 'Explain the cliff in employee vesting.'",
+          primaryLabel: "Got it",
+        });
+        setMessages(messages);  // drop the off-topic turn from history
+      } else {
+        push(err instanceof ApiError ? err.message : "Co-Pilot request failed.", "error");
+        setMessages(next);
+      }
     } finally {
       setBusy(false);
       scrollToBottom();
@@ -447,6 +463,11 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
           </pre>
         </motion.section>
       ) : null}
+      <NoticeModal
+        open={notice !== null}
+        notice={notice}
+        onClose={() => setNotice(null)}
+      />
     </AppShell>
   );
 }

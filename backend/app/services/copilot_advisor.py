@@ -70,6 +70,61 @@ DISCLAIMER = (
 )
 
 
+class OffTopicQuestion(Exception):
+    """Raised by CopilotAdvisor when the user's question isn't contract / legal /
+    startup related (e.g. 'print an array from 1 to 10'). Caller maps this to a
+    422 AppError with code=off_topic_question.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+_ON_TOPIC_KEYWORDS = (
+    "contract", "agreement", "clause", "term", "sheet", "safe", "nda",
+    "msa", "sow", "lease", "license", "employ", "hire", "fire", "ip",
+    "intellectual", "patent", "trademark", "copyright", "confidential",
+    "indemnif", "liabilit", "warrant", "covenant", "represent", "breach",
+    "terminat", "jurisdiction", "govern", "arbitrat", "litigat", "lawsuit",
+    "founder", "investor", "fundrais", "equity", "vesting", "cliff",
+    "valuation", "preferred", "common", "stock", "share", "option",
+    "convertible", "note", "preemptive", "drag-along", "tag-along",
+    "compliance", "regul", "gdpr", "ccpa", "hipaa", "tax", "audit",
+    "startup", "company", "corporation", "llc", "incorpor", "delaware",
+    "merger", "acquisition", "due diligence", "term sheet", "rofr",
+    "non-compete", "non-solicit", "severance", "offer letter",
+    "vendor", "supplier", "client", "customer", "subscription", "saas",
+    "data", "privacy", "security", "policy", "dispute", "advice",
+    "legal", "lawyer", "attorney", "counsel",
+)
+
+_OFF_TOPIC_BLOCK_PATTERNS = (
+    "print", "loop", "array", "for loop", "while loop", "function",
+    "code", "script", "compile", "python", "javascript", "java ",
+    "typescript", "html", "css", "sql query", "regex", "algorithm",
+    "recipe", "cook", "weather", "joke", "poem", "story", "translate",
+    "math problem", "calculate", "calculator",
+)
+
+
+def _is_off_topic(message: str) -> tuple[bool, str]:
+    """Cheap heuristic gate. Returns (is_off_topic, reason)."""
+    lower = message.lower().strip()
+    if not lower:
+        return True, "Empty message."
+    on_hits = sum(1 for k in _ON_TOPIC_KEYWORDS if k in lower)
+    off_hits = sum(1 for k in _OFF_TOPIC_BLOCK_PATTERNS if k in lower)
+    # Clearly coding/non-legal request with no legal anchor → block.
+    if off_hits >= 1 and on_hits == 0:
+        return (
+            True,
+            "Clarifyd Co-Pilot only answers questions about contracts, legal terms, "
+            "fundraising, hiring, IP, and startup operations.",
+        )
+    return False, ""
+
+
 class CopilotAdvisor:
     def __init__(
         self,
@@ -98,6 +153,14 @@ class CopilotAdvisor:
         message: str,
         mode: str = "template",
     ) -> str:
+        # Off-topic gate runs first so we never burn an LLM call on
+        # "print an array from 1 to 10" style requests. Skip for non-chat
+        # modes — template / custom flows are already scoped by definition.
+        if mode == "chat":
+            off, reason = _is_off_topic(message)
+            if off:
+                raise OffTopicQuestion(reason)
+
         if not self._api_key:
             return (
                 "The reasoning model is not configured yet — set REASONING_API_KEY in the "

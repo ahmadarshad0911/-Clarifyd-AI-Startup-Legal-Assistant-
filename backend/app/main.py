@@ -57,9 +57,14 @@ from app.routes.workflow import router as workflow_router
 from app.services.async_contract_analysis import AsyncContractAnalysisService
 from app.services.contract_analysis import ContractAnalysisService
 from app.services.contract_ingestion import ContractIngestionService
+from app.services.contract_detector import ContractDetector
 from app.services.contract_reporter import ContractReporter
 from app.services.contract_text_extractor import ContractTextExtractor
-from app.services.copilot_advisor import CopilotAdvisor, DISCLAIMER as COPILOT_DISCLAIMER
+from app.services.copilot_advisor import (
+    CopilotAdvisor,
+    DISCLAIMER as COPILOT_DISCLAIMER,
+    OffTopicQuestion,
+)
 from app.services.custom_reasoning_model import CustomReasoningModel
 from app.services.reasoning import (
     FallbackChainProvider,
@@ -80,6 +85,7 @@ _http_client: "httpx.AsyncClient | None" = None
 _async_analysis: AsyncContractAnalysisService | None = None
 _contract_reporter: ContractReporter | None = None
 _copilot_advisor: CopilotAdvisor | None = None
+_contract_detector: ContractDetector | None = None
 
 
 def _ensure_runtime() -> None:
@@ -94,7 +100,7 @@ def _ensure_runtime() -> None:
     serverless containers don't benefit from cross-request caching here
     anyway, and the previous client's network sockets close at scope end.
     """
-    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector
     timeout = httpx.Timeout(
         connect=5.0,
         read=settings.reasoning_timeout_seconds,
@@ -119,6 +125,13 @@ def _ensure_runtime() -> None:
         base_url=settings.reasoning_base_url,
         timeout=240.0,
     )
+    _contract_detector = ContractDetector(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=20.0,
+    )
 
 
 def get_async_analysis() -> AsyncContractAnalysisService:
@@ -135,6 +148,11 @@ def get_contract_reporter() -> ContractReporter | None:
 def get_copilot_advisor() -> CopilotAdvisor | None:
     _ensure_runtime()
     return _copilot_advisor
+
+
+def get_contract_detector() -> ContractDetector | None:
+    _ensure_runtime()
+    return _contract_detector
 
 
 def _build_provider_chain(client: "httpx.AsyncClient"):
@@ -179,7 +197,7 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector
     timeout = httpx.Timeout(connect=5.0, read=settings.reasoning_timeout_seconds, write=10.0, pool=5.0)
     _http_client = httpx.AsyncClient(timeout=timeout)
     _async_analysis = AsyncContractAnalysisService(provider=_build_provider_chain(_http_client))
@@ -197,6 +215,13 @@ async def lifespan(app: FastAPI):
         base_url=settings.reasoning_base_url,
         timeout=240.0,
     )
+    _contract_detector = ContractDetector(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=20.0,
+    )
 
     try:
         yield
@@ -207,6 +232,7 @@ async def lifespan(app: FastAPI):
         _async_analysis = None
         _contract_reporter = None
         _copilot_advisor = None
+        _contract_detector = None
         await dispose_engine()
 
 
@@ -463,6 +489,20 @@ async def _analyze_and_persist(
 
     Used by file upload, pasted text, and URL fetch entry points.
     """
+    # Gate: refuse documents that aren't contracts before burning Kimi tokens
+    # on per-clause analysis and the reporter.
+    detector = get_contract_detector()
+    if detector is not None:
+        detection = await detector.classify(contract_text)
+        if not detection.is_contract:
+            raise AppError(
+                code=ErrorCode.not_a_contract,
+                message=detection.reason
+                or "This document doesn't look like a contract.",
+                status_code=422,
+                details={"confidence": f"{detection.confidence:.2f}"},
+            )
+
     # Match existing draft only for THIS user; never reuse another owner's draft
     # for the same sha — keeps queue, findings, and ownership strictly per-account.
     existing = (
@@ -901,12 +941,19 @@ async def copilot_guidance(
             message="Co-Pilot advisor not initialized.",
             status_code=503,
         )
-    reply = await advisor.chat(
-        template=body.template,
-        history=[m.model_dump() for m in body.history],
-        message=body.message,
-        mode=body.mode,
-    )
+    try:
+        reply = await advisor.chat(
+            template=body.template,
+            history=[m.model_dump() for m in body.history],
+            message=body.message,
+            mode=body.mode,
+        )
+    except OffTopicQuestion as exc:
+        raise AppError(
+            code=ErrorCode.off_topic_question,
+            message=exc.reason,
+            status_code=422,
+        ) from exc
     return CopilotGuidanceResponse(reply=reply, model=advisor.model)
 
 

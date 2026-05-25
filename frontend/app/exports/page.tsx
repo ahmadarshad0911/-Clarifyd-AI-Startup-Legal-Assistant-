@@ -148,10 +148,10 @@ export default function ExportsPage() {
             </div>
           </div>
 
-          {/* Hash-chain timeline */}
+          {/* Activity timeline */}
           <div style={{ marginTop: 40 }}>
             <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
-              Hash chain
+              Activity
             </div>
             <ol style={{ margin: "18px 0 0", padding: 0, listStyle: "none", position: "relative" }}>
               <span aria-hidden style={{ position: "absolute", left: 11, top: 14, bottom: 14, width: 1.5, background: "var(--bsd-rule)" }} />

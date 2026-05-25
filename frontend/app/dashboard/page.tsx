@@ -464,7 +464,7 @@ export default function DashboardPage() {
               className="cursor-pointer cf-mono"
               style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink-muted)", fontWeight: 600 }}
             >
-              Audit log
+              Library
             </Link>
           </div>
         </motion.aside>
@@ -475,7 +475,7 @@ export default function DashboardPage() {
         {[
           { title: "Negotiate", body: "Track contracts you're actively pushing back on.", href: "/negotiation", Icon: Handshake },
           { title: "Co-Pilot", body: "Ask Clarifyd AI anything about a clause.", href: "/copilot", Icon: Sparkle },
-          { title: "Audit", body: "Hash-chained log of every analysis + export.", href: "/exports", Icon: HashStraight },
+          { title: "Library", body: "Every analyzed contract, ready to revisit or export.", href: "/exports", Icon: HashStraight },
         ].map((c, i) => (
           <QuickLink key={c.title} index={i} {...c} />
         ))}

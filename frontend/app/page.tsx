@@ -202,7 +202,7 @@ function RuleHeavy() {
         <span style={{ opacity: 0.4 }}>·</span>
         <span>Citation-grounded findings</span>
         <span style={{ opacity: 0.4 }}>·</span>
-        <span>Hash-chained audit trail</span>
+        <span>Drop-in DOCX exports</span>
         <span style={{ color: T.red }}>★</span>
       </div>
     </div>
@@ -323,7 +323,7 @@ const STEPS: Step[] = [
     body: "PDF, DOCX, or paste raw text. SAFEs, MSAs, NDAs, offer letters, term sheets up to 10 MB.",
     bullets: [
       "Drag-and-drop or browse — no upload queue.",
-      "Encrypted in transit (TLS 1.3), at rest (AES-256).",
+      "Auto-classified as SAFE, MSA, NDA, lease, or offer letter.",
       "Re-upload same file → free, served from cache.",
     ],
     proof: { label: "Accepted", lines: [".pdf  .docx  .txt", "≤ 10 MB", "≤ 200 pages"] },
@@ -364,10 +364,10 @@ const STEPS: Step[] = [
   {
     n: "04",
     title: "Hand to counterparty",
-    body: "Exported draft plus a hash-chained audit trail proving exactly what changed and when.",
+    body: "Exported draft with a clear change log proving exactly what was rewritten and why.",
     bullets: [
       "PDF or DOCX export, no watermarks on Founder+.",
-      "Tamper-evident SHA-256 chain on every action.",
+      "Side-by-side diff against the original.",
       "Counsel-ready collaborator doc.",
     ],
     proof: { label: "Audit chain", lines: [
@@ -603,7 +603,7 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
 }
 
 const PLANS = [
-  { name: "Reader",  price: "$0",     cadence: "forever",       bullets: ["3 contracts / month", "Founder-friendly rewrites", "Hash-chained audit trail", "Community support"], cta: "Start free",   featured: false },
+  { name: "Reader",  price: "$0",     cadence: "forever",       bullets: ["3 contracts / month", "Founder-friendly rewrites", "DOCX export with redlines", "Community support"], cta: "Start free",   featured: false },
   { name: "Founder", price: "$29",    cadence: "/ month",       bullets: ["Unlimited contracts", "Collaborator export", "Negotiation tracker", "Same-day email support"],     cta: "Get Founder",  featured: true },
   { name: "Counsel", price: "Custom", cadence: "talk to us",    bullets: ["Everything in Founder", "Custom jurisdiction templates", "SAML SSO + SOC-2 export", "Dedicated partner"], cta: "Talk to sales", featured: false },
 ];

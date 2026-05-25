@@ -188,13 +188,13 @@ export default function LoginPage() {
           </h1>
           <p style={{ margin: 0, fontSize: 16, color: "var(--bsd-body)", lineHeight: 1.6, maxWidth: 440 }}>
             {mode === "signin"
-              ? "Resume your contract reviews. Findings, drafts, and the audit chain are exactly where you left them."
+              ? "Resume your contract reviews. Findings and drafts are exactly where you left them."
               : "Three contracts a month, free forever. Drop your first SAFE in under sixty seconds after sign-up."}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 14, borderTop: "1px solid var(--bsd-hairline)" }}>
-            <Bullet label="AES-256 at rest · TLS 1.3 in transit" />
-            <Bullet label="JWT auth · bcrypt-12 password hashing" />
-            <Bullet label="Hash-chained audit log on every action" />
+            <Bullet label="Clause-level risk scoring in seconds" />
+            <Bullet label="Founder-favorable rewrites, drop-in ready" />
+            <Bullet label="Export negotiation-ready DOCX in one click" />
           </div>
         </motion.aside>
 
@@ -335,7 +335,7 @@ export default function LoginPage() {
 
             <p className="cf-mono" style={{ margin: "4px 0 0", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--bsd-muted)", fontWeight: 600, textAlign: "center" }}>
               <ShieldCheck weight="duotone" size={11} color="var(--bsd-red)" style={{ verticalAlign: "middle", marginRight: 4 }} />
-              AES-256 · JWT · audit-chained
+              Built for founders · Free forever tier
             </p>
           </form>
         </motion.section>

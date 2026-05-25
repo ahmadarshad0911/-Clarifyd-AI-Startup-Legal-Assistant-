@@ -46,7 +46,7 @@ const CONTENT: Record<TabId, { label: string; subtitle: string; sections: Sectio
     subtitle: "How Clarifyd handles, processes, and protects the contracts you trust us with.",
     sections: [
       { n: "01", title: "What we collect", body: [
-        "Account: email, password hash (bcrypt-12), role, OAuth identity claims if you sign in with Google or Facebook.",
+        "Account: email, role, and OAuth identity claims if you sign in with Google or Facebook.",
         "Contracts: only what you upload. We never scrape email or third-party stores.",
         "Telemetry: anonymous page-view + latency buckets so we can find slow surfaces.",
       ]},
@@ -54,7 +54,7 @@ const CONTENT: Record<TabId, { label: string; subtitle: string; sections: Sectio
         "Contracts are sent to Clarifyd AI for reasoning, then cached by SHA-256 so a re-upload of the same contract is byte-identical and free.",
         "No customer contract content trains any model — ever.",
       ]},
-      { n: "03", title: "Where it lives", body: ["Postgres in our managed cloud (us-east), serverless runtime (iad1). TLS 1.3 in transit, AES-256 at rest. JWT auth with bcrypt-12 password hashing."] },
+      { n: "03", title: "Where it lives", body: ["Hosted in our managed cloud. Industry-standard encryption protects data in transit and at rest."] },
       { n: "04", title: "Your controls", body: ["Delete account anytime from Settings. We hard-delete user row + owned drafts within 24h. Audit log entries are anonymized — user_id zeroed, hash chain stays intact for compliance."] },
     ],
   },

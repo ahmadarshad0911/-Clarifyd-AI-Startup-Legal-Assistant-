@@ -54,7 +54,7 @@ const RELEASES: Release[] = [
     summary: "Whole-site rebrand to The Broadsheet: ivory paper, coffee ink, arterial red. Pre-seed-only product targeting. Per-user storage scoping fixes the cross-account data bleed.",
     entries: [
       { tag: "design",   body: "Brutalist editorial system across 20+ routes. Geist Sans + Geist Mono, Phosphor duotone icons, sharp edges, no gradients / glass / shadows." },
-      { tag: "feature",  body: "New routes: /monitor (calendar of perils), /lawyer (article forthcoming plate), /library (template catalog), /integrations." },
+      { tag: "feature",  body: "New routes: /lawyer (article forthcoming plate), /library (template catalog), /integrations." },
       { tag: "feature",  body: "Reasoning surface renamed Clarifyd AI. Provider abstraction in services/reasoning/ preserved." },
       { tag: "fix",      body: "Per-user localStorage scoping via lib/user-storage.ts. AuthProvider wipes 11 legacy global keys on login/logout." },
       { tag: "fix",      body: "Forms hardened: blue focus ring suppressed, WebKit search decorations hidden, range slider custom thumb (no native black outline)." },
@@ -78,12 +78,12 @@ const RELEASES: Release[] = [
     version: "v0.4.0",
     date: "February 2026",
     title: "Findings, exports, OAuth + Postgres.",
-    summary: "Single-tab Findings view, hash-chained exports, Google + Facebook OAuth, Postgres production path.",
+    summary: "Single-tab Findings view, DOCX exports, Google + Facebook OAuth, production path live.",
     entries: [
       { tag: "feature",  body: "Findings tab unifies risky clauses + loopholes + suggestions; one-tap Apply." },
-      { tag: "feature",  body: "Hash-chained audit log on every analysis, accept, and export." },
-      { tag: "feature",  body: "OAuth 2.0 for Google + Facebook (HMAC-signed state, JWT issued by us)." },
-      { tag: "security", body: "AES-256 at rest, TLS 1.3 in transit, bcrypt-12 password hashing." },
+      { tag: "feature",  body: "Re-open any analyzed contract from the dashboard, instantly." },
+      { tag: "feature",  body: "One-tap sign-in with Google and Facebook." },
+      { tag: "feature",  body: "Private workspace — every contract scoped to your account." },
     ],
   },
   {

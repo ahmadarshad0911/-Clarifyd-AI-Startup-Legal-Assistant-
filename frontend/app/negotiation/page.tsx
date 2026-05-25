@@ -448,7 +448,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
           </div>
           <div className="cf-mono" style={{ padding: "10px 40px", borderTop: "1px solid rgba(244, 237, 225, 0.18)", fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "#9b9181", display: "inline-flex", alignItems: "center", gap: 8 }}>
             <ShieldCheck weight="duotone" size={11} color="var(--bsd-red)" />
-            Secured · AES-256 · hash-chained audit trail
+            Private to your account · Founder-ready DOCX export
           </div>
         </section>
       ) : null}

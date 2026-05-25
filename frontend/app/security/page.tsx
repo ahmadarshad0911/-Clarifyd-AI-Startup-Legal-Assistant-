@@ -29,31 +29,31 @@ type Article = {
 const ARTICLES: Article[] = [
   {
     n: "01", Icon: Lock,
-    title: "Encryption in transit and at rest",
-    body: ["TLS 1.3 is the floor for every request. At rest, customer contract content and metadata are encrypted with AES-256."],
+    title: "Your contracts are private",
+    body: ["Every contract you upload is scoped to your account. No other Clarifyd user — or staff member — can read your documents."],
     bullets: [
-      "Database disks: AES-256-XTS via the managed Postgres provider.",
-      "Object storage: AES-256, server-side keys rotated quarterly.",
-      "Application-layer field encryption for personally-identifying fields.",
+      "Industry-standard encryption protects data in transit and at rest.",
+      "Deleted analyses are removed from the dashboard immediately.",
+      "Each browser session is scoped to the signed-in user.",
     ],
   },
   {
     n: "02", Icon: KeyReturn,
-    title: "Identity and authentication",
-    body: ["Email/password uses bcrypt with cost 12. JWT access tokens are HS256-signed and short-lived; OAuth state strings are HMAC-signed and single-use."],
+    title: "Sign in your way",
+    body: ["Use email and password, Google, or Facebook to access your founder account. You stay in control of which credentials are connected."],
     bullets: [
-      "Google and Facebook OAuth 2.0 — we mint our own JWT after the callback.",
-      "Account deletion is a hard delete of the user row + all owned drafts inside 24 hours.",
-      "Audit-log entries are anonymised on deletion but the hash chain stays intact for compliance.",
+      "Disconnect a social login at any time from settings.",
+      "Delete your account and we remove every contract you own.",
+      "Forgotten password? One-tap email reset.",
     ],
   },
   {
     n: "03", Icon: Hash,
-    title: "Hash-chained audit trail",
-    body: ["Every analysis, accept, reject, and export appends to a per-user audit log. Each row carries SHA-256 of (prev_hash + action_payload). Tampering with any row invalidates the chain from that point forward."],
+    title: "Built for repeat reviews",
+    body: ["Re-upload the same contract and we serve the previous analysis instantly. Compare versions side-by-side as you negotiate."],
     bullets: [
-      "Export a verifiable JSON chain at any time from the Exports tab.",
-      "Server-side replay verifier is part of the standard test suite.",
+      "Export findings as JSON or PDF for any analysis.",
+      "Every accepted clause becomes a one-click redline.",
     ],
   },
   {

@@ -38,6 +38,7 @@
   --bsd-sev-high:     #d97706;
   --bsd-sev-medium:   #a98b2a;
   --bsd-sev-low:      #6c6356;
+  --bsd-sev-clean:    #4f7d3f;
 
   /* ---------- Type scale ---------- */
   --fs-mono-xs: 9.5px;
@@ -78,6 +79,7 @@
   --sev-high: var(--bsd-sev-high);
   --sev-medium: var(--bsd-sev-medium);
   --sev-low: var(--bsd-sev-low);
+  --sev-clean: var(--bsd-sev-clean);
   --r-sm: 0px;
   --r-md: 0px;
 }

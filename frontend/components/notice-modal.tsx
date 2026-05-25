@@ -11,9 +11,44 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { X } from "@phosphor-icons/react";
+import {
+  X,
+  WarningCircle,
+  CheckCircle,
+  Info,
+  Prohibit,
+} from "@phosphor-icons/react";
 
-export type NoticeKind = "rejection" | "warning" | "info";
+export type NoticeKind = "rejection" | "warning" | "info" | "success";
+
+type KindTheme = {
+  accent: string;       // main rule + button + icon color
+  tint: string;         // subtle paper-tint wash for card background
+  Icon: typeof Info;
+};
+
+const THEME: Record<NoticeKind, KindTheme> = {
+  rejection: {
+    accent: "var(--bsd-red, #b8260f)",
+    tint: "color-mix(in oklch, var(--bsd-red, #b8260f) 6%, var(--bsd-paper, #f4ede1))",
+    Icon: Prohibit,
+  },
+  warning: {
+    accent: "var(--bsd-sev-high, #d97706)",
+    tint: "color-mix(in oklch, var(--bsd-sev-high, #d97706) 7%, var(--bsd-paper, #f4ede1))",
+    Icon: WarningCircle,
+  },
+  info: {
+    accent: "var(--bsd-ink, #0c0a08)",
+    tint: "var(--bsd-paper, #f4ede1)",
+    Icon: Info,
+  },
+  success: {
+    accent: "var(--bsd-sev-clean, #4f7d3f)",
+    tint: "color-mix(in oklch, var(--bsd-sev-clean, #4f7d3f) 7%, var(--bsd-paper, #f4ede1))",
+    Icon: CheckCircle,
+  },
+};
 
 export type NoticeContent = {
   kind: NoticeKind;
@@ -51,12 +86,9 @@ export function NoticeModal({
 
   if (!notice) return null;
 
-  const accent =
-    notice.kind === "rejection"
-      ? "var(--bsd-red)"
-      : notice.kind === "warning"
-      ? "var(--bsd-sev-high, #d97706)"
-      : "var(--bsd-ink)";
+  const theme = THEME[notice.kind];
+  const accent = theme.accent;
+  const KindIcon = theme.Icon;
 
   return (
     <AnimatePresence>
@@ -107,7 +139,7 @@ export function NoticeModal({
               width: "100%",
               maxHeight: "calc(100vh - 48px)",
               overflowY: "auto",
-              background: "var(--bsd-paper, #f4ede1)",
+              background: theme.tint,
               color: "var(--bsd-ink, #0c0a08)",
               borderRadius: 2,
               boxShadow:
@@ -181,6 +213,9 @@ export function NoticeModal({
               transition={{ duration: 0.28, delay: 0.1, ease: [0.23, 1, 0.32, 1] }}
               className="cf-mono"
               style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
                 fontFamily: "Geist Mono, ui-monospace, monospace",
                 fontSize: 10.5,
                 letterSpacing: "0.18em",
@@ -190,6 +225,7 @@ export function NoticeModal({
                 marginBottom: 14,
               }}
             >
+              <KindIcon weight="duotone" size={15} aria-hidden />
               {notice.caption}
             </motion.div>
 

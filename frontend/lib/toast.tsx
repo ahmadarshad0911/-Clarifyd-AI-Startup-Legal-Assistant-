@@ -46,9 +46,17 @@ function caption(kind: ToastKind): string {
 }
 
 function accentColor(kind: ToastKind): string {
-  if (kind === "success") return "var(--bsd-sev-medium, #a98b2a)";
+  if (kind === "success") return "var(--bsd-sev-clean, #4f7d3f)";
   if (kind === "error") return "var(--bsd-red, #b8260f)";
   return "var(--bsd-ink, #0c0a08)";
+}
+
+function tintColor(kind: ToastKind): string {
+  if (kind === "success")
+    return "color-mix(in oklch, var(--bsd-sev-clean, #4f7d3f) 7%, var(--bsd-paper, #f4ede1))";
+  if (kind === "error")
+    return "color-mix(in oklch, var(--bsd-red, #b8260f) 7%, var(--bsd-paper, #f4ede1))";
+  return "var(--bsd-paper, #f4ede1)";
 }
 
 function kindIcon(kind: ToastKind) {
@@ -95,6 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <AnimatePresence initial={false}>
           {toasts.map((t) => {
             const accent = accentColor(t.kind);
+            const tint = tintColor(t.kind);
             return (
               <motion.article
                 key={t.id}
@@ -106,7 +115,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 style={{
                   pointerEvents: "auto",
                   position: "relative",
-                  background: "var(--bsd-paper, #f4ede1)",
+                  background: tint,
                   color: "var(--bsd-ink, #0c0a08)",
                   borderRadius: 2,
                   padding: "16px 18px 14px 18px",

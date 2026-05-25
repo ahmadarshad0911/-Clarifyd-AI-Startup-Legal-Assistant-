@@ -155,7 +155,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 32, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">§ Negotiation lab · Volume I</span>
+            <span className="bsd-kicker">Negotiation lab · Volume I</span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Across the <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>table.</span>
             </h1>
@@ -323,7 +323,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
                         {sg ? (
                           <div style={{ marginTop: 16, padding: "16px 18px", border: "1.5px solid var(--bsd-ink)", background: "var(--bsd-paper)" }}>
                             <div className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800, marginBottom: 8 }}>
-                              § Counter-offer
+                              Counter-offer
                             </div>
                             <p style={{ margin: 0, fontSize: 14, color: "var(--bsd-ink)", lineHeight: 1.6, fontFamily: "Geist Mono, monospace" }}>
                               {sg.suggested_clause}
@@ -364,7 +364,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
             <div style={{ border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper)" }}>
               <div style={{ padding: "14px 18px", background: "var(--bsd-ink)", color: "var(--bsd-paper)" }}>
                 <div className="cf-mono" style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                  § Negotiation summary
+                  Negotiation summary
                 </div>
                 <div style={{ marginTop: 4, fontSize: 17, fontWeight: 700, letterSpacing: "-0.015em" }}>
                   {counterName ?? "Untitled negotiation"}
@@ -397,7 +397,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
           <div style={{ padding: "44px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 28, flexWrap: "wrap" }}>
             <div style={{ maxWidth: 540 }}>
               <div className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", fontWeight: 800 }}>
-                § The collaboration vault
+                The collaboration vault
               </div>
               <h2 style={{ margin: "10px 0 0", fontSize: 34, fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.05 }}>
                 {picked.size} clause{picked.size === 1 ? "" : "s"} agreed.<br />
@@ -464,7 +464,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
           <div style={{ padding: "16px 20px", borderBottom: "1.5px solid var(--bsd-ink)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
               <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                § Galley proof
+                Galley proof
               </span>
               <span style={{ fontSize: 16, color: "var(--bsd-ink)", fontWeight: 600 }}>
                 Ultimate Collaboration Agreement
@@ -570,7 +570,7 @@ function DropZone({ order, label, hint, Icon, fileName, onPick, disabled, active
       <input ref={ref} type="file" accept=".pdf,.docx" onChange={handlePick} disabled={disabled} className="hidden" />
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <span className="cf-mono" style={{ color: active ? "var(--bsd-red)" : "var(--bsd-muted)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-          § Doc {order}
+          Doc {order}
         </span>
         <Icon weight="duotone" size={22} color={filled ? "var(--bsd-red)" : "var(--bsd-muted)"} aria-hidden />
       </div>

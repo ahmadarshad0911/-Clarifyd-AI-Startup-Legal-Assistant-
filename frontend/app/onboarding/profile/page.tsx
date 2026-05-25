@@ -197,7 +197,7 @@ export default function FounderProfilePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EOQ }}
           >
-            <span className="bsd-kicker">§ Chapter {ROMAN[step - 1]}</span>
+            <span className="bsd-kicker">Chapter {ROMAN[step - 1]}</span>
             <h1 style={{ marginTop: 14, marginBottom: 0, fontSize: 46, fontWeight: 700, letterSpacing: "-0.035em", lineHeight: 1.02, color: "var(--bsd-ink)" }}>
               {step === 2 ? (
                 <>On the matter of your <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>venture.</span></>
@@ -450,7 +450,7 @@ function WorkspaceStep({
 
         <div>
           <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, marginBottom: 14, paddingBottom: 8, borderBottom: "1px solid var(--bsd-hairline)" }}>
-            § Sector
+            Sector
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 36px" }} className="grid-cols-1 sm:grid-cols-2">
             {SECTORS.map((s, i) => {
@@ -486,7 +486,7 @@ function WorkspaceStep({
 
         <div>
           <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: "1px solid var(--bsd-hairline)" }}>
-            § Primary jurisdiction
+            Primary jurisdiction
           </div>
           <div style={{ position: "relative", maxWidth: 460 }}>
             <Globe weight="duotone" size={16} color="var(--bsd-red)" style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden />
@@ -508,7 +508,7 @@ function WorkspaceStep({
 
         <div>
           <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, marginBottom: 14, paddingBottom: 8, borderBottom: "1px solid var(--bsd-hairline)" }}>
-            § Your role
+            Your role
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {ROLES.map((r) => {

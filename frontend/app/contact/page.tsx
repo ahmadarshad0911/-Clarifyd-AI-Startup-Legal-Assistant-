@@ -79,7 +79,7 @@ export default function ContactPage() {
             style={{ display: "flex", flexDirection: "column", gap: 32 }}
           >
             <div>
-              <span className="bsd-kicker">§ Correspondence</span>
+              <span className="bsd-kicker">Correspondence</span>
               <h1 style={{ margin: "12px 0 0", fontSize: "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>
                 Talk to <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>us.</span>
               </h1>

@@ -216,7 +216,7 @@ export function DarkAppShell({
                   {role ?? "viewer"}
                 </div>
               </div>
-              <MenuLink href="/onboarding/profile" label="Profile" Icon={User} />
+              <MenuLink href="/profile" label="Profile" Icon={User} />
               <MenuLink href="/" label="Landing" />
               <button
                 type="button"

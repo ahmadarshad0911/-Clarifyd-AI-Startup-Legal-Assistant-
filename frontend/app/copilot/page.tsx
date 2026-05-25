@@ -207,7 +207,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">§ Legal Co-Pilot</span>
+            <span className="bsd-kicker">Legal Co-Pilot</span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Draft with <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>precision.</span>
             </h1>
@@ -337,7 +337,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
             <div style={{ borderBottom: "2px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--bsd-paper-deep)" }}>
               <div style={{ minWidth: 0 }}>
                 <div className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                  § Clarifyd Assistant
+                  Clarifyd Assistant
                 </div>
                 <div style={{ marginTop: 2, fontSize: 12.5, color: "var(--bsd-body)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {statusLabel}
@@ -443,7 +443,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
           <div style={{ padding: "16px 20px", borderBottom: "1.5px solid var(--bsd-ink)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
               <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                § Galley proof
+                Galley proof
               </span>
               <span style={{ fontSize: 16, color: "var(--bsd-ink)", fontWeight: 600 }}>
                 {active?.name ?? "Generated"} · draft

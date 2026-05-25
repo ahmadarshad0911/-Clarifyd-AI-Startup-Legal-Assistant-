@@ -51,7 +51,7 @@ export default function LawyerPage() {
             >
               <Scales weight="duotone" size={22} color="var(--bsd-red)" aria-hidden />
               <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                § Article forthcoming · No. XII
+                Article forthcoming · No. XII
               </span>
               <span style={{ flex: 1, height: 1, background: "var(--bsd-hairline)" }} />
               <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700 }}>
@@ -157,7 +157,7 @@ export default function LawyerPage() {
                   }}
                 >
                   <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                    § Notify by post
+                    Notify by post
                   </span>
                   <p style={{ margin: 0, fontSize: 14.5, color: "var(--bsd-body)", lineHeight: 1.55 }}>
                     Drop your address. We&rsquo;ll write when the column ships, with the first 50 readers getting flat-fee first-review pricing.
@@ -218,7 +218,7 @@ export default function LawyerPage() {
           <div style={{ maxWidth: 1100, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 14, borderBottom: "1px solid var(--bsd-hairline)" }}>
               <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                § In the meantime
+                In the meantime
               </span>
               <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700 }}>
                 Three rooms over

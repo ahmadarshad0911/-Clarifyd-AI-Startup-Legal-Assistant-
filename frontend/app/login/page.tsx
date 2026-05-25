@@ -177,7 +177,7 @@ export default function LoginPage() {
           style={{ display: "flex", flexDirection: "column", gap: 28 }}
         >
           <span className="bsd-kicker">
-            {mode === "signin" ? "§ Welcome back" : "§ Open a reading room"}
+            {mode === "signin" ? "Welcome back" : "Open a reading room"}
           </span>
           <h1 style={{ margin: 0, fontSize: "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>
             {mode === "signin" ? (

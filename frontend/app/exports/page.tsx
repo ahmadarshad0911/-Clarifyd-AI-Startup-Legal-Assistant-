@@ -121,7 +121,7 @@ export default function ExportsPage() {
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">§ Library</span>
+            <span className="bsd-kicker">Library</span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Your contract <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>library.</span>
             </h1>
@@ -159,9 +159,7 @@ export default function ExportsPage() {
                   ID: {active ? active.slice(0, 22) : "—"}
                 </div>
               </div>
-              <span aria-hidden style={{ fontFamily: "Geist Mono, monospace", fontSize: 80, fontWeight: 800, color: "var(--bsd-red)", lineHeight: 0.8, opacity: 0.18, letterSpacing: "-0.06em" }}>
-                §
-              </span>
+              <FileText aria-hidden weight="duotone" size={80} color="var(--bsd-red)" style={{ opacity: 0.18 }} />
             </div>
 
             <div style={{ marginTop: 26, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 36px" }}>

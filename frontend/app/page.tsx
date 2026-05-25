@@ -213,7 +213,7 @@ function LoopholeOfTheWeek({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <SectionHeader kicker="§ Featured loophole" title="From a real seed-round SAFE." rule={`No. ${new Date().getDate().toString().padStart(2, "0")}`} />
+        <SectionHeader kicker="Featured loophole" title="From a real seed-round SAFE." rule={`No. ${new Date().getDate().toString().padStart(2, "0")}`} />
         <div
           style={{
             marginTop: 56,
@@ -384,7 +384,7 @@ function Process({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <SectionHeader kicker="§ The process" title="Eight seconds, four moves." rule="Method" />
+        <SectionHeader kicker="The process" title="Eight seconds, four moves." rule="Method" />
         <ol style={{ margin: "48px 0 0", padding: 0, listStyle: "none", borderTop: `2px solid ${T.ink}` }}>
           {STEPS.map((s, i) => {
             const open = openN === s.n;
@@ -534,7 +534,7 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <SectionHeader kicker="§ Risk atlas" title="What we find, by how often." rule="Index" />
+        <SectionHeader kicker="Risk atlas" title="What we find, by how often." rule="Index" />
         <p style={{ margin: "22px 0 0", maxWidth: 560, fontSize: 15, color: T.body, lineHeight: 1.65 }}>
           Sampled across <span style={{ fontFamily: "Geist Mono, monospace", color: T.ink, fontWeight: 700 }}>1,240</span> founder-uploaded pre-seed contracts last quarter. Severity follows Clarifyd&rsquo;s rubric, not the contract&rsquo;s tone.
         </p>
@@ -611,7 +611,7 @@ function Plans({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-        <SectionHeader kicker="§ Subscriptions" title="Free until your seed round." rule="Rates" />
+        <SectionHeader kicker="Subscriptions" title="Free until your seed round." rule="Rates" />
         <div
           style={{
             marginTop: 48,

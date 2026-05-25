@@ -90,7 +90,7 @@ export default function SecurityPage() {
             style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
           >
             <div>
-              <span className="bsd-kicker">§ Security desk</span>
+              <span className="bsd-kicker">Security desk</span>
               <h1 style={{ margin: "12px 0 0", fontSize: "clamp(36px, 5.5vw, 72px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
                 What we do so you can <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>upload a contract.</span>
               </h1>
@@ -179,7 +179,7 @@ export default function SecurityPage() {
           >
             <div>
               <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                § Responsible disclosure
+                Responsible disclosure
               </span>
               <h2 style={{ margin: "10px 0 0", fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
                 Found a vulnerability?

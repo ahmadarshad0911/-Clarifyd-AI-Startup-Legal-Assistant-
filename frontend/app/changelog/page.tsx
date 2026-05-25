@@ -111,7 +111,7 @@ export default function ChangelogPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EOQ }}
           >
-            <span className="bsd-kicker">§ Editions archive</span>
+            <span className="bsd-kicker">Editions archive</span>
             <h1 style={{ margin: "12px 0 0", fontSize: "clamp(36px, 5.5vw, 72px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Everything we&rsquo;ve shipped, <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>edition by edition.</span>
             </h1>
@@ -141,7 +141,7 @@ export default function ChangelogPage() {
             >
               <header style={{ position: "sticky", top: 90 }}>
                 <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                  § {r.edition}
+                  {r.edition}
                 </span>
                 <h2 style={{ margin: "10px 0 0", fontSize: 30, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.025em", lineHeight: 1.05 }}>
                   {r.title}

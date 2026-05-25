@@ -91,7 +91,7 @@ export default function ReasoningPage() {
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">§ Engine deliberation · Volume I</span>
+            <span className="bsd-kicker">Engine deliberation · Volume I</span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Reason it <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>back through.</span>
             </h1>
@@ -297,7 +297,7 @@ function Findings({ result, reduce }: { result: ReasoningEvaluateResponse; reduc
                 {f.founder_guidance.suggested_language ? (
                   <div style={{ marginTop: 14, padding: "12px 16px", border: "1.5px solid var(--bsd-ink)", background: "var(--bsd-paper)" }}>
                     <div className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 10, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 800, marginBottom: 6 }}>
-                      § Suggested safer clause
+                      Suggested safer clause
                     </div>
                     <p style={{ margin: 0, fontSize: 14, color: "var(--bsd-ink)", lineHeight: 1.6, fontFamily: "Geist Mono, monospace" }}>
                       {f.founder_guidance.suggested_language}

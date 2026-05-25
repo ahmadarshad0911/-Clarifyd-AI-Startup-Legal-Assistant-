@@ -52,12 +52,13 @@ const MOODS: Array<{
   v: Mood;
   Icon: typeof Smiley;
   label: string;
+  color: string;
 }> = [
-  { v: 1, Icon: SmileyXEyes,   label: "Awful" },
-  { v: 2, Icon: SmileyNervous, label: "Meh" },
-  { v: 3, Icon: SmileyMeh,     label: "Okay" },
-  { v: 4, Icon: Smiley,        label: "Good" },
-  { v: 5, Icon: SmileyWink,    label: "Brilliant" },
+  { v: 1, Icon: SmileyXEyes,   label: "Awful",     color: "var(--bsd-sev-critical)" },
+  { v: 2, Icon: SmileyNervous, label: "Meh",       color: "var(--bsd-sev-high)" },
+  { v: 3, Icon: SmileyMeh,     label: "Okay",      color: "var(--bsd-sev-medium)" },
+  { v: 4, Icon: Smiley,        label: "Good",      color: "var(--bsd-sev-clean, #4f7d3f)" },
+  { v: 5, Icon: SmileyWink,    label: "Brilliant", color: "var(--bsd-sev-clean, #4f7d3f)" },
 ];
 
 const CATEGORIES: Array<{ v: Category; Icon: typeof Bug; label: string }> = [
@@ -162,7 +163,7 @@ export default function FeedbackPage() {
           }}
         >
           <div>
-            <span className="bsd-kicker">§ Reporter&apos;s notebook</span>
+            <span className="bsd-kicker">Reporter&apos;s notebook</span>
             <h1
               style={{
                 margin: "10px 0 0",
@@ -285,6 +286,7 @@ export default function FeedbackPage() {
                     key={m.v}
                     Icon={m.Icon}
                     label={m.label}
+                    color={m.color}
                     active={mood === m.v}
                     onClick={() => setMood(m.v)}
                     reduce={reduce}
@@ -614,12 +616,14 @@ function SectionHeader({
 function MoodTile({
   Icon,
   label,
+  color,
   active,
   onClick,
   reduce,
 }: {
   Icon: typeof Smiley;
   label: string;
+  color: string;
   active: boolean;
   onClick: () => void;
   reduce: boolean;
@@ -632,8 +636,10 @@ function MoodTile({
       onClick={onClick}
       className="cursor-pointer"
       style={{
-        background: active ? "var(--bsd-red-soft)" : "var(--bsd-paper-low, var(--bsd-paper))",
-        border: `1px solid ${active ? "var(--bsd-red)" : "var(--bsd-rule)"}`,
+        background: active
+          ? `color-mix(in oklch, ${color} 10%, var(--bsd-paper))`
+          : "var(--bsd-paper-low, var(--bsd-paper))",
+        border: `1px solid ${active ? color : "var(--bsd-rule)"}`,
         borderRadius: 2,
         padding: "14px 6px 10px",
         display: "flex",
@@ -666,11 +672,7 @@ function MoodTile({
         transition={{ duration: 0.18, ease: EOQ }}
         style={{ display: "inline-flex" }}
       >
-        <Icon
-          weight="duotone"
-          size={26}
-          color={active ? "var(--bsd-red)" : "var(--bsd-ink)"}
-        />
+        <Icon weight="duotone" size={26} color={color} />
       </motion.span>
       <span
         className="cf-mono"
@@ -679,7 +681,7 @@ function MoodTile({
           fontSize: 9.5,
           letterSpacing: "0.16em",
           textTransform: "uppercase",
-          color: active ? "var(--bsd-red)" : "var(--bsd-muted)",
+          color: active ? color : "var(--bsd-muted)",
           fontWeight: 700,
         }}
       >

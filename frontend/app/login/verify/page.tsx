@@ -144,7 +144,7 @@ function Inner() {
         transition={{ duration: 0.5, ease: EOQ }}
         style={{ textAlign: "center", marginBottom: 28, maxWidth: 540 }}
       >
-        <span className="bsd-kicker">§ Verification</span>
+        <span className="bsd-kicker">Verification</span>
         <h1 style={{ marginTop: 14, fontSize: "clamp(36px, 5vw, 64px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.035em", lineHeight: 1 }}>
           Check your <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>inbox.</span>
         </h1>

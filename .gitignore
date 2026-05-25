@@ -168,3 +168,4 @@ backend/_*.py
 backend/_tunnel.log*
 
 backend/_uv.*
+.env*.local

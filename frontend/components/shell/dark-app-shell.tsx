@@ -25,12 +25,9 @@ const NAV_PRIMARY: NavItem[] = [
 ];
 const NAV_TOOLS: NavItem[] = [
   { href: "/reasoning",    label: "Reasoning" },
-  { href: "/compare",      label: "Compare" },
-  { href: "/monitor",      label: "Monitor" },
   { href: "/lawyer",       label: "Lawyer" },
   { href: "/library",      label: "Library" },
   { href: "/integrations", label: "Integrations" },
-  { href: "/compliance",   label: "Compliance" },
   { href: "/exports",      label: "Audit" },
   { href: "/feedback",     label: "Feedback" },
 ];

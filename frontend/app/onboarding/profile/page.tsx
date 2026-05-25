@@ -413,10 +413,10 @@ function VentureStep({
             onChange={(e) => onChange({ audit_rigor: Number(e.target.value) })}
             className="bsd-range"
             aria-label="Audit rigor"
+            style={{ ["--bsd-range-fill" as unknown as string]: `${rigor}%` }}
           />
-          <div className="cf-mono" style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: "var(--bsd-muted)", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
+          <div className="cf-mono" style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 10, color: "var(--bsd-muted)", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
             <span>0 · Permissive</span>
-            <span>50</span>
             <span>100 · Hyper-defensive</span>
           </div>
         </div>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { GeistSans, GeistMono } from "geist/font";
 
 import "./globals.css";
 import { AuthProvider } from "../lib/auth";

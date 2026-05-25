@@ -30,12 +30,12 @@ type KindTheme = {
 const THEME: Record<NoticeKind, KindTheme> = {
   rejection: {
     accent: "var(--bsd-red, #b8260f)",
-    tint: "color-mix(in oklch, var(--bsd-red, #b8260f) 6%, var(--bsd-paper, #f4ede1))",
+    tint: "color-mix(in oklch, var(--bsd-red, #b8260f) 3%, var(--bsd-paper, #f4ede1))",
     Icon: Prohibit,
   },
   warning: {
     accent: "var(--bsd-sev-high, #d97706)",
-    tint: "color-mix(in oklch, var(--bsd-sev-high, #d97706) 7%, var(--bsd-paper, #f4ede1))",
+    tint: "color-mix(in oklch, var(--bsd-sev-high, #d97706) 3%, var(--bsd-paper, #f4ede1))",
     Icon: WarningCircle,
   },
   info: {
@@ -45,7 +45,7 @@ const THEME: Record<NoticeKind, KindTheme> = {
   },
   success: {
     accent: "var(--bsd-sev-clean, #4f7d3f)",
-    tint: "color-mix(in oklch, var(--bsd-sev-clean, #4f7d3f) 7%, var(--bsd-paper, #f4ede1))",
+    tint: "color-mix(in oklch, var(--bsd-sev-clean, #4f7d3f) 4%, var(--bsd-paper, #f4ede1))",
     Icon: CheckCircle,
   },
 };
@@ -72,7 +72,7 @@ export function NoticeModal({
   onClose: () => void;
 }) {
   const reduced = useReducedMotion();
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const primaryRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -80,7 +80,10 @@ export function NoticeModal({
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    closeRef.current?.focus();
+    // Focus the primary action button (not the X close) on open so
+    // keyboard users land on the recommended action and screen-readers
+    // announce its label. Browser focus ring on the X looked like a bug.
+    primaryRef.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
@@ -151,32 +154,37 @@ export function NoticeModal({
             }}
           >
             <button
-              ref={closeRef}
               type="button"
               onClick={onClose}
               aria-label="Dismiss"
+              className="notice-modal-close"
               style={{
                 position: "absolute",
-                top: 12,
-                right: 12,
-                width: 32,
-                height: 32,
+                top: 10,
+                right: 10,
+                width: 30,
+                height: 30,
                 display: "grid",
                 placeItems: "center",
                 background: "transparent",
                 border: "none",
+                outline: "none",
                 color: "var(--bsd-muted, #6c6356)",
                 cursor: "pointer",
-                transition: "color 140ms ease, transform 140ms ease",
+                transition: "color 140ms ease, background 140ms ease",
+                borderRadius: 2,
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = "var(--bsd-ink, #0c0a08)";
+                e.currentTarget.style.background =
+                  "color-mix(in oklch, var(--bsd-ink, #0c0a08) 8%, transparent)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = "var(--bsd-muted, #6c6356)";
+                e.currentTarget.style.background = "transparent";
               }}
             >
-              <X size={16} weight="bold" />
+              <X size={15} weight="bold" />
             </button>
 
             {/* Red double-rule: thick on top, hairline below, expands width
@@ -337,6 +345,7 @@ export function NoticeModal({
                 </button>
               ) : null}
               <button
+                ref={primaryRef}
                 type="button"
                 onClick={() => {
                   const p = notice.onPrimary?.();
@@ -346,7 +355,6 @@ export function NoticeModal({
                     onClose();
                   }
                 }}
-                autoFocus
                 style={{
                   padding: "11px 22px",
                   background: accent,
@@ -359,6 +367,7 @@ export function NoticeModal({
                   fontWeight: 700,
                   cursor: "pointer",
                   borderRadius: 2,
+                  outline: "none",
                   transition:
                     "background 140ms ease, transform 100ms ease, box-shadow 140ms ease",
                 }}

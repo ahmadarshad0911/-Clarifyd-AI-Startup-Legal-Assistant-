@@ -228,7 +228,6 @@ export default function LawyerPage() {
               {[
                 { href: "/findings", n: "I",   title: "Findings", body: "The verdict on your last scan, every clause sorted by severity." },
                 { href: "/copilot",  n: "II",  title: "Co-Pilot", body: "Ask the AI a question scoped to a clause. Cited reasoning, no hallucinations." },
-                { href: "/monitor",  n: "III", title: "Monitor",  body: "Vesting cliffs, IP assignments, auto-renewals — surfaced before they bite." },
               ].map((c, i, arr) => (
                 <Link
                   key={c.href}

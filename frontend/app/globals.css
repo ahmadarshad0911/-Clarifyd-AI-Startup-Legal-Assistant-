@@ -339,53 +339,61 @@ input, button, select, textarea {
   border: none !important;
 }
 .bsd-range::-webkit-slider-runnable-track {
-  height: 8px;
-  background: var(--bsd-rule);
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    var(--bsd-red) 0%,
+    var(--bsd-red) var(--bsd-range-fill, 0%),
+    var(--bsd-rule) var(--bsd-range-fill, 0%),
+    var(--bsd-rule) 100%
+  );
   border: none;
+  border-radius: 0;
 }
 .bsd-range::-moz-range-track {
-  height: 8px;
+  height: 3px;
   background: var(--bsd-rule);
   border: none;
+  border-radius: 0;
 }
 .bsd-range::-moz-range-progress {
-  height: 8px;
+  height: 3px;
   background: var(--bsd-red);
   border: none;
 }
 .bsd-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--bsd-red);
-  border: 3px solid var(--bsd-paper);
-  box-shadow: 0 0 0 1.5px var(--bsd-red);
-  margin-top: -7px;
+  border: 2px solid var(--bsd-paper);
+  box-shadow: 0 0 0 1px var(--bsd-ink);
+  margin-top: -6.5px;
   cursor: grab;
   transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
 }
 .bsd-range::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--bsd-red);
-  border: 3px solid var(--bsd-paper);
-  box-shadow: 0 0 0 1.5px var(--bsd-red);
+  border: 2px solid var(--bsd-paper);
+  box-shadow: 0 0 0 1px var(--bsd-ink);
   cursor: grab;
   transition: transform 140ms var(--ease-out);
 }
 .bsd-range:focus-visible::-webkit-slider-thumb,
 .bsd-range:active::-webkit-slider-thumb {
   transform: scale(1.15);
-  box-shadow: 0 0 0 1.5px var(--bsd-red), 0 0 0 8px var(--bsd-red-ring);
+  box-shadow: 0 0 0 1px var(--bsd-ink), 0 0 0 6px var(--bsd-red-ring);
   cursor: grabbing;
 }
 .bsd-range:focus-visible::-moz-range-thumb,
 .bsd-range:active::-moz-range-thumb {
   transform: scale(1.15);
-  box-shadow: 0 0 0 1.5px var(--bsd-red), 0 0 0 8px var(--bsd-red-ring);
+  box-shadow: 0 0 0 1px var(--bsd-ink), 0 0 0 6px var(--bsd-red-ring);
 }
 
 /* ---------- Plus-cross (FAQ accordion) ---------- */

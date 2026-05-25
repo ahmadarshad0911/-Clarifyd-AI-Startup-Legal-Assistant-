@@ -15,8 +15,32 @@ import {
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { ExportPanel } from "../../components/exports/export-panel";
-import { listRecent, removeRecent, type RecentDraft } from "../../lib/recent";
+import {
+  listAnalyses,
+  pushAnalysis,
+  removeAnalysis,
+  type StoredAnalysis,
+} from "../../lib/analyses";
+import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
+
+type RecentDraft = {
+  draft_id: string;
+  file_name: string;
+  highest_risk: string;
+  findings_count: number;
+  uploaded_at: string;
+};
+
+function toRecent(a: StoredAnalysis): RecentDraft {
+  return {
+    draft_id: a.draft_id,
+    file_name: a.file_name,
+    highest_risk: a.analysis.summary?.highest_risk ?? "low",
+    findings_count: a.analysis.findings?.length ?? 0,
+    uploaded_at: a.analyzed_at,
+  };
+}
 
 const EOQ = [0.23, 1, 0.32, 1] as const;
 
@@ -28,16 +52,50 @@ const RISK_COLOR: Record<string, string> = {
 };
 
 export default function ExportsPage() {
+  const { client } = useAuth();
   const { push } = useToast();
   const reduce = useReducedMotion() ?? false;
   const [recent, setRecent] = useState<RecentDraft[]>([]);
   const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
-    const items = listRecent();
-    setRecent(items);
-    setActive(items[0]?.draft_id ?? null);
-  }, []);
+    let cancelled = false;
+    const local = listAnalyses();
+    const settle = (items: StoredAnalysis[]) => {
+      if (cancelled) return;
+      const mapped = items.map(toRecent);
+      setRecent(mapped);
+      setActive((prev) => prev ?? mapped[0]?.draft_id ?? null);
+    };
+    settle(local);
+    client
+      .listStoredAnalyses()
+      .then((res) => {
+        if (cancelled) return;
+        const seen = new Set(local.map((d) => d.draft_id));
+        const merged = [
+          ...local.map((d) => {
+            const r = res.items.find((x) => x.draft_id === d.draft_id);
+            return r ? { ...d, analysis: r.analysis, analyzed_at: r.analyzed_at } : d;
+          }),
+          ...res.items
+            .filter((r) => !seen.has(r.draft_id))
+            .map((r) => ({
+              draft_id: r.draft_id,
+              file_name: r.file_name,
+              analyzed_at: r.analyzed_at,
+              negotiated_at: r.negotiated_at ?? null,
+              analysis: r.analysis,
+            })),
+        ];
+        merged.forEach((d) => pushAnalysis(d.analysis, d.file_name));
+        settle(merged);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
 
   const activeRow = recent.find((r) => r.draft_id === active) ?? recent[0] ?? null;
 
@@ -63,9 +121,9 @@ export default function ExportsPage() {
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">§ Audit ledger</span>
+            <span className="bsd-kicker">§ Library</span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
-              Tamper-evident <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>archive.</span>
+              Your contract <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>library.</span>
             </h1>
             <p style={{ margin: "12px 0 0", color: "var(--bsd-body)", fontSize: 15, lineHeight: 1.6, maxWidth: 620 }}>
               Every analysis, accept, and export hashes into a chain. Download the certificate, the verification log, or the raw findings.
@@ -243,7 +301,8 @@ export default function ExportsPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const next = removeRecent(r.draft_id);
+                            removeAnalysis(r.draft_id);
+                            const next = recent.filter((x) => x.draft_id !== r.draft_id);
                             setRecent(next);
                             if (active === r.draft_id) setActive(next[0]?.draft_id ?? null);
                           }}

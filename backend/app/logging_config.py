@@ -51,3 +51,8 @@ def configure_logging(level: str) -> None:
     handler.addFilter(RequestIdFilter())
     root_logger.addHandler(handler)
 
+    file_handler = logging.FileHandler("backend.log", encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] [req=%(request_id)s] %(message)s"))
+    file_handler.addFilter(RequestIdFilter())
+    root_logger.addHandler(file_handler)
+

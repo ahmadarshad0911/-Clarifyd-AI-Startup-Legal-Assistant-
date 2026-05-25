@@ -19,10 +19,8 @@ const NAV_SECTIONS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "Tools",
     items: [
-      { href: "/compare", label: "Compare" },
       { href: "/simplify", label: "Simplify" },
       { href: "/negotiate", label: "Negotiate" },
-      { href: "/compliance", label: "Compliance" },
     ],
   },
   {

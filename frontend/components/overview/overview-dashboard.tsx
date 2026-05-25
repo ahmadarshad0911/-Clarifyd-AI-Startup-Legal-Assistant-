@@ -15,7 +15,6 @@ const ACTIONS = [
   { href: "/", label: "Upload", helper: "Start a new analysis", icon: "U" },
   { href: "/reviews", label: "Review", helper: "Queue and decisions", icon: "R" },
   { href: "/exports", label: "Export", helper: "Generate report", icon: "E" },
-  { href: "/compare", label: "Compare", helper: "Diff drafts", icon: "C" },
 ];
 
 const RISK_ORDER: Array<ClauseFinding["risk_level"]> = [

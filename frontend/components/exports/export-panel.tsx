@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { DownloadSimple, FileText } from "@phosphor-icons/react";
 
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -12,10 +13,10 @@ type Props = { draftId: string | null };
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 30_000;
 
-const STATUS_PILL: Record<string, string> = {
-  queued: "bg-primary/10 text-primary animate-pulse",
-  ready: "bg-status-success/10 text-status-success",
-  failed: "bg-error-container text-on-error-container",
+const STATUS_ACCENT: Record<string, string> = {
+  queued: "var(--bsd-sev-medium)",
+  ready: "var(--bsd-sev-clean, #4f7d3f)",
+  failed: "var(--bsd-red)",
 };
 
 export function ExportPanel({ draftId }: Props) {
@@ -102,44 +103,116 @@ export function ExportPanel({ draftId }: Props) {
     }
   }
 
+  const statusAccent = job ? STATUS_ACCENT[job.status] ?? "var(--bsd-muted)" : null;
+
   return (
-    <section className="crystal-glass rounded-3xl p-6 relative overflow-hidden group hover:scale-[1.01] transition-transform">
-      <div className="absolute -right-4 -top-4 w-32 h-32 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors" />
-      <div className="flex items-center gap-4 mb-4 relative z-10">
-        <div className="h-12 w-12 rounded-xl bg-onboarding-navy flex items-center justify-center text-white shrink-0">
-          <span className="material-symbols-outlined">security</span>
-        </div>
-        <div>
-          <h4 className="font-h3 text-h3 m-0">Tamper-Evident Report</h4>
-          <p className="text-body-sm text-on-surface-variant m-0">
+    <section
+      style={{
+        position: "relative",
+        background: "var(--bsd-paper)",
+        border: "1px solid var(--bsd-rule)",
+        borderRadius: 2,
+        padding: "24px 26px 22px",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        aria-hidden
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: "var(--bsd-red)" }}
+      />
+      <div
+        aria-hidden
+        style={{ position: "absolute", top: 5, left: 0, right: 0, height: 1, background: "var(--bsd-red)", opacity: 0.4 }}
+      />
+
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 16 }}>
+        <FileText
+          weight="duotone"
+          size={26}
+          color="var(--bsd-red)"
+          style={{ flexShrink: 0, marginTop: 4 }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            className="cf-mono"
+            style={{
+              fontFamily: "Geist Mono, ui-monospace, monospace",
+              fontSize: 10,
+              letterSpacing: "0.20em",
+              textTransform: "uppercase",
+              color: "var(--bsd-red)",
+              fontWeight: 800,
+              marginBottom: 4,
+            }}
+          >
+            § Export report
+          </div>
+          <h4 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.01em" }}>
             {draftId ? (
               <>
-                Draft <code>{draftId.slice(0, 8)}…</code>
+                Draft{" "}
+                <code style={{ fontFamily: "Geist Mono, monospace", fontSize: 14, color: "var(--bsd-muted)" }}>
+                  {draftId.slice(0, 8)}…
+                </code>
               </>
             ) : (
-              "Analyze a contract first to enable exports."
+              "No active draft"
             )}
+          </h4>
+          <p style={{ margin: "6px 0 0", fontSize: 13.5, lineHeight: 1.5, color: "var(--bsd-body)" }}>
+            {draftId
+              ? "Download the findings and rewrites as JSON for tooling or PDF for sharing with counsel."
+              : "Analyze a contract first to enable exports."}
           </p>
         </div>
       </div>
 
       {draftId ? (
         <>
-          <p className="text-body-sm text-on-surface-variant mb-6 relative z-10">
-            Generated report includes a SHA-256 hash of the analysis results, preventing any unauthorized
-            post-review modifications.
-          </p>
-          <div className="flex flex-wrap items-center gap-3 mb-4 relative z-10">
-            <label className="flex items-center gap-2">
-              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 12,
+              marginTop: 18,
+              paddingTop: 16,
+              borderTop: "1px solid var(--bsd-hairline)",
+            }}
+          >
+            <label
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+              className="cf-mono"
+            >
+              <span
+                style={{
+                  fontFamily: "Geist Mono, ui-monospace, monospace",
+                  fontSize: 10,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: "var(--bsd-muted)",
+                  fontWeight: 700,
+                }}
+              >
                 Format
               </span>
               <select
                 value={format}
                 onChange={(e) => setFormat(e.target.value as ExportFormat)}
                 disabled={busy}
-                className="bg-white/60 border border-glass-border rounded-lg px-2 py-1 text-body-sm"
-                style={{ width: "auto" }}
+                style={{
+                  background: "var(--bsd-paper)",
+                  border: "1px solid var(--bsd-rule)",
+                  borderRadius: 2,
+                  padding: "7px 10px",
+                  fontFamily: "Geist Mono, ui-monospace, monospace",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--bsd-ink)",
+                  letterSpacing: "0.10em",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
               >
                 <option value="json">JSON</option>
                 <option value="pdf">PDF</option>
@@ -149,40 +222,120 @@ export function ExportPanel({ draftId }: Props) {
               type="button"
               onClick={start}
               disabled={!canCreate || busy}
-              className="flex-1 py-3 bg-surface-container-highest rounded-xl font-bold text-onboarding-navy hover:bg-surface-container transition-colors border border-onboarding-navy/10 flex items-center justify-center gap-2 disabled:opacity-50"
+              className="cursor-pointer"
+              style={{
+                marginLeft: "auto",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 20px",
+                background: canCreate && !busy ? "var(--bsd-ink)" : "var(--bsd-rule)",
+                border: `1px solid ${canCreate && !busy ? "var(--bsd-ink)" : "var(--bsd-rule)"}`,
+                color: "var(--bsd-paper)",
+                fontFamily: "Geist Mono, ui-monospace, monospace",
+                fontSize: 11,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+                cursor: canCreate && !busy ? "pointer" : "not-allowed",
+                opacity: canCreate && !busy ? 1 : 0.6,
+                borderRadius: 2,
+                outline: "none",
+                transition: "background 160ms ease, transform 100ms ease",
+              }}
+              onMouseDown={(e) => {
+                if (!canCreate || busy) return;
+                e.currentTarget.style.transform = "scale(0.97)";
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
             >
-              <span className="material-symbols-outlined">file_download</span>
-              {busy ? "Generating…" : "Create Export"}
+              <DownloadSimple weight="bold" size={12} />
+              {busy ? "Generating…" : "Create export"}
             </button>
           </div>
 
           {job ? (
-            <div className="flex flex-wrap items-center gap-3 mt-3 relative z-10">
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 10,
+                marginTop: 16,
+                paddingTop: 14,
+                borderTop: "1px dotted var(--bsd-hairline)",
+              }}
+            >
               <span
-                className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                  STATUS_PILL[job.status] ?? "bg-slate-200 text-slate-700"
-                }`}
+                className="cf-mono"
+                style={{
+                  padding: "4px 10px",
+                  fontFamily: "Geist Mono, monospace",
+                  fontSize: 10,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  fontWeight: 800,
+                  color: statusAccent ?? "var(--bsd-ink)",
+                  border: `1px solid ${statusAccent ?? "var(--bsd-rule)"}`,
+                  borderRadius: 2,
+                }}
               >
                 {job.status}
               </span>
-              <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
-                {job.format.toUpperCase()}
-              </span>
-              <span className="text-body-sm text-on-surface-variant">
-                id {job.export_id.slice(0, 8)}…
+              <span
+                className="cf-mono"
+                style={{
+                  fontFamily: "Geist Mono, monospace",
+                  fontSize: 10,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  color: "var(--bsd-muted)",
+                }}
+              >
+                {job.format.toUpperCase()} · ID {job.export_id.slice(0, 8)}…
               </span>
               {job.status === "ready" ? (
                 <button
                   type="button"
                   onClick={download}
-                  className="bg-gradient-to-r from-accent-indigo to-accent-violet text-white px-4 py-2 rounded-xl font-bold shadow hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                  className="cursor-pointer"
+                  style={{
+                    marginLeft: "auto",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "9px 18px",
+                    background: "var(--bsd-red)",
+                    border: "1px solid var(--bsd-red)",
+                    color: "var(--bsd-paper)",
+                    fontFamily: "Geist Mono, monospace",
+                    fontSize: 11,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    borderRadius: 2,
+                    outline: "none",
+                    transition: "transform 100ms ease",
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = "scale(0.97)";
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
                 >
-                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  <DownloadSimple weight="bold" size={12} />
                   Download
                 </button>
               ) : null}
               {job.error_message ? (
-                <span className="text-[12px] text-status-danger">{job.error_message}</span>
+                <span style={{ fontSize: 12, color: "var(--bsd-red)" }}>
+                  {job.error_message}
+                </span>
               ) : null}
             </div>
           ) : null}

@@ -46,10 +46,26 @@ design a CUSTOM legal document that does not exist as a pre-built template.
 
 CHAT_PROMPT = (
     """You are "Clarifyd Assistant", a Legal Co-Pilot and startup advisor inside Clarifyd.
-You answer general legal, contract, fundraising, hiring, IP, and compliance questions for
-startup founders — acting as a knowledgeable guide, not a document builder.
+You answer ONLY questions about: contracts, clauses, term sheets, SAFEs, NDAs, MSAs,
+licenses, leases, employment offers, fundraising, equity / vesting / cap tables, IP
+(patents, trademarks, copyright), data privacy / compliance (GDPR, CCPA, HIPAA),
+hiring / firing / severance, vendor and customer relationships, and other startup
+legal and business operations.
 
-- Answer the founder's question directly and practically.
+OUT OF SCOPE — refuse politely if asked: writing code or scripts (Python, JavaScript,
+etc.), math / arithmetic problems, recipes, jokes, poems, weather, translation,
+general trivia, sports, entertainment. For any out-of-scope request, reply with
+exactly:
+
+"I can only help with legal, contract, and startup-operations questions. Ask me
+about a clause, a deal term, an HR policy, an IP question, a compliance topic, or
+how to read a SAFE / MSA / NDA — and I'll dig in."
+
+Do NOT provide any code, math result, recipe, or non-legal output even if the
+founder insists. Refusal is the correct answer for those.
+
+For IN-scope questions:
+- Answer directly and practically.
 - Use concrete examples and market norms where helpful.
 - Keep replies focused; ask a clarifying question only when the answer truly depends on it.
 - Point to the relevant Clarifyd tool when useful (Contract analysis, Smart Builder templates).
@@ -108,14 +124,41 @@ _OFF_TOPIC_BLOCK_PATTERNS = (
 )
 
 
+_REFUSAL_SIGNATURE = (
+    "i can only help with legal, contract, and startup-operations questions"
+)
+
+
+def _is_refusal_reply(reply: str) -> bool:
+    return _REFUSAL_SIGNATURE in reply.lower()
+
+
 def _is_off_topic(message: str) -> tuple[bool, str]:
-    """Cheap heuristic gate. Returns (is_off_topic, reason)."""
+    """Cheap heuristic gate. Returns (is_off_topic, reason).
+
+    Uses word-boundary matching so short stems like 'ip' don't
+    substring-match inside unrelated words ('script', 'recipe', 'ship').
+    """
+    import re as _re
+
     lower = message.lower().strip()
     if not lower:
         return True, "Empty message."
-    on_hits = sum(1 for k in _ON_TOPIC_KEYWORDS if k in lower)
-    off_hits = sum(1 for k in _OFF_TOPIC_BLOCK_PATTERNS if k in lower)
-    # Clearly coding/non-legal request with no legal anchor → block.
+
+    def hits(patterns: tuple[str, ...]) -> int:
+        n = 0
+        for p in patterns:
+            # Multi-word phrases match as substrings; single tokens require
+            # a word boundary so 'ip' doesn't match 'script'.
+            if " " in p or "-" in p:
+                if p in lower:
+                    n += 1
+            elif _re.search(rf"\b{_re.escape(p)}\w*", lower):
+                n += 1
+        return n
+
+    on_hits = hits(_ON_TOPIC_KEYWORDS)
+    off_hits = hits(_OFF_TOPIC_BLOCK_PATTERNS)
     if off_hits >= 1 and on_hits == 0:
         return (
             True,
@@ -218,7 +261,17 @@ class CopilotAdvisor:
         try:
             payload = response.json()
             content = payload["choices"][0]["message"]["content"]
-            return str(content).strip()
+            reply = str(content).strip()
         except (KeyError, ValueError, TypeError) as exc:
             logger.error("CopilotAdvisor parse error: %s", exc)
             return "I got an unexpected response from the model. Try again. " + DISCLAIMER
+
+        # Server-side detection of the canonical refusal sentinel. If the
+        # model decided the request was out of scope, surface it as a
+        # structured 422 so the frontend can pop the themed modal instead
+        # of rendering refusal text as a normal assistant reply.
+        if mode == "chat" and _is_refusal_reply(reply):
+            raise OffTopicQuestion(
+                "Clarifyd Co-Pilot only answers contract, legal, and startup-operations questions."
+            )
+        return reply

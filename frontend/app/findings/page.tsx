@@ -20,6 +20,7 @@ import {
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
 import { ClauseCard, ClauseData } from "../../components/clause-card";
 import { HealthGauge } from "../../components/health-gauge";
+import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { RiskPill, Severity } from "../../components/risk-pill";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -70,6 +71,7 @@ function Inner() {
   const [picked, setPicked] = useState<Record<string, Set<number>>>({});
   const [exporting, setExporting] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [notice, setNotice] = useState<NoticeContent | null>(null);
   const [exportedDoc, setExportedDoc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,20 +127,29 @@ function Inner() {
   const suggestions: ReportSuggestion[] = active?.analysis.report?.suggestions ?? [];
   const activePicked = (active && picked[active.draft_id]) || new Set<number>();
 
-  async function deleteDoc(d: StoredAnalysis) {
-    if (!window.confirm(`Remove "${d.file_name}" from Findings? This can't be undone.`)) return;
-    removeAnalysis(d.draft_id);
-    setDocs((prev) => {
-      const next = prev.filter((x) => x.draft_id !== d.draft_id);
-      if (activeId === d.draft_id) setActiveId(next[0]?.draft_id ?? null);
-      return next;
+  function deleteDoc(d: StoredAnalysis) {
+    setNotice({
+      kind: "warning",
+      caption: "STOP PRESS · CONFIRM REMOVAL",
+      headline: `Remove "${d.file_name}"?`,
+      body: "This drops the analysis from your Findings tab and asks the server to soft-delete the draft. The action can't be undone from the UI.",
+      primaryLabel: "Remove",
+      secondaryLabel: "Cancel",
+      onPrimary: async () => {
+        removeAnalysis(d.draft_id);
+        setDocs((prev) => {
+          const next = prev.filter((x) => x.draft_id !== d.draft_id);
+          if (activeId === d.draft_id) setActiveId(next[0]?.draft_id ?? null);
+          return next;
+        });
+        try {
+          await client.softDeleteDraft(d.draft_id);
+          push("Removed", "success", d.file_name);
+        } catch {
+          push("Removed locally — server delete failed", "info");
+        }
+      },
     });
-    try {
-      await client.softDeleteDraft(d.draft_id);
-      push("Removed", "success", d.file_name);
-    } catch {
-      push("Removed locally — server delete failed", "info");
-    }
   }
 
   async function handleRegenerateReport() {
@@ -708,6 +719,11 @@ function Inner() {
           ) : null}
         </>
       ) : null}
+      <NoticeModal
+        open={notice !== null}
+        notice={notice}
+        onClose={() => setNotice(null)}
+      />
     </DarkAppShell>
   );
 }

@@ -22,6 +22,7 @@ export type NoticeContent = {
   body: string;        // 1-3 short sentences
   hint?: string;       // optional dim follow-up line
   primaryLabel?: string;  // defaults to "Understood"
+  onPrimary?: () => void | Promise<void>;
   secondaryLabel?: string;
   onSecondary?: () => void;
 };
@@ -293,7 +294,14 @@ export function NoticeModal({
               ) : null}
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => {
+                  const p = notice.onPrimary?.();
+                  if (p && typeof (p as Promise<void>).then === "function") {
+                    (p as Promise<void>).finally(() => onClose());
+                  } else {
+                    onClose();
+                  }
+                }}
                 autoFocus
                 style={{
                   padding: "11px 22px",

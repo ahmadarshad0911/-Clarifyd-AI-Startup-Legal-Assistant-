@@ -117,7 +117,7 @@ def _ensure_runtime() -> None:
         api_key=settings.reasoning_api_key,
         model=settings.reasoning_model,
         base_url=settings.reasoning_base_url,
-        timeout=120.0,
+        timeout=240.0,
     )
 
 
@@ -195,7 +195,7 @@ async def lifespan(app: FastAPI):
         api_key=settings.reasoning_api_key,
         model=settings.reasoning_model,
         base_url=settings.reasoning_base_url,
-        timeout=120.0,
+        timeout=240.0,
     )
 
     try:
@@ -509,13 +509,13 @@ async def _analyze_and_persist(
             except Exception:  # pragma: no cover — DB not initialised
                 # Degrade to cache-bypass mode rather than fail the request.
                 return await asyncio.wait_for(
-                    reporter.generate(contract_text), timeout=120.0
+                    reporter.generate(contract_text), timeout=240.0
                 )
             try:
                 async with sessionmaker() as own_session:
                     rep = await asyncio.wait_for(
                         reporter.generate(contract_text, session=own_session),
-                        timeout=120.0,
+                        timeout=240.0,
                     )
                     try:
                         await own_session.commit()
@@ -523,7 +523,7 @@ async def _analyze_and_persist(
                         await own_session.rollback()
                     return rep
             except asyncio.TimeoutError:
-                logger.warning("Reporter timed out after 120s — rules-only response.")
+                logger.warning("Reporter timed out after 240s — rules-only response.")
                 return None
             except asyncio.CancelledError:
                 raise

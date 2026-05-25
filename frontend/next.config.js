@@ -4,7 +4,7 @@ const nextConfig = {
   // Kimi K2 analyze calls can take up to 120s — prevent Next.js from killing
   // them at the default 30s proxy timeout.
   experimental: {
-    proxyTimeout: 180_000,
+    proxyTimeout: 300_000,
   },
   async rewrites() {
     const backendOrigin = process.env.BACKEND_ORIGIN || "http://localhost:8000";

@@ -105,6 +105,8 @@ export function NoticeModal({
               position: "relative",
               maxWidth: 560,
               width: "100%",
+              maxHeight: "calc(100vh - 48px)",
+              overflowY: "auto",
               background: "var(--bsd-paper, #f4ede1)",
               color: "var(--bsd-ink, #0c0a08)",
               borderRadius: 2,
@@ -113,6 +115,7 @@ export function NoticeModal({
               padding: "40px 44px 36px",
               fontFamily:
                 "Geist, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif",
+              minWidth: 0,
             }}
           >
             <button
@@ -196,12 +199,15 @@ export function NoticeModal({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.32, delay: 0.14, ease: [0.23, 1, 0.32, 1] }}
               style={{
-                fontSize: 28,
-                lineHeight: 1.12,
+                fontSize: 26,
+                lineHeight: 1.18,
                 letterSpacing: "-0.02em",
                 fontWeight: 700,
                 margin: 0,
                 color: "var(--bsd-ink, #0c0a08)",
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
+                hyphens: "auto",
               }}
             >
               {notice.headline}
@@ -217,6 +223,8 @@ export function NoticeModal({
                 fontSize: 15,
                 lineHeight: 1.55,
                 color: "var(--bsd-body, #2b251f)",
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
               }}
             >
               {notice.body}

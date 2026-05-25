@@ -182,6 +182,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         fontWeight: 600,
                         color: "var(--bsd-ink, #0c0a08)",
                         letterSpacing: "-0.01em",
+                        overflowWrap: "anywhere",
+                        wordBreak: "break-word",
                       }}
                     >
                       {t.message}

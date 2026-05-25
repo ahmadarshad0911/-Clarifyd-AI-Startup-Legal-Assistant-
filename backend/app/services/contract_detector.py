@@ -81,10 +81,11 @@ def _heuristic(text: str) -> DetectionResult | None:
 
     for marker in _NEGATIVE_MARKERS:
         if marker in lower:
+            article = "an" if marker[0] in "aeiou" else "a"
             return DetectionResult(
                 False,
                 0.95,
-                f"Document looks like a {marker.replace('_', ' ')}, not a contract.",
+                f"Document looks like {article} {marker.replace('_', ' ')}, not a contract.",
             )
 
     stems_hit = sum(1 for stem in _CONTRACT_STEMS if stem in lower)

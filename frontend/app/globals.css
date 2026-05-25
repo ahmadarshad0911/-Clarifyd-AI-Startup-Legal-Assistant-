@@ -342,8 +342,8 @@ input, button, select, textarea {
   height: 3px;
   background: linear-gradient(
     to right,
-    var(--bsd-red) 0%,
-    var(--bsd-red) var(--bsd-range-fill, 0%),
+    var(--bsd-range-color, var(--bsd-red)) 0%,
+    var(--bsd-range-color, var(--bsd-red)) var(--bsd-range-fill, 0%),
     var(--bsd-rule) var(--bsd-range-fill, 0%),
     var(--bsd-rule) 100%
   );
@@ -358,7 +358,7 @@ input, button, select, textarea {
 }
 .bsd-range::-moz-range-progress {
   height: 3px;
-  background: var(--bsd-red);
+  background: var(--bsd-range-color, var(--bsd-red));
   border: none;
 }
 .bsd-range::-webkit-slider-thumb {
@@ -367,22 +367,22 @@ input, button, select, textarea {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--bsd-red);
+  background: var(--bsd-range-color, var(--bsd-red));
   border: 2px solid var(--bsd-paper);
   box-shadow: 0 0 0 1px var(--bsd-ink);
   margin-top: -6.5px;
   cursor: grab;
-  transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out), background 140ms ease;
 }
 .bsd-range::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--bsd-red);
+  background: var(--bsd-range-color, var(--bsd-red));
   border: 2px solid var(--bsd-paper);
   box-shadow: 0 0 0 1px var(--bsd-ink);
   cursor: grab;
-  transition: transform 140ms var(--ease-out);
+  transition: transform 140ms var(--ease-out), background 140ms ease;
 }
 .bsd-range:focus-visible::-webkit-slider-thumb,
 .bsd-range:active::-webkit-slider-thumb {

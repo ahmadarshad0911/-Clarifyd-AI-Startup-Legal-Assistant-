@@ -402,10 +402,11 @@ export default function FeedbackPage() {
                       setNpsTouched(true);
                     }}
                     aria-label="Recommendation score"
+                    className="bsd-range"
                     style={{
                       flex: 1,
-                      accentColor: npsAccent,
-                      cursor: "pointer",
+                      ["--bsd-range-fill" as unknown as string]: `${(nps / 10) * 100}%`,
+                      ["--bsd-range-color" as unknown as string]: npsAccent,
                     }}
                   />
                   <div

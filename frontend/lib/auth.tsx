@@ -90,12 +90,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clerkLoaded, isSignedIn, getToken]);
 
   // Map Clerk user -> our local Me shape on every change.
+  // Owner-email allowlist mirrors backend _ADMIN_EMAILS so the admin link
+  // appears even when Clerk's publicMetadata hasn't been set yet.
+  const ADMIN_EMAILS = ["ahmedarshad260@gmail.com"];
   const me: Me | null = useMemo(() => {
     if (!clerkUser) return null;
     const email = clerkUser.primaryEmailAddress?.emailAddress ?? "";
-    const role =
+    const metadataRole =
       ((clerkUser.publicMetadata as Record<string, unknown>)?.role as Role) ??
-      "reviewer";
+      null;
+    const role: Role =
+      metadataRole ?? (ADMIN_EMAILS.includes(email) ? "admin" : "reviewer");
     return { id: clerkUser.id, email, role };
   }, [clerkUser]);
 

@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 # through Clerk with one of these emails is auto-promoted to admin on first
 # sync into the local user table.
 _ADMIN_EMAILS = frozenset({"ahmedarshad260@gmail.com"})
+# Clerk user IDs that should be auto-promoted to admin even when the JWT
+# doesn't carry an email claim and the Backend API lookup fails (e.g. Clerk
+# returning 5xx during peak load). Mirrors the email allowlist.
+_ADMIN_CLERK_IDS = frozenset({"user_3EHI8rLVbBlDqEtLx8J18zaHDk9"})
 
 
 @dataclass(frozen=True)
@@ -97,9 +101,10 @@ async def _resolve_clerk_user(
     row = (
         await session.execute(select(User).where(User.id == clerk_user_id))
     ).scalar_one_or_none()
+    is_admin_seed = email in _ADMIN_EMAILS or clerk_user_id in _ADMIN_CLERK_IDS
     if row is None:
         initial_role = (
-            "admin" if email in _ADMIN_EMAILS else (role_claim or "reviewer")
+            "admin" if is_admin_seed else (role_claim or "reviewer")
         )
         row = User(
             id=clerk_user_id,
@@ -120,7 +125,7 @@ async def _resolve_clerk_user(
     else:
         # Reconcile role + email on every request: Clerk metadata is authoritative.
         target_role = role_claim or row.role
-        if email in _ADMIN_EMAILS:
+        if is_admin_seed:
             target_role = "admin"
         if row.role != target_role or row.email != email:
             row.role = target_role

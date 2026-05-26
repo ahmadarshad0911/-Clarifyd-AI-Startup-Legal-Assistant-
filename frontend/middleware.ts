@@ -22,7 +22,9 @@ const isProtectedRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
-    await auth.protect();
+    await auth.protect({
+      unauthenticatedUrl: new URL("/login", req.url).toString(),
+    });
   }
 });
 
@@ -32,5 +34,7 @@ export const config = {
     "/((?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     // Always run for API routes
     "/(api|trpc)(.*)",
+    // Clerk auto-proxy path (per Clerk docs)
+    "/__clerk/(.*)",
   ],
 };

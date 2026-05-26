@@ -310,21 +310,7 @@ export default function LoginPage() {
             paddingTop: 18,
           }}
         >
-          {!isLoaded ? (
-            <div
-              className="cf-mono"
-              style={{
-                color: "var(--bsd-muted)",
-                fontSize: 11,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                fontWeight: 700,
-                padding: 60,
-              }}
-            >
-              Loading sign-in…
-            </div>
-          ) : (
+          {(
             <div style={{ width: "100%", maxWidth: 460, position: "relative" }}>
               {/* Red double-rule above card */}
               <div

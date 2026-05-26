@@ -125,8 +125,34 @@ function Inner() {
   }, [params, client]);
 
   const active = useMemo(() => docs.find((d) => d.draft_id === activeId) ?? null, [docs, activeId]);
-  const loopholes: ReportLoophole[] = active?.analysis.report?.loopholes ?? [];
-  const suggestions: ReportSuggestion[] = active?.analysis.report?.suggestions ?? [];
+  // Prefer the LLM-written report.loopholes — they ship with rewrites + a
+  // founder-friendly summary. When the reporter was rate-limited or timed
+  // out (common on Vercel cold starts), fall back to the per-clause
+  // findings so the UI doesn't say "00 flagged" when we actually flagged
+  // several clauses.
+  const reportLoopholes: ReportLoophole[] = active?.analysis.report?.loopholes ?? [];
+  const loopholes: ReportLoophole[] = useMemo(() => {
+    if (reportLoopholes.length > 0) return reportLoopholes;
+    const findings = active?.analysis.findings ?? [];
+    return findings.map((f) => ({
+      clause_name: f.clause_name,
+      excerpt: f.excerpt,
+      issue: f.explanation,
+      severity: f.risk_level,
+      impact: f.explanation,
+    })) as ReportLoophole[];
+  }, [reportLoopholes, active]);
+  const reportSuggestions: ReportSuggestion[] = active?.analysis.report?.suggestions ?? [];
+  const suggestions: ReportSuggestion[] = useMemo(() => {
+    if (reportLoopholes.length > 0) return reportSuggestions;
+    const findings = active?.analysis.findings ?? [];
+    return findings.map((f) => ({
+      clause_name: f.clause_name,
+      original_excerpt: f.excerpt,
+      suggested_clause: f.safer_language ?? f.explanation,
+      rationale: f.explanation,
+    })) as ReportSuggestion[];
+  }, [reportLoopholes.length, reportSuggestions, active]);
   const activePicked = (active && picked[active.draft_id]) || new Set<number>();
 
   function deleteDoc(d: StoredAnalysis) {

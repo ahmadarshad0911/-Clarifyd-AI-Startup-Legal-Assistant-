@@ -11,6 +11,8 @@ from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import httpx
+
 from app.auth.clerk import ClerkAuthError, verify_clerk_session_token
 from app.auth.tokens import decode_token, role_satisfies
 from app.config import Settings, get_settings
@@ -56,15 +58,39 @@ async def _resolve_clerk_user(
             status_code=401,
         )
 
-    # Clerk default session tokens don't include email; we accept either an
-    # explicit `email` claim (custom session JWT template) or fall back to the
-    # primary email stored in public_metadata.
+    # Clerk default session tokens omit email + public_metadata. Try the
+    # JWT claims first (works with custom session token templates), else
+    # fetch the user via Clerk Backend API.
     email = (
         claims.get("email")
         or (claims.get("public_metadata") or {}).get("email")
-        or f"{clerk_user_id}@clerk.local"
     )
     role_claim = (claims.get("public_metadata") or {}).get("role")
+
+    if (not email or role_claim is None) and settings.clerk_secret_key:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    f"https://api.clerk.com/v1/users/{clerk_user_id}",
+                    headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+                )
+            if resp.status_code == 200:
+                data = resp.json()
+                if not email:
+                    addrs = data.get("email_addresses") or []
+                    primary_id = data.get("primary_email_address_id")
+                    primary = next(
+                        (a for a in addrs if a.get("id") == primary_id),
+                        (addrs[0] if addrs else None),
+                    )
+                    if primary:
+                        email = primary.get("email_address")
+                if role_claim is None:
+                    role_claim = (data.get("public_metadata") or {}).get("role")
+        except Exception:
+            logger.warning("Clerk user fetch failed for %s", clerk_user_id, exc_info=True)
+
+    email = email or f"{clerk_user_id}@clerk.local"
 
     # Upsert. The local row's primary key stays in sync with the Clerk
     # user id so we don't need a separate join table.

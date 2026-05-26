@@ -297,6 +297,28 @@ app.include_router(webhooks_router)
 _analyze_limiter = rate_limit("analyze.contract", limit_attr="rate_limit_analyze_per_min")
 
 
+# Vercel's ASGI adapter never fires the lifespan event, so the
+# Base.metadata.create_all() inside lifespan() doesn't run on serverless.
+# Track whether we've ever created tables for the current DB URL and run
+# create_all on demand from the first request.
+_DB_TABLES_READY: set[str] = set()
+
+
+async def _ensure_db_tables() -> None:
+    if settings.database_url in _DB_TABLES_READY:
+        return
+    try:
+        engine, _ = create_engine_and_sessionmaker(
+            settings.database_url, echo=settings.db_echo
+        )
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        await engine.dispose()
+        _DB_TABLES_READY.add(settings.database_url)
+    except Exception:  # pragma: no cover — never block the request on init
+        logger.exception("DB create_all on cold start failed.")
+
+
 @app.middleware("http")
 async def request_context_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
     request_id = request.headers.get("x-request-id") or uuid4().hex
@@ -304,6 +326,7 @@ async def request_context_middleware(request: Request, call_next):  # type: igno
     started = perf_counter()
     response = None
     try:
+        await _ensure_db_tables()
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     clerk_issuer: str = ""
     clerk_jwks_url: str = ""
     clerk_audience: str = ""
+    clerk_secret_key: str = ""
     jwt_access_ttl_minutes: int = 60
     rate_limit_login_per_min: int = 10
     rate_limit_analyze_per_min: int = 10

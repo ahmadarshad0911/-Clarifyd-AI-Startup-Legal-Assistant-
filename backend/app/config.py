@@ -1,4 +1,6 @@
+import os
 from functools import lru_cache
+from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -83,7 +85,65 @@ class Settings(BaseSettings):
         return provider
 
 
+_ASYNCPG_UNSUPPORTED_QS_KEYS = {
+    "sslmode",
+    "channel_binding",
+    "options",
+    "application_name",
+    "connect_timeout",
+}
+
+
+def _neon_url_for_asyncpg() -> str | None:
+    """Convert a Vercel/Neon-style Postgres URL into the asyncpg dialect.
+
+    SQLAlchemy's async engine requires `postgresql+asyncpg://` and asyncpg
+    rejects libpq-style query params like `sslmode=require` and
+    `channel_binding=require`. Strip those, keep only asyncpg-friendly
+    params, and rewrite the driver prefix.
+    """
+    candidates = [
+        os.environ.get("DATABASE_URL"),
+        os.environ.get("POSTGRES_URL_NON_POOLING"),
+        os.environ.get("POSTGRES_URL"),
+    ]
+    for raw in candidates:
+        if not raw:
+            continue
+        url = raw.strip()
+        if not url:
+            continue
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        elif url.startswith("postgresql+asyncpg://"):
+            url = "postgresql://" + url[len("postgresql+asyncpg://"):]
+        elif not url.startswith("postgresql://"):
+            continue
+        parsed = urlparse(url)
+        params = [
+            (k, v)
+            for k, v in parse_qsl(parsed.query, keep_blank_values=False)
+            if k.lower() not in _ASYNCPG_UNSUPPORTED_QS_KEYS
+        ]
+        cleaned = parsed._replace(
+            scheme="postgresql+asyncpg",
+            query=urlencode(params),
+        )
+        return urlunparse(cleaned)
+    return None
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    # Prefer a Neon/Postgres URL when present, otherwise leave the SQLite
+    # default in place for local dev / Vercel /tmp fallback.
+    neon = _neon_url_for_asyncpg()
+    if neon and (
+        not s.database_url
+        or s.database_url.startswith("sqlite")
+        or s.database_url.startswith("postgres")
+    ):
+        s.database_url = neon
+    return s
 

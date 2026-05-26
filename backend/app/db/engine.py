@@ -20,6 +20,9 @@ def create_engine_and_sessionmaker(database_url: str, echo: bool = False) -> tup
     if database_url.startswith(("postgresql+asyncpg://", "postgresql://")):
         # NullPool already opens fresh per checkout; pool_pre_ping is moot here.
         kwargs["poolclass"] = NullPool
+        # Neon (and most managed Postgres) requires TLS. asyncpg won't add it
+        # automatically when sslmode is stripped from the URL.
+        kwargs["connect_args"] = {"ssl": True}
     _engine = create_async_engine(database_url, **kwargs)
     _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False, class_=AsyncSession)
     return _engine, _sessionmaker

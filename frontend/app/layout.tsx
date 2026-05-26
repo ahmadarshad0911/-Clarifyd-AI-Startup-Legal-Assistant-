@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { GeistSans, GeistMono } from "geist/font";
+import { ClerkProvider } from "@clerk/nextjs";
 
 import "./globals.css";
 import { AuthProvider } from "../lib/auth";
@@ -25,6 +26,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     "'self'",
     "'unsafe-inline'",
     "https://cdn.tailwindcss.com",
+    "https://*.clerk.accounts.dev",
+    "https://*.clerk.com",
+    "https://challenges.cloudflare.com",
     isDev ? "'unsafe-eval'" : null,
   ]
     .filter(Boolean)
@@ -36,6 +40,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     "https://*.trycloudflare.com",
     "https://*.onrender.com",
     "https://*.vercel.app",
+    "https://*.clerk.accounts.dev",
+    "https://*.clerk.com",
+    "https://clerk-telemetry.com",
     isDev ? "ws://localhost:*" : null,
     isDev ? "http://localhost:*" : null,
   ]
@@ -66,12 +73,26 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" />
       </head>
       <body>
-        <AuthProvider>
-          <ToastProvider>
-            {children}
-            <CookieConsent />
-          </ToastProvider>
-        </AuthProvider>
+        <ClerkProvider
+          appearance={{
+            variables: {
+              colorPrimary: "#b8260f",
+              colorBackground: "#f4ede1",
+              colorText: "#0c0a08",
+              colorInputBackground: "#f7f1e7",
+              borderRadius: "2px",
+              fontFamily:
+                "Geist, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif",
+            },
+          }}
+        >
+          <AuthProvider>
+            <ToastProvider>
+              {children}
+              <CookieConsent />
+            </ToastProvider>
+          </AuthProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

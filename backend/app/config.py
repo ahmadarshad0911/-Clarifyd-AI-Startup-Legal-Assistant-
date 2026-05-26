@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     db_create_all_on_startup: bool = True
     jwt_secret: str = "dev-only-change-me"
     jwt_algorithm: str = "HS256"
+    # ---------- Clerk ----------
+    clerk_issuer: str = ""
+    clerk_jwks_url: str = ""
+    clerk_audience: str = ""
     jwt_access_ttl_minutes: int = 60
     rate_limit_login_per_min: int = 10
     rate_limit_analyze_per_min: int = 10

@@ -1,18 +1,29 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable
+from uuid import uuid4
 
 import jwt
 from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.clerk import ClerkAuthError, verify_clerk_session_token
 from app.auth.tokens import decode_token, role_satisfies
 from app.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_session
 from app.errors import AppError, ErrorCode
+
+logger = logging.getLogger(__name__)
+
+# Hard-coded admin allowlist mirrored from routes/auth.py. Anyone signing in
+# through Clerk with one of these emails is auto-promoted to admin on first
+# sync into the local user table.
+_ADMIN_EMAILS = frozenset({"ahmedarshad260@gmail.com"})
 
 
 @dataclass(frozen=True)
@@ -20,6 +31,80 @@ class AuthenticatedUser:
     id: str
     email: str
     role: str
+
+
+async def _resolve_clerk_user(
+    token: str, settings: Settings, session: AsyncSession
+) -> AuthenticatedUser | None:
+    """Verify a Clerk-issued JWT and upsert a matching row in our user table.
+
+    Returns None if Clerk is not configured (CLERK_ISSUER empty) so the caller
+    can fall back to legacy local JWT verification.
+    """
+    if not settings.clerk_issuer:
+        return None
+    try:
+        claims = verify_clerk_session_token(token, settings)
+    except ClerkAuthError:
+        return None  # Not a Clerk token — caller will try legacy JWT.
+
+    clerk_user_id = str(claims.get("sub") or "")
+    if not clerk_user_id:
+        raise AppError(
+            code=ErrorCode.request_validation_error,
+            message="Clerk token missing subject.",
+            status_code=401,
+        )
+
+    # Clerk default session tokens don't include email; we accept either an
+    # explicit `email` claim (custom session JWT template) or fall back to the
+    # primary email stored in public_metadata.
+    email = (
+        claims.get("email")
+        or (claims.get("public_metadata") or {}).get("email")
+        or f"{clerk_user_id}@clerk.local"
+    )
+    role_claim = (claims.get("public_metadata") or {}).get("role")
+
+    # Upsert. The local row's primary key stays in sync with the Clerk
+    # user id so we don't need a separate join table.
+    row = (
+        await session.execute(select(User).where(User.id == clerk_user_id))
+    ).scalar_one_or_none()
+    if row is None:
+        initial_role = (
+            "admin" if email in _ADMIN_EMAILS else (role_claim or "reviewer")
+        )
+        row = User(
+            id=clerk_user_id,
+            email=email,
+            hashed_password="!clerk-managed",  # not used; Clerk owns password
+            role=initial_role,
+            email_verified_at=datetime.now(timezone.utc),
+        )
+        session.add(row)
+        try:
+            await session.flush()
+            await session.commit()
+        except Exception:  # pragma: no cover — race on concurrent first-sync
+            await session.rollback()
+            row = (
+                await session.execute(select(User).where(User.id == clerk_user_id))
+            ).scalar_one()
+    else:
+        # Reconcile role + email on every request: Clerk metadata is authoritative.
+        target_role = role_claim or row.role
+        if email in _ADMIN_EMAILS:
+            target_role = "admin"
+        if row.role != target_role or row.email != email:
+            row.role = target_role
+            row.email = email
+            try:
+                await session.commit()
+            except Exception:  # pragma: no cover
+                await session.rollback()
+
+    return AuthenticatedUser(id=row.id, email=row.email, role=row.role)
 
 
 async def current_user(
@@ -35,6 +120,14 @@ async def current_user(
             status_code=401,
         )
     token = auth.split(" ", 1)[1].strip()
+
+    # 1) Try Clerk if configured.
+    clerk_user = await _resolve_clerk_user(token, settings, session)
+    if clerk_user is not None:
+        return clerk_user
+
+    # 2) Fall back to legacy local JWT (kept while Clerk integration
+    #    rolls out; remove once every client uses Clerk-issued tokens).
     try:
         payload = decode_token(token, settings)
     except jwt.ExpiredSignatureError as exc:
@@ -75,16 +168,22 @@ async def current_user_optional(
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
 ) -> AuthenticatedUser | None:
-    """Resolve the caller if a valid token is present; otherwise None.
+    """Resolve the caller if a valid Clerk OR legacy token is present.
 
-    Used by endpoints that accept anonymous traffic but also want to
-    attribute submissions to a signed-in user when possible (feedback).
-    Never raises — bad token = anonymous.
+    Used by endpoints that accept anonymous traffic but want to attribute
+    submissions to a signed-in user when possible.
     """
     auth = request.headers.get("authorization") or request.headers.get("Authorization")
     if not auth or not auth.lower().startswith("bearer "):
         return None
     token = auth.split(" ", 1)[1].strip()
+    try:
+        clerk_user = await _resolve_clerk_user(token, settings, session)
+    except AppError:
+        clerk_user = None
+    if clerk_user is not None:
+        return clerk_user
+
     try:
         payload = decode_token(token, settings)
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):

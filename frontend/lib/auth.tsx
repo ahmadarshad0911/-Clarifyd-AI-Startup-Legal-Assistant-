@@ -1,21 +1,34 @@
 "use client";
 
+/**
+ * Auth bridge over Clerk.
+ *
+ * Old API surface (login / register / verifyOtp / logout) is preserved as
+ * stubs so existing pages compile. The real session lives in Clerk; we
+ * just expose the Clerk-issued JWT (via `getToken`) to ApiClient so the
+ * backend can verify it against Clerk's JWKS.
+ */
+
 import {
   ReactNode,
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useAuth as useClerkAuth,
+  useClerk,
+  useUser,
+} from "@clerk/nextjs";
 
 import { ApiClient } from "./api";
 import type { Me, Role } from "./contracts";
 import { clearLegacyGlobals } from "./user-storage";
 
-const TOKEN_KEY = "clarifyd.token";
-const ROLE_KEY = "clarifyd.role";
 const USER_KEY = "clarifyd.user-key";
 
 type AuthState = {
@@ -34,137 +47,103 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const { signOut } = useClerk();
+  const { isLoaded: clerkLoaded, isSignedIn, getToken } = useClerkAuth();
+  const { user: clerkUser } = useUser();
+
+  // Keep the latest JWT in a ref so ApiClient sees fresh values without
+  // forcing the whole context to re-render on every token refresh.
+  const tokenRef = useRef<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<Role | null>(null);
-  const [me, setMe] = useState<Me | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const client = useMemo(() => new ApiClient(() => token), [token]);
+  // ApiClient reads the token via a getter so we don't recreate it on every
+  // re-render. It hits getToken() at request time.
+  const client = useMemo(
+    () => new ApiClient(() => tokenRef.current),
+    []
+  );
 
-  // Hydrate from localStorage on mount.
+  // Refresh Clerk session token periodically (Clerk rotates every ~60s).
   useEffect(() => {
-    if (typeof window === "undefined") {
-      setLoading(false);
-      return;
-    }
-    const stored = window.localStorage.getItem(TOKEN_KEY);
-    const storedRole = window.localStorage.getItem(ROLE_KEY) as Role | null;
-    if (stored) {
-      setToken(stored);
-      setRole(storedRole);
-    }
-    setLoading(false);
-  }, []);
-
-  // Refresh /auth/me whenever token changes.
-  useEffect(() => {
-    if (!token) {
-      setMe(null);
-      return;
-    }
+    if (!clerkLoaded) return;
     let cancelled = false;
-    client
-      .me()
-      .then((m) => {
-        if (!cancelled) {
-          setMe(m);
-          if (typeof window !== "undefined" && m?.email) {
-            const prev = window.localStorage.getItem(USER_KEY);
-            window.localStorage.setItem(USER_KEY, m.email);
-            if (prev !== m.email) {
-              // First time we see this user (or a switch) — drop any legacy
-              // global-scope leftovers so they don't bleed into this account.
-              clearLegacyGlobals();
-            }
-          }
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          // Token invalid — drop it.
-          setToken(null);
-          setRole(null);
-          if (typeof window !== "undefined") {
-            window.localStorage.removeItem(TOKEN_KEY);
-            window.localStorage.removeItem(ROLE_KEY);
-            window.localStorage.removeItem(USER_KEY);
-          }
-        }
-      });
+    let timer: number | null = null;
+
+    async function pull() {
+      if (cancelled) return;
+      try {
+        const t = isSignedIn ? await getToken() : null;
+        tokenRef.current = t;
+        setToken(t);
+      } catch {
+        tokenRef.current = null;
+        setToken(null);
+      }
+      timer = window.setTimeout(pull, 30_000);
+    }
+    pull();
     return () => {
       cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
     };
-  }, [token, client]);
+  }, [clerkLoaded, isSignedIn, getToken]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      setError(null);
-      const res = await new ApiClient(() => null).login({ email, password });
-      setToken(res.access_token);
-      setRole(res.role);
+  // Map Clerk user -> our local Me shape on every change.
+  const me: Me | null = useMemo(() => {
+    if (!clerkUser) return null;
+    const email = clerkUser.primaryEmailAddress?.emailAddress ?? "";
+    const role =
+      ((clerkUser.publicMetadata as Record<string, unknown>)?.role as Role) ??
+      "reviewer";
+    return { id: clerkUser.id, email, role };
+  }, [clerkUser]);
+
+  const role: Role | null = me?.role ?? null;
+
+  // Persist per-user storage key + wipe legacy globals on first sight.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!me?.email) return;
+    const prev = window.localStorage.getItem(USER_KEY);
+    window.localStorage.setItem(USER_KEY, me.email);
+    if (prev !== me.email) clearLegacyGlobals();
+  }, [me?.email]);
+
+  const logout = useMemo(
+    () => async () => {
+      try {
+        await signOut(() => router.replace("/login"));
+      } catch {
+        router.replace("/login");
+      }
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(TOKEN_KEY, res.access_token);
-        window.localStorage.setItem(ROLE_KEY, res.role);
+        window.localStorage.removeItem(USER_KEY);
+        clearLegacyGlobals();
       }
     },
-    []
+    [signOut, router]
   );
 
-  /** OTP gate is currently disabled — backend issues a token on /register
-   *  again. (verifyOtp below stays wired for when we re-enable.) */
-  const register = useCallback(
-    async (email: string, password: string) => {
-      setError(null);
-      const res = (await new ApiClient(() => null).register({ email, password })) as
-        | { access_token?: string; role?: string; expires_in?: number }
-        | { verification_required: boolean; email: string; expires_in: number };
-      if ("access_token" in res && res.access_token) {
-        setToken(res.access_token);
-        setRole(res.role as Role);
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(TOKEN_KEY, res.access_token);
-          if (res.role) window.localStorage.setItem(ROLE_KEY, res.role);
-        }
-      }
+  // Legacy stubs — the dashboard / pages still import these. Clerk owns the
+  // real flow now, so these just point the user at the Clerk-hosted page.
+  const noop = useMemo(
+    () => async () => {
+      router.push("/login");
     },
-    []
+    [router]
   );
-
-  /** Verify OTP, store the issued JWT, set context state. */
-  const verifyOtp = useCallback(async (email: string, otp: string) => {
-    setError(null);
-    const res = await new ApiClient(() => null).verifyOtp({ email, otp });
-    setToken(res.access_token);
-    setRole(res.role);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(TOKEN_KEY, res.access_token);
-      window.localStorage.setItem(ROLE_KEY, res.role);
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    setToken(null);
-    setRole(null);
-    setMe(null);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(TOKEN_KEY);
-      window.localStorage.removeItem(ROLE_KEY);
-      window.localStorage.removeItem(USER_KEY);
-      clearLegacyGlobals();
-    }
-  }, []);
 
   const value: AuthState = {
     token,
     role,
     me,
     client,
-    loading,
-    error,
-    login,
-    register,
-    verifyOtp,
+    loading: !clerkLoaded,
+    error: null,
+    login: noop,
+    register: noop,
+    verifyOtp: noop,
     logout,
   };
 

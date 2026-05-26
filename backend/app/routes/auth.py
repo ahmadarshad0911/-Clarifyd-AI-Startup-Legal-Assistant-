@@ -26,6 +26,11 @@ from app.services.email import (
 
 logger = logging.getLogger(__name__)
 
+# Hard-coded admin allowlist. Anyone who signs up OR logs in with one of these
+# emails is auto-promoted to role="admin". Cheaper than a full bootstrap script
+# while there's only one project owner.
+_ADMIN_EMAILS = frozenset({"ahmedarshad260@gmail.com"})
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -149,6 +154,11 @@ async def login(
     #         status_code=403,
     #     )
 
+    # Auto-promote owner emails to admin on every login so a fresh DB doesn't
+    # lock the project owner out of the admin console.
+    if user.email in _ADMIN_EMAILS and user.role != "admin":
+        user.role = "admin"
+
     token = create_access_token(user_id=user.id, role=user.role, settings=settings)
     await append_audit_event(
         session,
@@ -192,10 +202,11 @@ async def register(
         )
 
     now = datetime.now(timezone.utc)
+    initial_role = "admin" if email in _ADMIN_EMAILS else "reviewer"
     user = User(
         email=email,
         hashed_password=hash_password(body.password),
-        role="reviewer",
+        role=initial_role,
         email_verified_at=now,  # auto-verify while gate is off
     )
     session.add(user)

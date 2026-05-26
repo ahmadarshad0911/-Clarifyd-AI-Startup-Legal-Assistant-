@@ -347,6 +347,38 @@ export class ApiClient {
     });
   }
 
+  // --- admin ---
+
+  async adminListUsers(): Promise<{
+    items: Array<{
+      id: string;
+      email: string;
+      role: string;
+      created_at: string;
+      email_verified: boolean;
+      drafts: number;
+    }>;
+  }> {
+    return this.request("/admin/users");
+  }
+
+  async adminStats(): Promise<{
+    users_total: number;
+    users_last_7d: number;
+    drafts_total: number;
+    drafts_last_7d: number;
+    feedback_total: number;
+    admins: number;
+  }> {
+    return this.request("/admin/stats");
+  }
+
+  async adminDeleteUser(userId: string): Promise<{ id: string; deleted: boolean }> {
+    return this.request(`/admin/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+    });
+  }
+
   async claimReview(itemId: string): Promise<{
     item_id: string;
     state: "in_review";

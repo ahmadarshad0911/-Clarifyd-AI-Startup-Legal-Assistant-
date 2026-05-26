@@ -217,6 +217,9 @@ export function DarkAppShell({
                 </div>
               </div>
               <MenuLink href="/profile" label="Profile" Icon={User} />
+              {role === "admin" ? (
+                <MenuLink href="/admin" label="Admin console" />
+              ) : null}
               <MenuLink href="/" label="Landing" />
               <button
                 type="button"

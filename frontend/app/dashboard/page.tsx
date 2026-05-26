@@ -33,6 +33,7 @@ import {
   Handshake,
   Lightning,
   HashStraight,
+  Newspaper,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
@@ -138,7 +139,10 @@ export default function DashboardPage() {
         transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
         style={{ marginBottom: 32 }}
       >
-        <div className="cf-eyebrow" style={{ color: "var(--brand-500)" }}>The reading room</div>
+        <div className="cf-eyebrow" style={{ color: "var(--brand-500)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Newspaper weight="duotone" size={14} aria-hidden />
+          The reading room
+        </div>
         <h1 style={{ marginTop: 10, fontSize: 38, fontWeight: 500, letterSpacing: "-0.025em", lineHeight: 1.05 }}>
           {`Welcome${me?.email ? `, ${me.email.split("@")[0]}` : ""}.`}
         </h1>

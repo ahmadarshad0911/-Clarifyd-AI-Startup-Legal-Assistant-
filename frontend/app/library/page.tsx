@@ -10,7 +10,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, BookOpen } from "@phosphor-icons/react";
+import { ArrowRight, BookOpen, Books } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { BroadsheetSearch } from "../../components/broadsheet-search";
@@ -44,7 +44,10 @@ export default function LibraryPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="cf-eyebrow" style={{ color: "var(--brand-500)" }}>Library</div>
+        <div className="cf-eyebrow" style={{ color: "var(--brand-500)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Books weight="duotone" size={14} aria-hidden />
+          Library
+        </div>
         <h1 style={{ marginTop: 8, fontSize: 32, fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
           Startup templates. <span style={{ color: "var(--brand-500)" }}>Drop-in ready.</span>
         </h1>

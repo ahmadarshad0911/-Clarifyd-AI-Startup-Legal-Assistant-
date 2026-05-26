@@ -9,6 +9,7 @@
  */
 
 import { useRef, useState } from "react";
+import { MagnifyingGlass } from "@phosphor-icons/react";
 
 type Props = {
   label?: string;          // kicker, defaults to "Index"
@@ -48,7 +49,7 @@ export function BroadsheetSearch({
           marginBottom: 6,
         }}
       >
-        <span style={{ color: "var(--bsd-red)" }}>§</span>
+        <MagnifyingGlass weight="duotone" size={13} color="var(--bsd-red)" aria-hidden />
         {label}
         <span style={{ flex: 1, height: 1, background: "var(--bsd-hairline)", margin: "0 8px", transform: "translateY(-3px)" }} />
         {meta ? <span style={{ color: "var(--bsd-muted)" }}>{meta}</span> : null}

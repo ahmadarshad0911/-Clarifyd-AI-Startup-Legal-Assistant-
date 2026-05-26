@@ -15,6 +15,8 @@ import {
   Download,
   FileText,
   Stack,
+  Files,
+  Scales,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
@@ -367,7 +369,8 @@ function Inner() {
       {/* ============ Document selector ============ */}
       <section style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
-          <div className="cf-eyebrow" style={{ color: "var(--brand-500)" }}>
+          <div className="cf-eyebrow" style={{ color: "var(--brand-500)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Files weight="duotone" size={14} aria-hidden />
             Analyzed documents · {docs.length}
           </div>
           <Link
@@ -466,7 +469,8 @@ function Inner() {
             }}
           >
             <div>
-              <div className="cf-eyebrow" style={{ color: "var(--brand-500)" }}>
+              <div className="cf-eyebrow" style={{ color: "var(--brand-500)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Scales weight="duotone" size={14} aria-hidden />
                 Risky clauses · {active.file_name}
               </div>
               <div style={{ marginTop: 14, display: "flex", alignItems: "baseline", gap: 14 }}>

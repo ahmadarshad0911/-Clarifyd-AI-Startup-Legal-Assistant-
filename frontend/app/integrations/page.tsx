@@ -9,6 +9,7 @@
  */
 
 import { motion } from "framer-motion";
+import { PuzzlePiece } from "@phosphor-icons/react";
 import { useToast } from "../../lib/toast";
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { IntegrationsPanel, type Integration } from "../../components/integrations-panel";
@@ -56,7 +57,10 @@ export default function IntegrationsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="cf-eyebrow" style={{ color: "var(--brand-500)" }}>Integrations</div>
+        <div className="cf-eyebrow" style={{ color: "var(--brand-500)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <PuzzlePiece weight="duotone" size={14} aria-hidden />
+          Integrations
+        </div>
         <h1 style={{ marginTop: 8, fontSize: 32, fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
           Pipe Clarifyd into the tools you already live in.
         </h1>

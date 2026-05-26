@@ -379,6 +379,10 @@ export class ApiClient {
     });
   }
 
+  async oauthProviders(): Promise<{ google: boolean; facebook: boolean }> {
+    return this.request("/auth/oauth/providers");
+  }
+
   async claimReview(itemId: string): Promise<{
     item_id: string;
     state: "in_review";

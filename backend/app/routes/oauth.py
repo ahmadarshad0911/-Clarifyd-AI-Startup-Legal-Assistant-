@@ -141,6 +141,24 @@ def _normalize_profile(provider: Provider, profile: dict[str, Any]) -> dict[str,
     return {"subject": "", "email": ""}
 
 
+@router.get("/providers")
+async def providers(
+    settings: Settings = Depends(get_settings),
+) -> dict[str, bool]:
+    """Tell the frontend which OAuth providers are wired up so it can hide or
+    disable buttons that would otherwise lead to a 503."""
+    return {
+        "google": bool(
+            _clean(settings.google_oauth_client_id)
+            and _clean(settings.google_oauth_client_secret)
+        ),
+        "facebook": bool(
+            _clean(settings.facebook_oauth_client_id)
+            and _clean(settings.facebook_oauth_client_secret)
+        ),
+    }
+
+
 @router.get("/{provider}/authorize")
 async def authorize(
     provider: Provider,

@@ -12,9 +12,10 @@ import {
   ArrowRight, ArrowUpRight, Check, Eye, EyeSlash, Sparkle, ShieldCheck,
 } from "@phosphor-icons/react";
 
-import { ApiError, resolveApiBaseUrl } from "../../lib/api";
+import { ApiClient, ApiError, resolveApiBaseUrl } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
+import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 
 type Mode = "signin" | "register";
 const EOQ = [0.23, 1, 0.32, 1] as const;
@@ -33,6 +34,15 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [suggestedPw, setSuggestedPw] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [providers, setProviders] = useState<{ google: boolean; facebook: boolean } | null>(null);
+  const [notice, setNotice] = useState<NoticeContent | null>(null);
+
+  useEffect(() => {
+    const c = new ApiClient(() => null);
+    c.oauthProviders()
+      .then(setProviders)
+      .catch(() => setProviders({ google: false, facebook: false }));
+  }, []);
   const justRegistered = useRef(false);
 
   useEffect(() => {
@@ -133,6 +143,22 @@ export default function LoginPage() {
   }
 
   function oauth(provider: "google" | "facebook") {
+    const ready = providers?.[provider] ?? false;
+    if (!ready) {
+      const label = provider === "google" ? "Google" : "Facebook";
+      const envKey = provider === "google"
+        ? "GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET"
+        : "FACEBOOK_OAUTH_CLIENT_ID + FACEBOOK_OAUTH_CLIENT_SECRET";
+      setNotice({
+        kind: "warning",
+        caption: `STOP PRESS · ${label.toUpperCase()} OAUTH NOT CONFIGURED`,
+        headline: `${label} sign-in isn't wired up yet.`,
+        body: `An admin needs to add credentials to backend/.env before this button works. Until then, sign in with email and password — it works exactly the same.`,
+        hint: `Required env vars: ${envKey}. Also set OAUTH_BACKEND_BASE_URL and OAUTH_FRONTEND_CALLBACK_URL to match your deployment.`,
+        primaryLabel: "Use email instead",
+      });
+      return;
+    }
     window.location.href = `${apiBaseUrl}/auth/oauth/${provider}/authorize`;
   }
 
@@ -330,8 +356,24 @@ export default function LoginPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button type="button" onClick={() => oauth("google")} className="bsd-btn bsd-btn--ghost cursor-pointer">Google</button>
-              <button type="button" onClick={() => oauth("facebook")} className="bsd-btn bsd-btn--ghost cursor-pointer">Facebook</button>
+              <button
+                type="button"
+                onClick={() => oauth("google")}
+                className="bsd-btn bsd-btn--ghost cursor-pointer"
+                title={providers?.google ? "Sign in with Google" : "Google sign-in not configured"}
+                style={{ opacity: providers?.google ? 1 : 0.55 }}
+              >
+                Google
+              </button>
+              <button
+                type="button"
+                onClick={() => oauth("facebook")}
+                className="bsd-btn bsd-btn--ghost cursor-pointer"
+                title={providers?.facebook ? "Sign in with Facebook" : "Facebook sign-in not configured"}
+                style={{ opacity: providers?.facebook ? 1 : 0.55 }}
+              >
+                Facebook
+              </button>
             </div>
 
             <p className="cf-mono" style={{ margin: "4px 0 0", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--bsd-muted)", fontWeight: 600, textAlign: "center" }}>
@@ -341,6 +383,7 @@ export default function LoginPage() {
           </form>
         </motion.section>
       </main>
+      <NoticeModal open={notice !== null} notice={notice} onClose={() => setNotice(null)} />
     </div>
   );
 }

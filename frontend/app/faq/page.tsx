@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Question } from "@phosphor-icons/react";
+import { Plus, Minus, Question } from "@phosphor-icons/react";
 
 import { PublicShell } from "../../components/public-shell";
 import { BroadsheetSearch } from "../../components/broadsheet-search";
@@ -160,13 +160,15 @@ export default function FaqPage() {
                     letterSpacing: "-0.005em",
                   }}
                 >
-                  <motion.span
-                    animate={{ rotate: open ? 45 : 0 }}
-                    transition={{ duration: 0.22, ease: EOQ }}
-                    style={{ display: "inline-flex", color: open ? "var(--bsd-red)" : "var(--bsd-muted)", flexShrink: 0, marginTop: 3 }}
+                  <span
+                    style={{ display: "inline-flex", color: open ? "var(--bsd-red)" : "var(--bsd-muted)", flexShrink: 0, marginTop: 3, transition: "color 200ms ease" }}
                   >
-                    <Plus weight="bold" size={13} aria-hidden />
-                  </motion.span>
+                    {open ? (
+                      <Minus weight="bold" size={14} aria-hidden />
+                    ) : (
+                      <Plus weight="bold" size={14} aria-hidden />
+                    )}
+                  </span>
                   <span style={{ flex: 1 }}>{highlight(f.q, debounced)}</span>
                 </button>
                 <div

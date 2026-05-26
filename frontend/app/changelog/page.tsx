@@ -8,7 +8,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Sparkle, Wrench, ShieldCheck, ListMagnifyingGlass } from "@phosphor-icons/react";
+import { Wrench, ShieldCheck, Lightbulb, PaintBrush, ListMagnifyingGlass } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 import { PublicShell } from "../../components/public-shell";
@@ -32,11 +32,11 @@ const TAG_LABEL: Record<Tag, string> = {
   security: "Security",
   design: "Design",
 };
-const TAG_ICON: Record<Tag, typeof Sparkle> = {
-  feature: Sparkle,
+const TAG_ICON: Record<Tag, typeof Wrench> = {
+  feature: Lightbulb,
   fix: Wrench,
   security: ShieldCheck,
-  design: ListMagnifyingGlass,
+  design: PaintBrush,
 };
 const TAG_COLOR: Record<Tag, string> = {
   feature: "var(--bsd-red)",
@@ -186,7 +186,7 @@ export default function ChangelogPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          <Icon weight="duotone" size={11} /> {TAG_LABEL[e.tag]}
+                          <Icon weight="duotone" size={13} /> {TAG_LABEL[e.tag]}
                         </span>
                         <span style={{ fontSize: 14.5, color: "var(--bsd-ink)", lineHeight: 1.55 }}>
                           {e.body}

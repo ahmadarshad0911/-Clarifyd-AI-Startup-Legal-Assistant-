@@ -13,6 +13,8 @@
  */
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { SignIn, useUser } from "@clerk/nextjs";
 import {
@@ -33,7 +35,18 @@ const QUOTE = {
 
 export default function LoginPage() {
   const reduce = useReducedMotion() ?? false;
-  const { isLoaded } = useUser();
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
+
+  // If already signed in (e.g. user hits /login after a successful OAuth
+  // return), Clerk sometimes hangs on its catchall-check route while it
+  // probes for the session. Push them to /dashboard explicitly so the
+  // spinner doesn't loop.
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   return (
     <div
@@ -285,11 +298,10 @@ export default function LoginPage() {
           </motion.div>
         </motion.aside>
 
-        {/* Right column — Clerk SignIn */}
-        <motion.section
-          initial={{ opacity: 0, y: reduce ? 0 : 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: EOQ, delay: 0.08 }}
+        {/* Right column — Clerk SignIn (no motion wrapper: Clerk's internal
+            mount cycle and callback handler must run synchronously, otherwise
+            sso-callback can hang in the loading state). */}
+        <section
           style={{
             display: "flex",
             justifyContent: "center",
@@ -507,7 +519,7 @@ export default function LoginPage() {
               </p>
             </div>
           )}
-        </motion.section>
+        </section>
       </main>
     </div>
   );

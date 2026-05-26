@@ -612,17 +612,16 @@ async def _analyze_and_persist(
         ) from exc
     analysis = analysis_with_flags.result
     injection_flags = analysis_with_flags.injection_flags
-    # Include all medium/high/critical findings even when the rules-based
-    # clause-type extractor couldn't categorize them. Kimi often returns a
-    # strong severity verdict on text the local extractor can't pattern-match
-    # (especially on Vercel cold starts where the cache is empty); dropping
-    # uncategorized clauses meant the UI showed 0 flags even when Kimi flagged
-    # the contract as critical.
-    important_findings = [
+    # Surface medium/high/critical first. If Kimi was rate-limited and every
+    # clause fell through to the rules-based provider with severity=low, the
+    # UI was showing zero flags. Fall back to ALL findings (incl. low) so the
+    # user can still see what we extracted instead of an empty Findings page.
+    serious = [
         f
         for f in analysis.findings
         if f.severity.value in {"medium", "high", "critical"}
     ]
+    important_findings = serious if serious else list(analysis.findings)
 
     if existing is not None:
         await session.execute(

@@ -155,7 +155,10 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 32, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">Negotiation lab · Volume I</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <Handshake weight="duotone" size={14} aria-hidden />
+              Negotiation lab · Volume I
+            </span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Across the <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>table.</span>
             </h1>

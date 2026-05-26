@@ -12,7 +12,7 @@ import { useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, Handshake, FileText, BriefcaseMetal, Receipt, Sparkle, Chat,
-  PaperPlaneRight, CheckCircle, X, Download, Copy, Hammer,
+  PaperPlaneRight, CheckCircle, X, Download, Copy, Hammer, Compass,
   type Icon,
 } from "@phosphor-icons/react";
 
@@ -207,7 +207,10 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">Legal Co-Pilot</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <Compass weight="duotone" size={14} aria-hidden />
+              Legal Co-Pilot
+            </span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Draft with <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>precision.</span>
             </h1>

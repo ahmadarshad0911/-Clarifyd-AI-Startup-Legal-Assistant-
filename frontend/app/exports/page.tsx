@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  ArrowRight, ShareNetwork, FileText, Check, Hash, Sparkle, UploadSimple, Tag, X,
+  ArrowRight, ShareNetwork, FileText, Check, Hash, Sparkle, UploadSimple, Tag, X, Books,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
@@ -121,7 +121,10 @@ export default function ExportsPage() {
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">Library</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <Books weight="duotone" size={14} aria-hidden />
+              Library
+            </span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Your contract <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>library.</span>
             </h1>

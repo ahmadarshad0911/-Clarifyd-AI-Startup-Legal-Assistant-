@@ -90,7 +90,10 @@ export default function SecurityPage() {
             style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
           >
             <div>
-              <span className="bsd-kicker">Security desk</span>
+              <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <ShieldCheck weight="duotone" size={14} aria-hidden />
+                Security desk
+              </span>
               <h1 style={{ margin: "12px 0 0", fontSize: "clamp(36px, 5.5vw, 72px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
                 What we do so you can <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>upload a contract.</span>
               </h1>

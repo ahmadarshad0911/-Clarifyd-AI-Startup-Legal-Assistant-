@@ -197,7 +197,10 @@ export default function FounderProfilePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EOQ }}
           >
-            <span className="bsd-kicker">Chapter {ROMAN[step - 1]}</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <Rocket weight="duotone" size={14} aria-hidden />
+              Chapter {ROMAN[step - 1]}
+            </span>
             <h1 style={{ marginTop: 14, marginBottom: 0, fontSize: 46, fontWeight: 700, letterSpacing: "-0.035em", lineHeight: 1.02, color: "var(--bsd-ink)" }}>
               {step === 2 ? (
                 <>On the matter of your <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>venture.</span></>

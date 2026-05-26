@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowClockwise, CheckCircle, Warning, MinusCircle } from "@phosphor-icons/react";
+import { ArrowClockwise, CheckCircle, Warning, MinusCircle, Pulse } from "@phosphor-icons/react";
 
 import { PublicShell } from "../../components/public-shell";
 import { resolveApiBaseUrl } from "../../lib/api";
@@ -111,7 +111,10 @@ export default function StatusPage() {
             style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
           >
             <div>
-              <span className="bsd-kicker">Press status</span>
+              <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Pulse weight="duotone" size={14} aria-hidden />
+                Press status
+              </span>
               <h1 style={{ margin: "12px 0 0", fontSize: "clamp(36px, 5.5vw, 72px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
                 {top.headline.split(/(operational|degradation|down)/i).map((part, i) => {
                   const isAccent = /^(operational|degradation|down)/i.test(part);

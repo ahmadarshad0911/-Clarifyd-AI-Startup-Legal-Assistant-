@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Check } from "@phosphor-icons/react";
+import { ArrowRight, Check, Coin } from "@phosphor-icons/react";
 
 import { PublicShell } from "../../components/public-shell";
 import { useAuth } from "../../lib/auth";
@@ -43,7 +43,10 @@ export default function PricingPage() {
       <section style={{ padding: "72px 32px 24px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 56, alignItems: "end" }}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: EOQ }}>
-            <span className="bsd-kicker">Subscriptions</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <Coin weight="duotone" size={14} aria-hidden />
+              Subscriptions
+            </span>
             <h1 style={{ margin: "12px 0 0", fontSize: "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>
               Free until your <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>seed round.</span>
             </h1>

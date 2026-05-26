@@ -12,7 +12,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  ArrowRight, Check, Warning, Quotes, Lightning, Chat,
+  ArrowRight, Check, Warning, Quotes, Lightning, Chat, Brain,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
@@ -91,7 +91,10 @@ export default function ReasoningPage() {
           style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
         >
           <div>
-            <span className="bsd-kicker">Engine deliberation · Volume I</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <Brain weight="duotone" size={14} aria-hidden />
+              Engine deliberation · Volume I
+            </span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Reason it <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>back through.</span>
             </h1>

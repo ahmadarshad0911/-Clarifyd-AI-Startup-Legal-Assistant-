@@ -37,6 +37,7 @@ import {
   Trash,
   UserCircle,
   Warning,
+  IdentificationCard,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
@@ -163,7 +164,10 @@ export default function ProfilePage() {
           }}
         >
           <div>
-            <span className="bsd-kicker">Founder profile</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <IdentificationCard weight="duotone" size={14} aria-hidden />
+              Founder profile
+            </span>
             <h1
               style={{
                 margin: "10px 0 0",

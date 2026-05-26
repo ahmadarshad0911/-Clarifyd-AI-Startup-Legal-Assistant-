@@ -111,7 +111,10 @@ export default function ChangelogPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EOQ }}
           >
-            <span className="bsd-kicker">Editions archive</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <ListMagnifyingGlass weight="duotone" size={14} aria-hidden />
+              Editions archive
+            </span>
             <h1 style={{ margin: "12px 0 0", fontSize: "clamp(36px, 5.5vw, 72px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Everything we&rsquo;ve shipped, <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>edition by edition.</span>
             </h1>

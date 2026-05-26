@@ -9,7 +9,7 @@ import {
   useCallback, useEffect, useMemo, useRef, useState,
 } from "react";
 import { motion } from "framer-motion";
-import { Envelope, WarningOctagon, ArrowLeft } from "@phosphor-icons/react";
+import { Envelope, WarningOctagon, ArrowLeft, SealCheck } from "@phosphor-icons/react";
 
 import { ApiClient, ApiError } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth";
@@ -144,7 +144,10 @@ function Inner() {
         transition={{ duration: 0.5, ease: EOQ }}
         style={{ textAlign: "center", marginBottom: 28, maxWidth: 540 }}
       >
-        <span className="bsd-kicker">Verification</span>
+        <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <SealCheck weight="duotone" size={14} aria-hidden />
+          Verification
+        </span>
         <h1 style={{ marginTop: 14, fontSize: "clamp(36px, 5vw, 64px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.035em", lineHeight: 1 }}>
           Check your <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>inbox.</span>
         </h1>

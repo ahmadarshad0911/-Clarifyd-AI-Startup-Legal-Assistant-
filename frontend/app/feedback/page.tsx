@@ -36,6 +36,7 @@ import {
   CheckCircle,
   ArrowRight,
   PaperPlaneRight,
+  PencilSimpleLine,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
@@ -163,7 +164,10 @@ export default function FeedbackPage() {
           }}
         >
           <div>
-            <span className="bsd-kicker">Reporter&apos;s notebook</span>
+            <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <PencilSimpleLine weight="duotone" size={14} aria-hidden />
+              Reporter&apos;s notebook
+            </span>
             <h1
               style={{
                 margin: "10px 0 0",

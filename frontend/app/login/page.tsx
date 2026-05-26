@@ -176,7 +176,8 @@ export default function LoginPage() {
           transition={{ duration: 0.55, ease: EOQ }}
           style={{ display: "flex", flexDirection: "column", gap: 28 }}
         >
-          <span className="bsd-kicker">
+          <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <ShieldCheck weight="duotone" size={14} aria-hidden />
             {mode === "signin" ? "Welcome back" : "Open a reading room"}
           </span>
           <h1 style={{ margin: 0, fontSize: "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>

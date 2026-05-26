@@ -51,8 +51,16 @@ def configure_logging(level: str) -> None:
     handler.addFilter(RequestIdFilter())
     root_logger.addHandler(handler)
 
-    file_handler = logging.FileHandler("backend.log", encoding="utf-8")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] [req=%(request_id)s] %(message)s"))
-    file_handler.addFilter(RequestIdFilter())
-    root_logger.addHandler(file_handler)
+    # File handler skipped on read-only filesystems (Vercel/Lambda). Stream
+    # handler above already pipes to stdout, which the serverless platform
+    # collects on its own.
+    import os as _os
+    if not _os.environ.get("VERCEL") and not _os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        try:
+            file_handler = logging.FileHandler("backend.log", encoding="utf-8")
+            file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] [req=%(request_id)s] %(message)s"))
+            file_handler.addFilter(RequestIdFilter())
+            root_logger.addHandler(file_handler)
+        except OSError:
+            pass  # Read-only or no write permission — stdout-only is fine.
 

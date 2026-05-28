@@ -15,7 +15,6 @@ import { CaretDown, CaretRight, List, SignOut, User, X } from "@phosphor-icons/r
 
 import { useAuth } from "../../lib/auth";
 import { useIsMobile } from "../../lib/use-is-mobile";
-import { isOnboarded } from "../../lib/founder-profile";
 
 type NavItem = { href: string; label: string };
 
@@ -52,12 +51,7 @@ export function DarkAppShell({
   const acctRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (loading) return;
-    if (!token) {
-      router.replace("/login");
-    } else if (!isOnboarded()) {
-      router.replace("/onboarding/profile");
-    }
+    if (!loading && !token) router.replace("/login");
   }, [loading, token, router]);
 
   useEffect(() => {

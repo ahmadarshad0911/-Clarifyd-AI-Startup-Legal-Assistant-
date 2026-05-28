@@ -7,6 +7,7 @@ import "./globals.css";
 import { AuthProvider } from "../lib/auth";
 import { ToastProvider } from "../lib/toast";
 import { CookieConsent } from "../components/common/cookie-consent";
+import { NavProgress } from "../components/common/nav-progress";
 
 export const metadata: Metadata = {
   title: "Clarifyd — Read your next contract like a senior counsel",
@@ -102,6 +103,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           <AuthProvider>
             <ToastProvider>
+              <NavProgress />
               {children}
               <CookieConsent />
             </ToastProvider>

@@ -20,9 +20,12 @@ def create_engine_and_sessionmaker(database_url: str, echo: bool = False) -> tup
     if database_url.startswith(("postgresql+asyncpg://", "postgresql://")):
         # NullPool already opens fresh per checkout; pool_pre_ping is moot here.
         kwargs["poolclass"] = NullPool
-        # Neon (and most managed Postgres) requires TLS. asyncpg won't add it
-        # automatically when sslmode is stripped from the URL.
-        kwargs["connect_args"] = {"ssl": True}
+        # Neon requires TLS (asyncpg won't add it once sslmode is stripped).
+        # statement_cache_size=0 is mandatory behind Neon's PgBouncer pooler
+        # endpoint (the `-pooler` host): transaction-mode pooling reuses
+        # backends across clients, so asyncpg's prepared statements break with
+        # "prepared statement does not exist" — disabling the cache avoids it.
+        kwargs["connect_args"] = {"ssl": True, "statement_cache_size": 0}
     _engine = create_async_engine(database_url, **kwargs)
     _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False, class_=AsyncSession)
     return _engine, _sessionmaker

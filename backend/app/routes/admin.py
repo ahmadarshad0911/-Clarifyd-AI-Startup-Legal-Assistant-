@@ -9,7 +9,13 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import AuthenticatedUser, current_user, require_role
+from app.auth.dependencies import (
+    _ADMIN_CLERK_IDS,
+    _ADMIN_EMAILS,
+    AuthenticatedUser,
+    current_user,
+    require_role,
+)
 from app.config import get_settings
 from app.db.models import ContractDraft, User, Feedback
 from app.db.session import get_session
@@ -41,6 +47,54 @@ async def _clerk_user_count() -> int | None:
     except (httpx.HTTPError, ValueError, TypeError) as exc:
         logger.warning("Clerk user-count fetch failed: %r", exc)
         return None
+
+
+async def _clerk_list_users() -> list[dict] | None:
+    """Every Clerk user (the real roster). None if Clerk is unavailable.
+
+    Returns normalized dicts: id, email, role, created_at (tz-aware),
+    email_verified. Draft counts are merged from the local DB by caller.
+    """
+    secret = get_settings().clerk_secret_key
+    if not secret:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.clerk.com/v1/users",
+                params={"limit": 200, "order_by": "-created_at"},
+                headers={"Authorization": f"Bearer {secret}"},
+            )
+            resp.raise_for_status()
+            raw = resp.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning("Clerk user-list fetch failed: %r", exc)
+        return None
+
+    out: list[dict] = []
+    for u in raw if isinstance(raw, list) else []:
+        emails = u.get("email_addresses") or []
+        primary_id = u.get("primary_email_address_id")
+        primary = next((e for e in emails if e.get("id") == primary_id), None)
+        if primary is None and emails:
+            primary = emails[0]
+        email = (primary or {}).get("email_address", "")
+        verified = (
+            ((primary or {}).get("verification") or {}).get("status") == "verified"
+        )
+        role = ((u.get("public_metadata") or {}).get("role")) or "reviewer"
+        created_ms = u.get("created_at") or 0
+        created = datetime.fromtimestamp(int(created_ms) / 1000, tz=timezone.utc)
+        out.append(
+            {
+                "id": u.get("id", ""),
+                "email": email,
+                "role": role,
+                "created_at": created,
+                "email_verified": verified,
+            }
+        )
+    return out
 
 
 class AuditVerifyResponse(BaseModel):
@@ -137,26 +191,53 @@ class UserDeleteResponse(BaseModel):
     deleted: bool
 
 
+async def _local_draft_count(session: AsyncSession, owner_id: str) -> int:
+    cnt = (
+        await session.execute(
+            select(func.count())
+            .select_from(ContractDraft)
+            .where(ContractDraft.owner_id == owner_id)
+            .where(ContractDraft.deleted_at.is_(None))
+        )
+    ).scalar_one()
+    return int(cnt or 0)
+
+
 @router.get("/admin/users", response_model=AdminUserListResponse)
 async def admin_users(
     session: AsyncSession = Depends(get_session),
     user: AuthenticatedUser = Depends(require_role("admin")),
 ) -> AdminUserListResponse:
+    # Clerk is the source of truth for who has signed up. The local table
+    # only holds accounts that made an authed call, so list from Clerk and
+    # merge draft counts from the local DB.
+    clerk_users = await _clerk_list_users()
+    if clerk_users is not None:
+        items: list[AdminUserRow] = []
+        for u in clerk_users:
+            role = u["role"]
+            if u["email"] in _ADMIN_EMAILS or u["id"] in _ADMIN_CLERK_IDS:
+                role = "admin"
+            items.append(
+                AdminUserRow(
+                    id=u["id"],
+                    email=u["email"],
+                    role=role,
+                    created_at=u["created_at"],
+                    email_verified=u["email_verified"],
+                    drafts=await _local_draft_count(session, u["id"]),
+                )
+            )
+        return AdminUserListResponse(items=items)
+
+    # Fallback: local table only.
     rows = (
         await session.execute(
             select(User).order_by(User.created_at.desc()).limit(500)
         )
     ).scalars().all()
-    items: list[AdminUserRow] = []
+    items = []
     for r in rows:
-        cnt = (
-            await session.execute(
-                select(func.count())
-                .select_from(ContractDraft)
-                .where(ContractDraft.owner_id == r.id)
-                .where(ContractDraft.deleted_at.is_(None))
-            )
-        ).scalar_one()
         items.append(
             AdminUserRow(
                 id=r.id,
@@ -164,7 +245,7 @@ async def admin_users(
                 role=r.role,
                 created_at=r.created_at,
                 email_verified=r.email_verified_at is not None,
-                drafts=int(cnt or 0),
+                drafts=await _local_draft_count(session, r.id),
             )
         )
     return AdminUserListResponse(items=items)

@@ -1,19 +1,46 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import AuthenticatedUser, current_user, require_role
+from app.config import get_settings
 from app.db.models import ContractDraft, User, Feedback
 from app.db.session import get_session
 from app.errors import AppError, ErrorCode
 from app.services.audit import append_audit_event, verify_audit_chain
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["admin"])
+
+
+async def _clerk_user_count() -> int | None:
+    """Total sign-ups from Clerk (source of truth). None if unavailable.
+
+    The local user table only holds accounts that have made an authed call,
+    so it under-counts. Clerk knows every sign-up.
+    """
+    secret = get_settings().clerk_secret_key
+    if not secret:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                "https://api.clerk.com/v1/users/count",
+                headers={"Authorization": f"Bearer {secret}"},
+            )
+            resp.raise_for_status()
+            return int(resp.json().get("total_count"))
+    except (httpx.HTTPError, ValueError, TypeError) as exc:
+        logger.warning("Clerk user-count fetch failed: %r", exc)
+        return None
 
 
 class AuditVerifyResponse(BaseModel):
@@ -150,7 +177,9 @@ async def admin_stats(
 ) -> AdminStatsResponse:
     cutoff = datetime.now(timezone.utc).timestamp() - 7 * 86400
 
-    users_total = (await session.execute(select(func.count()).select_from(User))).scalar_one()
+    local_users = (await session.execute(select(func.count()).select_from(User))).scalar_one()
+    clerk_users = await _clerk_user_count()
+    users_total = clerk_users if clerk_users is not None else int(local_users or 0)
     drafts_total = (
         await session.execute(
             select(func.count()).select_from(ContractDraft).where(ContractDraft.deleted_at.is_(None))

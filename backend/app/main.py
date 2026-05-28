@@ -267,15 +267,21 @@ async def _security_headers(request: Request, call_next):
     return response
 
 _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
-if _cors_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=_cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["X-Request-ID"],
-    )
+# Always allow our managed-platform domains + the production domain via regex,
+# so the API keeps working even if CORS_ORIGINS wasn't set on the host. The
+# explicit list still takes precedence for exact-match localhost dev origins.
+_cors_origin_regex = (
+    r"https://([a-z0-9-]+\.)*(ondigitalocean\.app|vercel\.app|clarifyd\.app)"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins or ["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origin_regex=_cors_origin_regex,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
+)
 
 app.include_router(auth_router)
 app.include_router(oauth_router)

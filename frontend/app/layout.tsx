@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { GeistSans, GeistMono } from "geist/font";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   title: "Clarifyd — Read your next contract like a senior counsel",
   description:
     "Drop in a SAFE, term sheet, or vendor MSA. Clarifyd AI flags loopholes, rewrites risky clauses, and hands you a draft your counterparty can sign.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 /**

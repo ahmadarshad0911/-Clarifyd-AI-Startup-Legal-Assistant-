@@ -294,7 +294,7 @@ export default function LoginPage() {
             }}
           >
             <Sparkle weight="duotone" size={12} color="var(--bsd-red)" />
-            Sign-in by Clerk · session-only, never logged
+            Secure sign-in · session-only, never logged
           </motion.div>
         </motion.aside>
 
@@ -463,6 +463,8 @@ export default function LoginPage() {
                     formFieldHintText: { color: "var(--bsd-muted)" },
                     formFieldErrorText: { color: "var(--bsd-red)" },
                     alert: { borderRadius: 2 },
+                    footer: { display: "none" },
+                    logoBox: { display: "none" },
                   },
                 }}
               />

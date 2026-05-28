@@ -28,6 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     "https://cdn.tailwindcss.com",
     "https://*.clerk.accounts.dev",
     "https://*.clerk.com",
+    "https://*.clarifyd.app",
     "https://challenges.cloudflare.com",
     isDev ? "'unsafe-eval'" : null,
   ]
@@ -62,11 +63,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             `script-src ${scriptSrc}`,
             "style-src 'self' 'unsafe-inline'",
             "font-src 'self' data:",
-            "img-src 'self' data: blob: https://*.clerk.accounts.dev https://img.clerk.com https://graph.facebook.com https://lh3.googleusercontent.com",
+            "img-src 'self' data: blob: https://*.clerk.accounts.dev https://*.clarifyd.app https://img.clerk.com https://graph.facebook.com https://lh3.googleusercontent.com",
             `connect-src ${connectSrc}`,
             // Clerk uses Cloudflare Turnstile (challenges.cloudflare.com)
             // and Clerk-hosted iframes for OAuth/captcha flows.
-            "frame-src 'self' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.clerk.com https://accounts.google.com https://www.facebook.com",
+            "frame-src 'self' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.clerk.com https://*.clarifyd.app https://accounts.google.com https://www.facebook.com",
             "worker-src 'self' blob:",
             "frame-ancestors 'none'",
             "base-uri 'self'",

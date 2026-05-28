@@ -153,20 +153,32 @@ export class ApiClient {
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    let res: Response;
-    try {
-      res = await fetch(`${this.baseUrl}${path}`, {
-        ...init,
-        headers: await this.headers(init.headers),
-      });
-    } catch (err) {
-      // Network / DNS / CORS preflight failure. Surface the actual URL so
-      // the user (or an operator) can immediately tell what's wrong.
+    // A thrown fetch (network/DNS, or backend mid-restart during a deploy)
+    // means the request never reached the server, so retrying is safe even
+    // for POST. Back off, then give up with a clear error.
+    const backoffsMs = [600, 1500, 3000];
+    let res: Response | null = null;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt <= backoffsMs.length; attempt++) {
+      try {
+        res = await fetch(`${this.baseUrl}${path}`, {
+          ...init,
+          headers: await this.headers(init.headers),
+        });
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < backoffsMs.length) {
+          await new Promise((r) => setTimeout(r, backoffsMs[attempt]));
+        }
+      }
+    }
+    if (res === null) {
       throw new ApiError(0, {
         error: {
           code: "backend_unreachable",
           message: `Cannot reach backend at ${this.baseUrl}. Backend may be offline or NEXT_PUBLIC_API_URL is misconfigured.`,
-          details: { underlying: err instanceof Error ? err.message : String(err) },
+          details: { underlying: lastErr instanceof Error ? lastErr.message : String(lastErr) },
           request_id: "",
         },
       } satisfies StructuredApiError);

@@ -11,9 +11,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { ArrowRight, CaretDown, SignOut, User } from "@phosphor-icons/react";
+import { CaretDown, List, SignOut, User, X } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 type NavItem = { href: string; label: string };
 
@@ -42,8 +43,10 @@ export function DarkAppShell({
   const { token, loading, me, role, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname() ?? "/";
+  const isMobile = useIsMobile();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [acctOpen, setAcctOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const toolsRef = useRef<HTMLDivElement | null>(null);
   const acctRef = useRef<HTMLDivElement | null>(null);
 
@@ -63,6 +66,7 @@ export function DarkAppShell({
   useEffect(() => {
     setToolsOpen(false);
     setAcctOpen(false);
+    setMobileOpen(false);
   }, [pathname]);
 
   if (loading || !token) {
@@ -87,8 +91,10 @@ export function DarkAppShell({
       <header
         style={{
           borderBottom: "3px double var(--bsd-ink)",
-          padding: "14px 28px 10px",
-          display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 22,
+          padding: isMobile ? "12px 18px 10px" : "14px 28px 10px",
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr auto" : "auto 1fr auto",
+          alignItems: "center", gap: isMobile ? 12 : 22,
         }}
       >
         <Link href="/dashboard" className="cursor-pointer" style={{ textDecoration: "none", display: "inline-flex", alignItems: "baseline", gap: 10 }}>
@@ -100,7 +106,28 @@ export function DarkAppShell({
           </span>
         </Link>
 
-        {/* Primary nav */}
+        {isMobile ? (
+          <button
+            type="button"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-expanded={mobileOpen}
+            aria-label="Menu"
+            className="cursor-pointer"
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 40, height: 40,
+              background: mobileOpen ? "var(--bsd-ink)" : "transparent",
+              color: mobileOpen ? "var(--bsd-paper)" : "var(--bsd-ink)",
+              border: "1.5px solid var(--bsd-ink)",
+              cursor: "pointer",
+            }}
+          >
+            {mobileOpen ? <X weight="bold" size={18} /> : <List weight="bold" size={18} />}
+          </button>
+        ) : null}
+
+        {/* Primary nav (desktop) */}
+        {isMobile ? null : (
         <nav style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 22, flexWrap: "wrap" }}>
           {NAV_PRIMARY.map((n) => {
             const active = pathname === n.href || pathname.startsWith(n.href + "/");
@@ -161,8 +188,10 @@ export function DarkAppShell({
             ) : null}
           </div>
         </nav>
+        )}
 
-        {/* Account */}
+        {/* Account (desktop) */}
+        {isMobile ? null : (
         <div ref={acctRef} style={{ position: "relative" }}>
           <button
             type="button"
@@ -247,13 +276,70 @@ export function DarkAppShell({
             </div>
           ) : null}
         </div>
+        )}
+
+        {/* Mobile menu panel */}
+        {isMobile && mobileOpen ? (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              marginTop: 12,
+              borderTop: "1.5px solid var(--bsd-ink)",
+              paddingTop: 10,
+              display: "flex", flexDirection: "column",
+            }}
+          >
+            <div style={{ padding: "8px 2px 10px", borderBottom: "1px solid var(--bsd-hairline)", marginBottom: 6 }}>
+              <div style={{ fontSize: 13, color: "var(--bsd-ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {me?.email ?? "user"}
+              </div>
+              <div className="cf-mono" style={{ marginTop: 3, fontSize: 9.5, color: "var(--bsd-muted)", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
+                {role ?? "viewer"}
+              </div>
+            </div>
+            {[...NAV_PRIMARY, ...NAV_TOOLS, ...adminItems, { href: "/profile", label: "Profile" }].map((n) => {
+              const active = pathname === n.href || pathname.startsWith(n.href + "/");
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className="cursor-pointer cf-mono"
+                  style={{
+                    display: "block", padding: "11px 4px",
+                    textDecoration: "none",
+                    color: active ? "var(--bsd-red)" : "var(--bsd-ink)",
+                    fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
+                  }}
+                >
+                  {n.label}
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => { setMobileOpen(false); logout(); router.replace("/login"); }}
+              className="cursor-pointer cf-mono"
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 8,
+                padding: "12px 4px", marginTop: 6,
+                background: "transparent", border: "none",
+                borderTop: "1px solid var(--bsd-hairline)",
+                color: "var(--bsd-red)",
+                fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <SignOut weight="bold" size={13} /> Sign out
+            </button>
+          </div>
+        ) : null}
       </header>
 
       {/* ===== Disclaimer dateline strip ===== */}
       <div
         style={{
           borderBottom: "1px solid var(--bsd-hairline)",
-          padding: "8px 28px",
+          padding: isMobile ? "8px 18px" : "8px 28px",
           display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12,
           fontFamily: "Geist Mono, monospace",
           fontSize: 9.5, color: "var(--bsd-muted)", letterSpacing: "0.18em",
@@ -267,7 +353,7 @@ export function DarkAppShell({
       {/* ===== Main pane ===== */}
       <main style={{ minWidth: 0 }}>
         {bare ? children : (
-          <div style={{ padding: "36px 28px 64px", maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ padding: isMobile ? "24px 18px 56px" : "36px 28px 64px", maxWidth: 1280, margin: "0 auto" }}>
             {children}
           </div>
         )}

@@ -12,9 +12,11 @@ import { ReactNode } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
 
 import { useAuth } from "../lib/auth";
+import { useIsMobile } from "../lib/use-is-mobile";
 
 export function PublicShell({ children }: { children: ReactNode }) {
   const { token } = useAuth();
+  const isMobile = useIsMobile();
   const ctaHref = token ? "/dashboard" : "/login";
   const ctaLabel = token ? "Open app" : "Sign in";
 
@@ -30,22 +32,28 @@ export function PublicShell({ children }: { children: ReactNode }) {
       <header
         style={{
           borderBottom: "3px double var(--bsd-ink)",
-          padding: "16px 32px 12px",
-          display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "end", gap: 16,
+          padding: isMobile ? "14px 18px 12px" : "16px 32px 12px",
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr auto 1fr",
+          justifyItems: isMobile ? "center" : "stretch",
+          alignItems: isMobile ? "center" : "end",
+          gap: isMobile ? 10 : 16,
         }}
       >
-        <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700 }}>
-          Vol. I · No. 03
-        </span>
+        {isMobile ? null : (
+          <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700 }}>
+            Vol. I · No. 03
+          </span>
+        )}
         <Link href="/" className="cursor-pointer" style={{ textDecoration: "none" }}>
-          <span style={{ display: "block", fontFamily: "Geist, sans-serif", fontWeight: 800, fontSize: 26, color: "var(--bsd-ink)", letterSpacing: "-0.04em", lineHeight: 1, textAlign: "center" }}>
+          <span style={{ display: "block", fontFamily: "Geist, sans-serif", fontWeight: 800, fontSize: isMobile ? 22 : 26, color: "var(--bsd-ink)", letterSpacing: "-0.04em", lineHeight: 1, textAlign: "center" }}>
             The Clarifyd
           </span>
           <span className="cf-mono" style={{ display: "block", textAlign: "center", color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", marginTop: 2 }}>
             Broadsheet
           </span>
         </Link>
-        <nav style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 22, flexWrap: "wrap" }}>
+        <nav style={{ display: "flex", justifyContent: isMobile ? "center" : "flex-end", alignItems: "center", gap: isMobile ? 16 : 22, flexWrap: "wrap" }}>
           <Link href="/faq" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>FAQ</Link>
           <Link href="/pricing" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>Plans</Link>
           <Link href="/contact" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>Contact</Link>
@@ -57,11 +65,13 @@ export function PublicShell({ children }: { children: ReactNode }) {
 
       <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
 
-      <footer style={{ padding: "48px 32px 36px", background: "var(--bsd-ink)", color: "var(--bsd-paper)" }}>
+      <footer style={{ padding: isMobile ? "36px 18px 28px" : "48px 32px 36px", background: "var(--bsd-ink)", color: "var(--bsd-paper)" }}>
         <div
           style={{
             maxWidth: 1280, margin: "0 auto",
-            display: "grid", gridTemplateColumns: "minmax(0, 2fr) repeat(3, minmax(0, 1fr))", gap: 36,
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr 1fr" : "minmax(0, 2fr) repeat(3, minmax(0, 1fr))",
+            gap: isMobile ? 24 : 36,
           }}
         >
           <div>

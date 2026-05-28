@@ -52,15 +52,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { isLoaded: clerkLoaded, isSignedIn, getToken } = useClerkAuth();
   const { user: clerkUser } = useUser();
 
-  // Keep the latest JWT in a ref so ApiClient sees fresh values without
-  // forcing the whole context to re-render on every token refresh.
+  // Keep the latest JWT in a ref (exposed as `token` for gating) plus a ref
+  // to Clerk's getToken so ApiClient can mint a FRESH token per request —
+  // Clerk session tokens expire ~60s, so a cached ref goes stale and the
+  // backend rejects it ("Missing"/"Invalid bearer token").
   const tokenRef = useRef<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+  const isSignedInRef = useRef(isSignedIn);
+  isSignedInRef.current = isSignedIn;
 
-  // ApiClient reads the token via a getter so we don't recreate it on every
-  // re-render. It hits getToken() at request time.
+  // ApiClient fetches a live token at request time via the stable refs, so
+  // the client is created once and never holds a stale closure.
   const client = useMemo(
-    () => new ApiClient(() => tokenRef.current),
+    () =>
+      new ApiClient(async () => {
+        if (!isSignedInRef.current) return null;
+        try {
+          return await getTokenRef.current();
+        } catch {
+          return null;
+        }
+      }),
     []
   );
 

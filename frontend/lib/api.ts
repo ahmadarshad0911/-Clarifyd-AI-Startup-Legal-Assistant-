@@ -131,7 +131,7 @@ export class ApiError extends Error {
   }
 }
 
-export type TokenProvider = () => string | null;
+export type TokenProvider = () => string | null | Promise<string | null>;
 
 export class ApiClient {
   baseUrl: string;
@@ -142,12 +142,12 @@ export class ApiClient {
     this.getToken = getToken;
   }
 
-  private headers(extra?: HeadersInit): HeadersInit {
+  private async headers(extra?: HeadersInit): Promise<HeadersInit> {
     const h: Record<string, string> = {
       Accept: "application/json",
       ...((extra as Record<string, string> | undefined) ?? {}),
     };
-    const token = this.getToken();
+    const token = await this.getToken();
     if (token) h["Authorization"] = `Bearer ${token}`;
     return h;
   }
@@ -157,7 +157,7 @@ export class ApiClient {
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         ...init,
-        headers: this.headers(init.headers),
+        headers: await this.headers(init.headers),
       });
     } catch (err) {
       // Network / DNS / CORS preflight failure. Surface the actual URL so
@@ -421,7 +421,7 @@ export class ApiClient {
   }
 
   async downloadExportBlob(exportId: string): Promise<Blob> {
-    const token = this.getToken();
+    const token = await this.getToken();
     const res = await fetch(this.downloadExportUrl(exportId), {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });

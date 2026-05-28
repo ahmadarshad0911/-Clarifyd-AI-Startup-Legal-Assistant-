@@ -21,8 +21,9 @@ import {
 import { useAuth } from "../../../lib/auth";
 import { useToast } from "../../../lib/toast";
 import {
-  getProfile, markOnboarded, setProfile, type FounderProfile,
+  getProfile, markOnboarded, setProfile, isProfileComplete, type FounderProfile,
 } from "../../../lib/founder-profile";
+import Link from "next/link";
 
 type StepId = 1 | 2 | 3;
 const EOQ = [0.23, 1, 0.32, 1] as const;
@@ -103,18 +104,15 @@ export default function FounderProfilePage() {
       return;
     }
     if (step === 3) {
+      if (!isProfileComplete(profile)) {
+        push("Complete every field and accept the terms to continue.", "info");
+        return;
+      }
       update({ steps_completed: 3 });
       markOnboarded();
       push("Founder profile saved", "success", "Clarifyd is tuned to your stage.");
       router.push("/dashboard");
     }
-  }
-
-  function saveAndExit() {
-    update({});
-    markOnboarded();
-    push("Profile saved", "success");
-    router.push("/dashboard");
   }
 
   function gotoStep(target: StepId) {
@@ -150,21 +148,9 @@ export default function FounderProfilePage() {
             Onboarding
           </span>
         </div>
-        <button
-          type="button"
-          onClick={saveAndExit}
-          className="cursor-pointer cf-mono"
-          style={{
-            background: "transparent", border: "none",
-            color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.18em",
-            textTransform: "uppercase", fontWeight: 700,
-            padding: 4, transition: "color 180ms ease-out",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--bsd-red)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--bsd-muted)")}
-        >
-          Skip for now →
-        </button>
+        <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>
+          Step {step - 1} of 2
+        </span>
       </header>
 
       {/* Dateline */}
@@ -295,12 +281,13 @@ export default function FounderProfilePage() {
             <button type="button" onClick={() => go(2)} className="bsd-btn bsd-btn--ghost cursor-pointer">
               <ArrowLeft weight="bold" size={11} /> Back
             </button>
-          ) : (
-            <button type="button" onClick={saveAndExit} className="bsd-btn bsd-btn--ghost cursor-pointer">
-              Save &amp; exit
-            </button>
-          )}
-          <button type="button" onClick={continueStep} className="bsd-btn cursor-pointer">
+          ) : null}
+          <button
+            type="button"
+            onClick={continueStep}
+            disabled={step === 3 && !isProfileComplete(profile)}
+            className="bsd-btn cursor-pointer"
+          >
             {step === 3 ? "Enter workspace" : "Continue"} <ArrowRight weight="bold" size={11} />
           </button>
         </div>
@@ -530,6 +517,26 @@ function WorkspaceStep({
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, marginBottom: 14, paddingBottom: 8, borderBottom: "1px solid var(--bsd-hairline)" }}>
+            Agreement
+          </div>
+          <label className="cursor-pointer" style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <input
+              type="checkbox"
+              checked={profile.terms_accepted === true}
+              onChange={(e) => onChange({ terms_accepted: e.target.checked })}
+              style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--bsd-red)", cursor: "pointer", flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 14, color: "var(--bsd-ink)", lineHeight: 1.55 }}>
+              I have read and accept the Clarifyd{" "}
+              <Link href="/terms" target="_blank" className="bsd-link" style={{ fontWeight: 700 }}>Terms of Service</Link>{" "}
+              and{" "}
+              <Link href="/terms?tab=privacy" target="_blank" className="bsd-link" style={{ fontWeight: 700 }}>Privacy Policy</Link>. Clarifyd is decision-support only and does not replace qualified legal counsel.
+            </span>
+          </label>
         </div>
       </div>
     </>

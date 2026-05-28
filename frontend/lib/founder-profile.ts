@@ -19,10 +19,24 @@ export type FounderProfile = {
   sector?: string;
   jurisdiction?: string;
   role?: string;
+  // Step 3 — gate
+  terms_accepted?: boolean;
   // Meta
   steps_completed?: number; // highest completed step (1..3)
   updated_at?: string;
 };
+
+/** All required fields present AND terms accepted — the dashboard gate. */
+export function isProfileComplete(p: FounderProfile = getProfile()): boolean {
+  return Boolean(
+    p.full_name &&
+      p.company_name &&
+      p.sector &&
+      p.jurisdiction &&
+      p.role &&
+      p.terms_accepted,
+  );
+}
 
 export function getProfile(): FounderProfile {
   return readJSON<FounderProfile>(KEY, {});

@@ -1,0 +1,50 @@
+# DigitalOcean App Platform spec — Clarifyd FRONTEND (Next.js 14).
+#
+# Deploy AFTER the backend so you know its URL:
+#   doctl apps create --spec .do/frontend.yaml
+# or import in dashboard.
+#
+# Set NEXT_PUBLIC_API_URL + BACKEND_ORIGIN to the backend app's public URL.
+# Clerk keys go in as secrets in the dashboard.
+
+name: clarifyd-frontend
+region: nyc
+
+services:
+  - name: web
+    github:
+      repo: ahmadarshad0911/-Clarifyd-AI-Startup-Legal-Assistant-
+      branch: main
+      deploy_on_push: true
+    source_dir: frontend
+    environment_slug: node-js
+    build_command: npm install --legacy-peer-deps && npm run build
+    run_command: npm run start
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    http_port: 8080
+    routes:
+      - path: /
+    envs:
+      - key: NEXT_PUBLIC_CLERK_SIGN_IN_URL
+        value: /login
+      - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
+        value: /login
+      - key: NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL
+        value: /dashboard
+      - key: NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL
+        value: /onboarding/profile
+      # backend public URL — fill after backend app deploys
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://clarifyd-backend-REPLACE.ondigitalocean.app"
+      - key: BACKEND_ORIGIN
+        value: "https://clarifyd-backend-REPLACE.ondigitalocean.app"
+      # build-time public key must be set as BUILD_TIME secret
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        scope: BUILD_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"
+      - key: CLERK_SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"

@@ -1,0 +1,67 @@
+# DigitalOcean App Platform spec — Clarifyd BACKEND (FastAPI).
+#
+# Deploy:
+#   doctl apps create --spec .do/backend.yaml
+# or import in dashboard: Apps -> Create App -> Edit app spec -> paste this.
+#
+# Fill the SECRET env values in the dashboard after the first deploy so
+# nothing sensitive lives in git. DB is external Neon Postgres.
+
+name: clarifyd-backend
+region: nyc
+
+services:
+  - name: api
+    github:
+      repo: ahmadarshad0911/-Clarifyd-AI-Startup-Legal-Assistant-
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    environment_slug: python
+    run_command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    http_port: 8080
+    routes:
+      - path: /
+    health_check:
+      http_path: /health
+    envs:
+      - key: ENVIRONMENT
+        value: production
+      - key: REASONING_MODEL
+        value: moonshotai/kimi-k2.6
+      - key: REASONING_MODEL_FALLBACK
+        value: moonshotai/kimi-k2.6
+      - key: REASONING_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: REASONING_TIMEOUT_SECONDS
+        value: "240"
+      - key: REASONING_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"   # Neon postgresql:// URL
+      - key: CLERK_ISSUER
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"
+      - key: CLERK_JWKS_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"
+      - key: CLERK_SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"
+      - key: CORS_ORIGINS
+        scope: RUN_TIME
+        type: SECRET
+        value: "REPLACE_IN_DASHBOARD"   # https://<frontend-app>.ondigitalocean.app

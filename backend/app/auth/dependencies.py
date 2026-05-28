@@ -9,6 +9,7 @@ from uuid import uuid4
 import jwt
 from fastapi import Depends, Request
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import httpx
@@ -115,13 +116,37 @@ async def _resolve_clerk_user(
         )
         session.add(row)
         try:
-            await session.flush()
             await session.commit()
-        except Exception:  # pragma: no cover — race on concurrent first-sync
+            await session.refresh(row)
+        except IntegrityError:
+            # Concurrent first-sync inserted the same id, or an existing row
+            # already owns this email. Recover by re-reading: prefer id, then
+            # email. Never crash the request on a sync race.
             await session.rollback()
             row = (
                 await session.execute(select(User).where(User.id == clerk_user_id))
-            ).scalar_one()
+            ).scalar_one_or_none()
+            if row is None and email:
+                row = (
+                    await session.execute(select(User).where(User.email == email))
+                ).scalar_one_or_none()
+            if row is None:
+                logger.exception(
+                    "Clerk user upsert failed, no row recoverable for %s", clerk_user_id
+                )
+                raise AppError(
+                    code=ErrorCode.internal_error,
+                    message="Could not synchronize account.",
+                    status_code=503,
+                )
+        except Exception as exc:
+            await session.rollback()
+            logger.exception("Unexpected error inserting Clerk user %s", clerk_user_id)
+            raise AppError(
+                code=ErrorCode.internal_error,
+                message="Could not synchronize account.",
+                status_code=503,
+            ) from exc
     else:
         # Reconcile role + email on every request: Clerk metadata is authoritative.
         target_role = role_claim or row.role

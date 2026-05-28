@@ -13,6 +13,8 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, X, Quotes, CaretRight } from "@phosphor-icons/react";
 
+import { useIsMobile } from "../lib/use-is-mobile";
+
 const T = {
   paper:      "#f4ede1",
   paperDeep:  "#ebe2d0",
@@ -84,26 +86,33 @@ export default function LandingPage() {
 }
 
 function Masthead() {
+  const isMobile = useIsMobile();
   return (
     <header
       style={{
         borderBottom: `3px double ${T.ink}`,
-        padding: "16px 32px 12px",
-        display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "end", gap: 16,
+        padding: isMobile ? "14px 18px 12px" : "16px 32px 12px",
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1fr auto 1fr",
+        justifyItems: isMobile ? "center" : "stretch",
+        alignItems: isMobile ? "center" : "end",
+        gap: isMobile ? 10 : 16,
       }}
     >
-      <span className="cf-mono" style={{ color: T.muted, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700 }}>
-        Vol. I · No. 03
-      </span>
+      {isMobile ? null : (
+        <span className="cf-mono" style={{ color: T.muted, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700 }}>
+          Vol. I · No. 03
+        </span>
+      )}
       <Link href="/" className="cursor-pointer" style={{ textDecoration: "none" }}>
-        <span style={{ display: "block", fontFamily: "Geist, sans-serif", fontWeight: 800, fontSize: 28, color: T.ink, letterSpacing: "-0.04em", lineHeight: 1, textAlign: "center" }}>
+        <span style={{ display: "block", fontFamily: "Geist, sans-serif", fontWeight: 800, fontSize: isMobile ? 23 : 28, color: T.ink, letterSpacing: "-0.04em", lineHeight: 1, textAlign: "center" }}>
           The Clarifyd
         </span>
         <span style={{ display: "block", textAlign: "center", color: T.muted, fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", marginTop: 2 }}>
           Broadsheet
         </span>
       </Link>
-      <nav style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 22 }}>
+      <nav style={{ display: "flex", justifyContent: isMobile ? "center" : "flex-end", alignItems: "center", gap: isMobile ? 16 : 22, flexWrap: "wrap" }}>
         <Link href="/faq" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>FAQ</Link>
         <Link href="/pricing" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>Plans</Link>
         <Link href="/contact" className="bsd-link cf-mono" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>Contact</Link>
@@ -116,15 +125,17 @@ function Masthead() {
 }
 
 function Hero({ reduceMotion }: { reduceMotion: boolean }) {
+  const isMobile = useIsMobile();
   return (
-    <section style={{ padding: "96px 48px 112px", borderBottom: `1.5px solid ${T.ink}` }}>
+    <section style={{ padding: isMobile ? "56px 18px 64px" : "96px 48px 112px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div
         style={{
-          display: "grid", gridTemplateColumns: "minmax(0, 8fr) minmax(0, 4fr)",
-          gap: 80, alignItems: "end",
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 8fr) minmax(0, 4fr)",
+          gap: isMobile ? 32 : 80,
+          alignItems: isMobile ? "start" : "end",
           maxWidth: 1200, margin: "0 auto",
         }}
-        className="grid-cols-1 lg:grid-cols-[8fr_4fr]"
       >
         <motion.h1
           initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
@@ -175,7 +186,7 @@ function Hero({ reduceMotion }: { reduceMotion: boolean }) {
         }}
       >
         <span>Powered by Clarifyd AI</span>
-        <span style={{ display: "inline-flex", gap: 24 }}>
+        <span style={{ display: "inline-flex", gap: 24, flexWrap: "wrap" }}>
           <span>8s scan</span>
           <span>$0 first 3 contracts</span>
           <span>0 hallucinations</span>
@@ -210,16 +221,18 @@ function RuleHeavy() {
 }
 
 function LoopholeOfTheWeek({ reduceMotion }: { reduceMotion: boolean }) {
+  const isMobile = useIsMobile();
   return (
-    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+    <section style={{ padding: isMobile ? "64px 18px" : "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <SectionHeader kicker="Featured loophole" title="From a real seed-round SAFE." rule={`No. ${new Date().getDate().toString().padStart(2, "0")}`} />
         <div
           style={{
-            marginTop: 56,
-            display: "grid", gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)", gap: 72,
+            marginTop: isMobile ? 36 : 56,
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 5fr) minmax(0, 7fr)",
+            gap: isMobile ? 36 : 72,
           }}
-          className="grid-cols-1 lg:grid-cols-[5fr_7fr]"
         >
           <motion.div
             initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
@@ -380,9 +393,10 @@ const STEPS: Step[] = [
 ];
 
 function Process({ reduceMotion }: { reduceMotion: boolean }) {
+  const isMobile = useIsMobile();
   const [openN, setOpenN] = useState<string>("01");
   return (
-    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+    <section style={{ padding: isMobile ? "64px 18px" : "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <SectionHeader kicker="The process" title="Eight seconds, four moves." rule="Method" />
         <ol style={{ margin: "48px 0 0", padding: 0, listStyle: "none", borderTop: `2px solid ${T.ink}` }}>
@@ -405,21 +419,23 @@ function Process({ reduceMotion }: { reduceMotion: boolean }) {
                   style={{
                     width: "100%", textAlign: "left",
                     display: "grid",
-                    gridTemplateColumns: "72px 1fr minmax(0, 2.4fr) 24px",
-                    alignItems: "center", gap: 28,
-                    padding: "32px 24px",
+                    gridTemplateColumns: isMobile ? "44px 1fr 20px" : "72px 1fr minmax(0, 2.4fr) 24px",
+                    alignItems: "center", gap: isMobile ? 14 : 28,
+                    padding: isMobile ? "22px 4px" : "32px 24px",
                     background: "transparent", border: "none",
                   }}
                 >
-                  <span style={{ fontFamily: "Geist Mono, monospace", fontWeight: 800, fontSize: 30, color: T.red, letterSpacing: "-0.02em", textAlign: "right" }}>
+                  <span style={{ fontFamily: "Geist Mono, monospace", fontWeight: 800, fontSize: isMobile ? 22 : 30, color: T.red, letterSpacing: "-0.02em", textAlign: "right" }}>
                     {s.n}
                   </span>
-                  <span style={{ fontSize: 22, fontWeight: 600, color: T.ink, letterSpacing: "-0.015em" }}>
+                  <span style={{ fontSize: isMobile ? 17 : 22, fontWeight: 600, color: T.ink, letterSpacing: "-0.015em" }}>
                     {s.title}
                   </span>
+                  {isMobile ? null : (
                   <span style={{ fontSize: 14.5, color: T.body, lineHeight: 1.55 }}>
                     {s.body}
                   </span>
+                  )}
                   <CaretRight
                     className="bsd-row__caret"
                     weight="bold"
@@ -444,12 +460,12 @@ function Process({ reduceMotion }: { reduceMotion: boolean }) {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "72px minmax(0, 1.4fr) minmax(0, 1fr)",
-                        gap: 28,
-                        padding: "0 24px 40px 24px",
+                        gridTemplateColumns: isMobile ? "1fr" : "72px minmax(0, 1.4fr) minmax(0, 1fr)",
+                        gap: isMobile ? 20 : 28,
+                        padding: isMobile ? "0 4px 28px 4px" : "0 24px 40px 24px",
                       }}
                     >
-                      <span aria-hidden />
+                      {isMobile ? null : <span aria-hidden />}
                       <div>
                         <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
                           {s.bullets.map((b, j) => (
@@ -531,17 +547,20 @@ const SEV_COLORS: Record<string, string> = {
   Low: T.muted,
 };
 function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
+  const isMobile = useIsMobile();
   return (
-    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+    <section style={{ padding: isMobile ? "64px 18px" : "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <SectionHeader kicker="Risk atlas" title="What we find, by how often." rule="Index" />
         <p style={{ margin: "22px 0 0", maxWidth: 560, fontSize: 15, color: T.body, lineHeight: 1.65 }}>
           Sampled across <span style={{ fontFamily: "Geist Mono, monospace", color: T.ink, fontWeight: 700 }}>1,240</span> founder-uploaded pre-seed contracts last quarter. Severity follows Clarifyd&rsquo;s rubric, not the contract&rsquo;s tone.
         </p>
-        <div style={{ marginTop: 48, borderTop: `2px solid ${T.ink}`, borderBottom: `2px solid ${T.ink}` }}>
+        <div style={{ marginTop: isMobile ? 32 : 48, borderTop: `2px solid ${T.ink}`, borderBottom: `2px solid ${T.ink}` }}>
           <div
             style={{
-              display: "grid", gridTemplateColumns: "80px minmax(0, 3fr) 1fr 1fr", gap: 24,
+              display: "grid",
+              gridTemplateColumns: isMobile ? "auto 1fr auto" : "80px minmax(0, 3fr) 1fr 1fr",
+              gap: isMobile ? 14 : 24,
               padding: "12px 0",
               borderBottom: `1px solid ${T.ink}`,
               fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: T.muted,
@@ -549,7 +568,7 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
           >
             <span>No.</span>
             <span>Clause type</span>
-            <span>Frequency</span>
+            {isMobile ? null : <span>Frequency</span>}
             <span style={{ textAlign: "right" }}>Severity</span>
           </div>
           {ATLAS.map((row, i) => (
@@ -560,8 +579,10 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.3, ease: EOQ, delay: i * 0.025 }}
               style={{
-                display: "grid", gridTemplateColumns: "80px minmax(0, 3fr) 1fr 1fr", gap: 28,
-                padding: "22px 0",
+                display: "grid",
+                gridTemplateColumns: isMobile ? "auto 1fr auto" : "80px minmax(0, 3fr) 1fr 1fr",
+                gap: isMobile ? "8px 14px" : 28,
+                padding: isMobile ? "18px 0" : "22px 0",
                 borderBottom: i < ATLAS.length - 1 ? `1px dotted ${T.hairline}` : "none",
                 alignItems: "center",
               }}
@@ -569,8 +590,8 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
               <span className="cf-mono" style={{ color: T.soft, fontSize: 12, fontWeight: 700, letterSpacing: "0.10em" }}>
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <span style={{ color: T.ink, fontSize: 15, fontWeight: 500 }}>{row.type}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: T.ink, fontSize: 15, fontWeight: 500, gridColumn: isMobile ? 2 : "auto", gridRow: isMobile ? 1 : "auto" }}>{row.type}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, gridColumn: isMobile ? "1 / -1" : "auto", gridRow: isMobile ? 2 : "auto", width: isMobile ? "100%" : "auto" }}>
                 <div style={{ flex: 1, height: 6, background: T.hairline, position: "relative" }}>
                   <motion.div
                     initial={{ scaleX: 0 }}
@@ -588,6 +609,8 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
                 className="cf-mono"
                 style={{
                   justifySelf: "end",
+                  gridColumn: isMobile ? 3 : "auto",
+                  gridRow: isMobile ? 1 : "auto",
                   color: SEV_COLORS[row.sev],
                   fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 800,
                 }}
@@ -608,17 +631,18 @@ const PLANS = [
   { name: "Counsel", price: "Custom", cadence: "talk to us",    bullets: ["Everything in Founder", "Custom jurisdiction templates", "SAML SSO + SOC-2 export", "Dedicated partner"], cta: "Talk to sales", featured: false },
 ];
 function Plans({ reduceMotion }: { reduceMotion: boolean }) {
+  const isMobile = useIsMobile();
   return (
-    <section style={{ padding: "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+    <section style={{ padding: isMobile ? "64px 18px" : "112px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
         <SectionHeader kicker="Subscriptions" title="Free until your seed round." rule="Rates" />
         <div
           style={{
-            marginTop: 48,
-            display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+            marginTop: isMobile ? 32 : 48,
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
             borderTop: `2px solid ${T.ink}`, borderBottom: `2px solid ${T.ink}`,
           }}
-          className="grid-cols-1 md:grid-cols-3"
         >
           {PLANS.map((p, i) => (
             <motion.div
@@ -628,13 +652,14 @@ function Plans({ reduceMotion }: { reduceMotion: boolean }) {
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.5, ease: EOQ, delay: i * 0.08 }}
               style={{
-                padding: 40,
+                padding: isMobile ? 28 : 40,
                 background: p.featured ? T.ink : "transparent",
                 color: p.featured ? T.paper : T.ink,
-                borderRight: i < PLANS.length - 1 ? `1px solid ${T.hairline}` : "none",
+                borderRight: !isMobile && i < PLANS.length - 1 ? `1px solid ${T.hairline}` : "none",
+                borderBottom: isMobile && i < PLANS.length - 1 ? `1px solid ${T.hairline}` : "none",
                 position: "relative",
                 display: "flex", flexDirection: "column", gap: 22,
-                minHeight: 440,
+                minHeight: isMobile ? "auto" : 440,
               }}
             >
               {p.featured ? (
@@ -687,8 +712,9 @@ function Plans({ reduceMotion }: { reduceMotion: boolean }) {
 }
 
 function Manifesto({ reduceMotion }: { reduceMotion: boolean }) {
+  const isMobile = useIsMobile();
   return (
-    <section style={{ padding: "144px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
+    <section style={{ padding: isMobile ? "80px 18px" : "144px 48px", borderBottom: `1.5px solid ${T.ink}` }}>
       <div style={{ maxWidth: 920, margin: "0 auto", textAlign: "center" }}>
         <Quotes weight="duotone" size={36} color={T.red} aria-hidden />
         <motion.blockquote
@@ -723,9 +749,10 @@ function Manifesto({ reduceMotion }: { reduceMotion: boolean }) {
 }
 
 function Footer() {
+  const isMobile = useIsMobile();
   return (
-    <footer style={{ padding: "48px 32px 36px", background: T.ink, color: T.paper }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 2fr) repeat(3, minmax(0, 1fr))", gap: 36 }} className="grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr]">
+    <footer style={{ padding: isMobile ? "36px 18px 28px" : "48px 32px 36px", background: T.ink, color: T.paper }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "minmax(0, 2fr) repeat(3, minmax(0, 1fr))", gap: isMobile ? 24 : 36 }}>
         <div>
           <div style={{ fontWeight: 800, fontSize: 26, letterSpacing: "-0.03em" }}>The Clarifyd Broadsheet</div>
           <p style={{ margin: "12px 0 0", color: "#bbb", fontSize: 13, maxWidth: 380, lineHeight: 1.6 }}>

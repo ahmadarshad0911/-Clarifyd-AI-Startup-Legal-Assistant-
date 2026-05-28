@@ -89,13 +89,26 @@ export function DarkAppShell({
     <div style={{ minHeight: "100dvh", background: "var(--bsd-paper)", color: "var(--bsd-body)" }}>
       {/* ===== Masthead ===== */}
       <header
-        style={{
-          borderBottom: "3px double var(--bsd-ink)",
-          padding: isMobile ? "12px 18px 10px" : "14px 28px 10px",
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr auto" : "auto 1fr auto",
-          alignItems: "center", gap: isMobile ? 12 : 22,
-        }}
+        style={
+          isMobile
+            ? {
+                borderBottom: "3px double var(--bsd-ink)",
+                padding: "12px 18px 10px",
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }
+            : {
+                borderBottom: "3px double var(--bsd-ink)",
+                padding: "14px 28px 10px",
+                display: "grid",
+                gridTemplateColumns: "auto 1fr auto",
+                alignItems: "center",
+                gap: 22,
+              }
+        }
       >
         <Link href="/dashboard" className="cursor-pointer" style={{ textDecoration: "none", display: "inline-flex", alignItems: "baseline", gap: 10 }}>
           <span style={{ fontFamily: "Geist, sans-serif", fontWeight: 800, fontSize: 22, color: "var(--bsd-ink)", letterSpacing: "-0.04em", lineHeight: 1 }}>
@@ -282,7 +295,8 @@ export function DarkAppShell({
         {isMobile && mobileOpen ? (
           <nav
             style={{
-              gridColumn: "1 / -1",
+              width: "100%",
+              flexBasis: "100%",
               marginTop: 14,
               display: "flex", flexDirection: "column", gap: 18,
             }}

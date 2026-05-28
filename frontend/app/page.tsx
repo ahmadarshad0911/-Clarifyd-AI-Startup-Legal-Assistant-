@@ -143,16 +143,22 @@ function Hero({ reduceMotion }: { reduceMotion: boolean }) {
           transition={{ duration: 0.7, ease: EOQ }}
           style={{
             margin: 0,
-            fontSize: "clamp(44px, 6.4vw, 96px)",
-            lineHeight: 0.95,
+            fontSize: isMobile ? "clamp(34px, 11vw, 52px)" : "clamp(44px, 6.4vw, 96px)",
+            lineHeight: isMobile ? 1.02 : 0.95,
             letterSpacing: "-0.04em",
             color: T.ink,
             fontWeight: 700,
           }}
         >
-          Read your next<br />
-          contract like a<br />
-          <span style={{ color: T.red, fontStyle: "italic", fontWeight: 600 }}>senior counsel.</span>
+          {isMobile ? (
+            <>Read your next contract like a <span style={{ color: T.red, fontStyle: "italic", fontWeight: 600 }}>senior counsel.</span></>
+          ) : (
+            <>
+              Read your next<br />
+              contract like a<br />
+              <span style={{ color: T.red, fontStyle: "italic", fontWeight: 600 }}>senior counsel.</span>
+            </>
+          )}
         </motion.h1>
 
         <motion.div
@@ -164,14 +170,14 @@ function Hero({ reduceMotion }: { reduceMotion: boolean }) {
           <span className="cf-mono" style={{ color: T.red, fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", fontWeight: 800 }}>
             ★ Volume I · The founder edition
           </span>
-          <p style={{ margin: 0, fontSize: 19, color: T.body, lineHeight: 1.55, maxWidth: 380, fontWeight: 500 }}>
+          <p style={{ margin: 0, fontSize: isMobile ? 16 : 19, color: T.body, lineHeight: 1.6, maxWidth: 380, fontWeight: 500 }}>
             Drop a SAFE, term sheet, or vendor MSA. Clarifyd AI flags the loopholes, rewrites the risky clauses, and hands you a draft your counterparty can sign.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-            <Link href="/login" className="bsd-btn cursor-pointer">
+            <Link href="/login" className="bsd-btn cursor-pointer" style={isMobile ? { flex: 1, justifyContent: "center", minHeight: 48 } : undefined}>
               Start free <ArrowRight weight="bold" size={11} />
             </Link>
-            <Link href="/pricing" className="bsd-btn bsd-btn--ghost cursor-pointer">See plans</Link>
+            <Link href="/pricing" className="bsd-btn bsd-btn--ghost cursor-pointer" style={isMobile ? { flex: 1, justifyContent: "center", minHeight: 48 } : undefined}>See plans</Link>
           </div>
         </motion.div>
       </div>

@@ -472,18 +472,31 @@ input, button, select, textarea {
  * never made responsive.
  * ============================================================ */
 @media (max-width: 768px) {
+  /* Stack every multi-column grid and reset explicit cell placement. */
   [style*="grid-template-columns"] {
     grid-template-columns: 1fr !important;
   }
   [style*="grid-template-columns"] > * {
     grid-column: auto !important;
     grid-row: auto !important;
-    min-width: 0 !important;
   }
-  /* Toolbars / button rows wrap instead of overflowing. inline-flex
-     (icon+label) is intentionally excluded — its substring differs. */
-  [style*="display: flex"] {
+
+  /* Nothing may exceed the viewport — caps fixed-width inline elements. */
+  body * {
+    max-width: 100% !important;
+  }
+
+  /* Flex rows wrap instead of overflowing. Match both CSSOM
+     serializations ("display:flex" / "display: flex"); skip column
+     flexes and inline-flex (icon+label) which must stay inline. */
+  [style*="display:flex"]:not([style*="column"]):not([style*="inline-flex"]),
+  [style*="display: flex"]:not([style*="column"]):not([style*="inline-flex"]) {
     flex-wrap: wrap;
+  }
+
+  /* Long clause text, hashes, and URLs break instead of pushing width. */
+  p, span, div, h1, h2, h3, h4, li, a, td, th {
+    overflow-wrap: anywhere;
   }
   pre, code {
     white-space: pre-wrap !important;
@@ -491,11 +504,9 @@ input, button, select, textarea {
   }
   table {
     display: block;
-    max-width: 100%;
     overflow-x: auto;
   }
   img, video, canvas {
-    max-width: 100%;
     height: auto;
   }
 }

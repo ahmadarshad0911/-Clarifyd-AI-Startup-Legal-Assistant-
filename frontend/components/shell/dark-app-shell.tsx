@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { CaretDown, List, SignOut, User, X } from "@phosphor-icons/react";
+import { CaretDown, CaretRight, List, SignOut, User, X } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth";
 import { useIsMobile } from "../../lib/use-is-mobile";
@@ -280,58 +280,65 @@ export function DarkAppShell({
 
         {/* Mobile menu panel */}
         {isMobile && mobileOpen ? (
-          <div
+          <nav
             style={{
               gridColumn: "1 / -1",
-              marginTop: 12,
-              borderTop: "1.5px solid var(--bsd-ink)",
-              paddingTop: 10,
-              display: "flex", flexDirection: "column",
+              marginTop: 14,
+              display: "flex", flexDirection: "column", gap: 18,
             }}
           >
-            <div style={{ padding: "8px 2px 10px", borderBottom: "1px solid var(--bsd-hairline)", marginBottom: 6 }}>
-              <div style={{ fontSize: 13, color: "var(--bsd-ink)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {me?.email ?? "user"}
-              </div>
-              <div className="cf-mono" style={{ marginTop: 3, fontSize: 9.5, color: "var(--bsd-muted)", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
-                {role ?? "viewer"}
-              </div>
+            {/* Account card */}
+            <div
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "14px 16px",
+                background: "var(--bsd-ink)", color: "var(--bsd-paper)",
+              }}
+            >
+              <span
+                className="cf-mono"
+                style={{
+                  width: 40, height: 40, flexShrink: 0,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  background: "var(--bsd-red)", color: "var(--bsd-paper)",
+                  fontSize: 16, fontWeight: 800,
+                }}
+              >
+                {initial}
+              </span>
+              <span style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {me?.email ?? "user"}
+                </span>
+                <span className="cf-mono" style={{ fontSize: 9.5, color: "var(--bsd-faint)", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>
+                  {role ?? "viewer"} · workspace
+                </span>
+              </span>
             </div>
-            {[...NAV_PRIMARY, ...NAV_TOOLS, ...adminItems, { href: "/profile", label: "Profile" }].map((n) => {
-              const active = pathname === n.href || pathname.startsWith(n.href + "/");
-              return (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className="cursor-pointer cf-mono"
-                  style={{
-                    display: "block", padding: "11px 4px",
-                    textDecoration: "none",
-                    color: active ? "var(--bsd-red)" : "var(--bsd-ink)",
-                    fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
-                  }}
-                >
-                  {n.label}
-                </Link>
-              );
-            })}
+
+            <MobileNavGroup label="Navigate" items={NAV_PRIMARY} pathname={pathname} />
+            <MobileNavGroup
+              label="Tools"
+              items={[...NAV_TOOLS, ...adminItems, { href: "/profile", label: "Profile" }]}
+              pathname={pathname}
+            />
+
             <button
               type="button"
               onClick={() => { setMobileOpen(false); logout(); router.replace("/login"); }}
               className="cursor-pointer cf-mono"
               style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 8,
-                padding: "12px 4px", marginTop: 6,
-                background: "transparent", border: "none",
-                borderTop: "1px solid var(--bsd-hairline)",
+                width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                minHeight: 50, padding: "0 16px",
+                background: "transparent", border: "1.5px solid var(--bsd-red)",
                 color: "var(--bsd-red)",
-                fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
+                fontSize: 11.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 800,
                 cursor: "pointer",
               }}
             >
-              <SignOut weight="bold" size={13} /> Sign out
+              <SignOut weight="bold" size={14} /> Sign out
             </button>
-          </div>
+          </nav>
         ) : null}
       </header>
 
@@ -389,6 +396,51 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
         />
       ) : null}
     </Link>
+  );
+}
+
+function MobileNavGroup({
+  label,
+  items,
+  pathname,
+}: {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span
+        className="cf-mono"
+        style={{ color: "var(--bsd-red)", fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800, paddingLeft: 2 }}
+      >
+        {label}
+      </span>
+      <div style={{ border: "1.5px solid var(--bsd-ink)" }}>
+        {items.map((n, i) => {
+          const active = pathname === n.href || pathname.startsWith(n.href + "/");
+          return (
+            <Link
+              key={n.href}
+              href={n.href}
+              className="cursor-pointer cf-mono"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                minHeight: 50, padding: "0 16px",
+                textDecoration: "none",
+                color: active ? "var(--bsd-red)" : "var(--bsd-ink)",
+                background: active ? "var(--bsd-paper-deep)" : "transparent",
+                borderBottom: i < items.length - 1 ? "1px solid var(--bsd-hairline)" : "none",
+                fontSize: 12.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700,
+              }}
+            >
+              {n.label}
+              <CaretRight weight="bold" size={13} color={active ? "var(--bsd-red)" : "var(--bsd-faint)"} />
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

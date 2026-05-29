@@ -91,11 +91,11 @@ class AsyncContractAnalysisService:
         # concurrent `session.add()` calls landing while the session was
         # mid-flush (async SQLAlchemy sessions are not coroutine-safe for
         # concurrent writes).
-        # NVIDIA NIM free tier rate-limits aggressively (~6 req/min/key) so
-        # 8 parallel calls almost always blow past the quota and the chain
-        # falls through to the rules-based provider for every clause.
-        # Drop to 2 — Kimi K2 is fast enough that latency stays acceptable.
-        sem = asyncio.Semaphore(2)
+        # Per-clause LLM concurrency. Higher = lower wall-clock latency on a
+        # cold contract; bounded so we don't burst past the provider's quota.
+        # The provider already retries 429 with exponential backoff, so a
+        # transient burst self-recovers instead of degrading every clause.
+        sem = asyncio.Semaphore(6)
 
         async def _run(
             clause: ExtractedClause,

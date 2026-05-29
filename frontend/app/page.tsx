@@ -243,13 +243,13 @@ function LoopholeOfTheWeek({ reduceMotion }: { reduceMotion: boolean }) {
           <motion.div
             initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.55, ease: EOQ }}
           >
             <span className="cf-mono" style={{ color: T.red, fontSize: 10.5, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
               Severity · Critical
             </span>
-            <h3 style={{ margin: "10px 0 14px", fontSize: 30, lineHeight: 1.1, fontWeight: 600, color: T.ink, letterSpacing: "-0.022em" }}>
+            <h3 style={{ margin: "10px 0 14px", fontSize: isMobile ? 23 : 30, lineHeight: 1.15, fontWeight: 600, color: T.ink, letterSpacing: "-0.022em" }}>
               The unlimited liability cap, hidden in 16 words.
             </h3>
             <p style={{ margin: "0 0 18px", fontSize: 15, color: T.body, lineHeight: 1.65 }}>
@@ -272,26 +272,26 @@ function LoopholeOfTheWeek({ reduceMotion }: { reduceMotion: boolean }) {
           <motion.div
             initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
+            viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.55, ease: EOQ, delay: 0.08 }}
+            style={{ border: `1.5px solid ${T.ink}` }}
           >
             <div
               style={{
-                borderTop: `2px solid ${T.ink}`,
                 borderBottom: `1px solid ${T.hairline}`,
-                padding: "14px 18px",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: isMobile ? "12px 14px" : "14px 18px",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
                 fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: T.muted,
               }}
             >
               <span>Original clause</span>
-              <span style={{ color: T.red }}><X weight="bold" size={11} style={{ verticalAlign: "middle" }} /> Flagged</span>
+              <span style={{ color: T.red, whiteSpace: "nowrap" }}><X weight="bold" size={11} style={{ verticalAlign: "middle" }} /> Flagged</span>
             </div>
             <pre
               style={{
-                margin: 0, padding: 18, background: "transparent",
-                fontFamily: "Geist Mono, monospace", fontSize: 13.5,
-                color: T.body, lineHeight: 1.7, whiteSpace: "pre-wrap",
+                margin: 0, padding: isMobile ? 14 : 18, background: "transparent",
+                fontFamily: "Geist Mono, monospace", fontSize: isMobile ? 12.5 : 13.5,
+                color: T.body, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word",
                 borderBottom: `1px dashed ${T.rule}`,
               }}
             >
@@ -302,19 +302,19 @@ function LoopholeOfTheWeek({ reduceMotion }: { reduceMotion: boolean }) {
             <div
               style={{
                 borderTop: `2px solid ${T.red}`,
-                padding: "14px 18px",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: isMobile ? "12px 14px" : "14px 18px",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
                 fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: T.red,
               }}
             >
               <span>Clarifyd AI rewrite</span>
-              <span><Check weight="bold" size={11} style={{ verticalAlign: "middle" }} /> Founder-friendly</span>
+              <span style={{ whiteSpace: "nowrap" }}><Check weight="bold" size={11} style={{ verticalAlign: "middle" }} /> Founder-friendly</span>
             </div>
             <pre
               style={{
-                margin: 0, padding: 18, background: T.paperDeep,
-                fontFamily: "Geist Mono, monospace", fontSize: 13.5,
-                color: T.ink, lineHeight: 1.7, whiteSpace: "pre-wrap", fontWeight: 500,
+                margin: 0, padding: isMobile ? 14 : 18, background: T.paperDeep,
+                fontFamily: "Geist Mono, monospace", fontSize: isMobile ? 12.5 : 13.5,
+                color: T.ink, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", fontWeight: 500,
               }}
             >
               The Company shall indemnify the Investor for direct losses up to the amount of the Investor&rsquo;s actual contribution, and only in cases of wilful misrepresentation by the Company.
@@ -413,7 +413,7 @@ function Process({ reduceMotion }: { reduceMotion: boolean }) {
                 key={s.n}
                 initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
+                viewport={{ once: true, amount: 0.2 }}
                 transition={{ duration: 0.4, ease: EOQ, delay: i * 0.06 }}
                 style={{ borderBottom: `1px solid ${T.hairline}`, background: open ? T.paperDeep : "transparent", transition: "background 240ms cubic-bezier(0.23, 1, 0.32, 1)" }}
               >
@@ -582,7 +582,7 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
               key={row.type}
               initial={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
+              viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.3, ease: EOQ, delay: i * 0.025 }}
               style={{
                 display: "grid",
@@ -602,7 +602,7 @@ function RiskAtlas({ reduceMotion }: { reduceMotion: boolean }) {
                   <motion.div
                     initial={{ scaleX: 0 }}
                     whileInView={{ scaleX: row.freq / 100 }}
-                    viewport={{ once: true, margin: "-40px" }}
+                    viewport={{ once: true, amount: 0.2 }}
                     transition={{ duration: 0.7, ease: EOQ, delay: 0.1 + i * 0.025 }}
                     style={{ position: "absolute", inset: 0, background: T.ink, transformOrigin: "left" }}
                   />
@@ -655,7 +655,7 @@ function Plans({ reduceMotion }: { reduceMotion: boolean }) {
               key={p.name}
               initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
+              viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.5, ease: EOQ, delay: i * 0.08 }}
               style={{
                 padding: isMobile ? 28 : 40,
@@ -726,7 +726,7 @@ function Manifesto({ reduceMotion }: { reduceMotion: boolean }) {
         <motion.blockquote
           initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.6, ease: EOQ }}
           style={{
             margin: "20px 0 0",
@@ -803,24 +803,35 @@ function FootCol({ heading, items }: { heading: string; items: Array<[string, st
 }
 
 function SectionHeader({ kicker, title, rule }: { kicker: string; title: string; rule: string }) {
+  const isMobile = useIsMobile();
   return (
     <div
       style={{
-        display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24,
+        display: "flex",
+        alignItems: isMobile ? "flex-start" : "flex-end",
+        justifyContent: "space-between",
+        gap: isMobile ? 12 : 24,
         borderBottom: `1px solid ${T.hairline}`,
-        paddingBottom: 14,
+        paddingBottom: isMobile ? 12 : 14,
       }}
     >
-      <div>
-        <span className="cf-mono" style={{ color: T.red, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+      <div style={{ minWidth: 0 }}>
+        <span className="cf-mono" style={{ color: T.red, fontSize: isMobile ? 10 : 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
           {kicker}
         </span>
-        <h2 style={{ margin: "8px 0 0", fontSize: "clamp(32px, 4vw, 56px)", fontWeight: 700, color: T.ink, letterSpacing: "-0.03em", lineHeight: 1.02 }}>
+        <h2 style={{ margin: "8px 0 0", fontSize: isMobile ? "clamp(26px, 7.5vw, 34px)" : "clamp(32px, 4vw, 56px)", fontWeight: 700, color: T.ink, letterSpacing: "-0.03em", lineHeight: 1.04 }}>
           {title}
         </h2>
       </div>
-      <span className="cf-mono" style={{ color: T.muted, fontSize: 10.5, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
-        ◆ {rule}
+      <span
+        className="cf-mono"
+        style={{
+          color: T.muted, fontSize: 10.5, letterSpacing: "0.22em",
+          textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap",
+          flexShrink: 0, paddingTop: isMobile ? 2 : 0,
+        }}
+      >
+        ◆{isMobile ? "" : ` ${rule}`}
       </span>
     </div>
   );

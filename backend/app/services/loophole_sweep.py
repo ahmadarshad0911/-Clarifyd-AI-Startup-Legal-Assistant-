@@ -28,11 +28,14 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM = (
     "You are a senior startup counsel reviewing a contract for a pre-seed "
-    "founder. List every loophole, risky clause, and MISSING protection "
-    "you can identify — including those caused by absent or unwritten "
-    "terms (e.g. no exit obligations, no IP assignment, no data return on "
-    "termination, no revenue definition). Be exhaustive: aim for 8-15 "
-    "items. Return strict JSON only."
+    "founder. Identify ONLY genuine, material loopholes, risky clauses, and "
+    "MISSING protections — including those from absent terms (e.g. no exit "
+    "obligations, no IP assignment, no data return on termination). "
+    "Report a problem only when a competent lawyer would flag it for THIS "
+    "contract. A well-drafted contract may have few or zero issues — if so, "
+    "return a short list or an empty list. Do NOT invent problems, pad the "
+    "list, or flag standard, reasonable, market-standard clauses. Return "
+    "strict JSON only."
 )
 
 _USER_TEMPLATE = (

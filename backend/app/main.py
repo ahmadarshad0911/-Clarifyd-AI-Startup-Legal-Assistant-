@@ -705,8 +705,18 @@ async def _analyze_and_persist(
     # high one. Users complained that 2 real loopholes vanished from the UI
     # because they got rated "low" and the page only showed the medium+ set.
     _RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+    # Drop benign boilerplate: a low-severity clause with a trivial risk
+    # score is standard, reasonable language — showing it as a "flag" makes
+    # a clean contract look alarming (21 flags on a sound founders' agreement).
+    # Keep low-severity findings that still carry a non-trivial score (the
+    # real-but-minor loopholes users complained were missing).
+    surfaced = [
+        f
+        for f in analysis.findings
+        if not (f.severity.value == "low" and f.risk_score <= 2)
+    ]
     important_findings = sorted(
-        analysis.findings,
+        surfaced,
         key=lambda f: _RANK.get(f.severity.value, 0),
         reverse=True,
     )

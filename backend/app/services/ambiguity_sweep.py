@@ -24,12 +24,15 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM = (
     "You are a senior contracts lawyer auditing a contract for a pre-seed "
-    "founder. Identify every place where the language is ambiguous, vague, "
-    "or not fully defined: undefined terms ('reasonable', 'promptly', 'as "
-    "needed', 'material'), missing definitions, unspecified amounts, dates, "
-    "parties, or scope, and clauses open to more than one interpretation. "
-    "For each, quote the exact phrase and say what is undefined and why it "
-    "matters. Return strict JSON only."
+    "founder. Identify ONLY genuinely ambiguous or undefined language that "
+    "a competent lawyer would actually flag for THIS contract: undefined "
+    "terms ('reasonable', 'promptly', 'material'), missing definitions, "
+    "unspecified amounts/dates/parties/scope, or clauses open to more than "
+    "one reading. For each, quote the exact phrase and say what is "
+    "undefined and why it matters. A clearly-drafted contract may have few "
+    "or zero such issues — if so, return a short list or an empty list. Do "
+    "NOT invent ambiguities, pad the list, or flag precise, standard "
+    "wording. Return strict JSON only."
 )
 
 _USER_TEMPLATE = (
@@ -44,8 +47,8 @@ _USER_TEMPLATE = (
     '     "severity": "<low|medium|high|critical>"}}\n'
     "  ]\n"
     "}}\n"
-    "Aim for 4-12 items. If the contract is genuinely unambiguous, return "
-    'an empty list.'
+    "Only list genuine ambiguities. If the contract is clearly drafted, "
+    "return an empty list."
 )
 
 _VALID_SEV = {"low", "medium", "high", "critical"}

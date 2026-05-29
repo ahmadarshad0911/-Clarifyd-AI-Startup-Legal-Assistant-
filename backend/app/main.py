@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import AuthenticatedUser, require_role
 from app.config import get_settings
+from app.contracts.analysis import ClauseRiskFinding
 from app.contracts.api import (
     AnalyzeContractResponse,
     ClauseFinding,
@@ -59,6 +60,7 @@ from app.services.contract_analysis import ContractAnalysisService
 from app.services.contract_ingestion import ContractIngestionService
 from app.services.contract_detector import ContractDetector
 from app.services.contract_reporter import ContractReporter
+from app.services.loophole_sweep import LoopholeSweeper
 from app.services.contract_text_extractor import ContractTextExtractor
 from app.services.copilot_advisor import (
     CopilotAdvisor,
@@ -84,6 +86,7 @@ safer_model = CustomReasoningModel()
 _http_client: "httpx.AsyncClient | None" = None
 _async_analysis: AsyncContractAnalysisService | None = None
 _contract_reporter: ContractReporter | None = None
+_loophole_sweeper: LoopholeSweeper | None = None
 _copilot_advisor: CopilotAdvisor | None = None
 _contract_detector: ContractDetector | None = None
 
@@ -100,7 +103,7 @@ def _ensure_runtime() -> None:
     serverless containers don't benefit from cross-request caching here
     anyway, and the previous client's network sockets close at scope end.
     """
-    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper
     timeout = httpx.Timeout(
         connect=5.0,
         read=settings.reasoning_timeout_seconds,
@@ -117,6 +120,13 @@ def _ensure_runtime() -> None:
         model=settings.reasoning_model,
         base_url=settings.reasoning_base_url,
         timeout=180.0,
+    )
+    _loophole_sweeper = LoopholeSweeper(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=120.0,
     )
     _copilot_advisor = CopilotAdvisor(
         client=_http_client,
@@ -143,6 +153,11 @@ def get_async_analysis() -> AsyncContractAnalysisService:
 def get_contract_reporter() -> ContractReporter | None:
     _ensure_runtime()
     return _contract_reporter
+
+
+def get_loophole_sweeper() -> LoopholeSweeper | None:
+    _ensure_runtime()
+    return _loophole_sweeper
 
 
 def get_copilot_advisor() -> CopilotAdvisor | None:
@@ -197,7 +212,7 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper
     timeout = httpx.Timeout(connect=5.0, read=settings.reasoning_timeout_seconds, write=10.0, pool=5.0)
     _http_client = httpx.AsyncClient(timeout=timeout)
     _async_analysis = AsyncContractAnalysisService(provider=_build_provider_chain(_http_client))
@@ -207,6 +222,13 @@ async def lifespan(app: FastAPI):
         model=settings.reasoning_model,
         base_url=settings.reasoning_base_url,
         timeout=180.0,
+    )
+    _loophole_sweeper = LoopholeSweeper(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=120.0,
     )
     _copilot_advisor = CopilotAdvisor(
         client=_http_client,
@@ -608,6 +630,16 @@ async def _analyze_and_persist(
 
         reporter_task = asyncio.create_task(_run_reporter_isolated())
 
+    # Whole-contract loophole sweep, runs concurrently with the per-clause
+    # analyzer + the reporter. Catches multi-issue clauses (per-clause only
+    # ever emits ONE finding) and loopholes from ABSENT clauses (no exit
+    # obligations, missing IP assignment, no data return on termination,
+    # etc.) — which per-clause analysis is structurally blind to.
+    sweeper = get_loophole_sweeper()
+    sweep_task: "asyncio.Task[list[ClauseRiskFinding]] | None" = None
+    if sweeper is not None:
+        sweep_task = asyncio.create_task(sweeper.sweep(contract_text))
+
     try:
         analysis_with_flags = await get_async_analysis().analyze(contract_text, session=session)
     except ValueError as exc:
@@ -618,6 +650,23 @@ async def _analyze_and_persist(
         ) from exc
     analysis = analysis_with_flags.result
     injection_flags = analysis_with_flags.injection_flags
+
+    # Merge sweep findings into per-clause findings. Dedupe is best-effort:
+    # we drop any sweep item whose title materially matches an existing
+    # finding's clause text (case-insensitive substring on the first 6 words).
+    if sweep_task is not None:
+        try:
+            sweep_findings = await sweep_task
+        except Exception:  # pragma: no cover — never fail the request on sweep
+            logger.exception("LoopholeSweep task failed.")
+            sweep_findings = []
+        if sweep_findings:
+            seen = {(f.clause.text or "").strip().lower()[:60] for f in analysis.findings}
+            for s in sweep_findings:
+                key = (s.clause.text or "").strip().lower()[:60]
+                if key and key not in seen:
+                    analysis.findings.append(s)
+                    seen.add(key)
     # Surface medium/high/critical first. If Kimi was rate-limited and every
     # clause fell through to the rules-based provider with severity=low, the
     # UI was showing zero flags. Fall back to ALL findings (incl. low) so the

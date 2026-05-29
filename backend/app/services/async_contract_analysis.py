@@ -95,7 +95,7 @@ class AsyncContractAnalysisService:
         # cold contract; bounded so we don't burst past the provider's quota.
         # The provider already retries 429 with exponential backoff, so a
         # transient burst self-recovers instead of degrading every clause.
-        sem = asyncio.Semaphore(6)
+        sem = asyncio.Semaphore(8)
 
         async def _run(
             clause: ExtractedClause,

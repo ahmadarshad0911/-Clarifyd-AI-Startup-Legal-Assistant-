@@ -215,11 +215,11 @@ class ContractReporter:
             "seed": _LLM_SEED,
             "frequency_penalty": 0,
             "presence_penalty": 0,
-            # 1536 truncated on multi-clause critical contracts (Educational
-            # sample hit char 8020 mid-string → invalid JSON → parse error →
-            # report=None). 4096 fits real outputs with headroom; latency
-            # cost is bounded by finish_reason=stop for typical contracts.
-            "max_tokens": 4096,
+            # 1536 truncated on worst-case multi-clause critical contracts;
+            # 4096 was set for headroom but the model rarely needs that much.
+            # 3000 keeps the safety margin above real outputs (~2k tokens)
+            # while cutting generation wall time meaningfully.
+            "max_tokens": 3000,
             "response_format": {"type": "json_object"},
         }
         url = f"{self._base_url}/chat/completions"

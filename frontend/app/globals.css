@@ -464,21 +464,17 @@ input, button, select, textarea {
 /* ============================================================
  * Mobile responsive safety net (≤ 768px)
  *
- * The app is inline-styled, so stylesheet rules need !important to
- * win over fixed inline layouts. Force every multi-column grid to a
- * single column and reset explicit cell placement so no interior page
- * overflows on phones. Per-component mobile layouts (shells, landing)
- * already collapse to one column, so this only changes pages that were
- * never made responsive.
+ * The app is inline-styled, so stylesheet rules need !important to win.
+ * Pages that handle their own mobile layout (landing, shells) opt OUT
+ * of the blanket grid-stack by tagging their wrapper with the
+ * `.mobile-managed` class — without it, any leftover multi-column grid
+ * on an un-migrated page is stacked to one column so it can't overflow.
+ * The overflow-wrap / max-width / flex-wrap guards always apply.
  * ============================================================ */
 @media (max-width: 768px) {
-  /* Stack every multi-column grid and reset explicit cell placement. */
-  [style*="grid-template-columns"] {
+  /* Stack multi-column grids EXCEPT inside a mobile-managed subtree. */
+  [style*="grid-template-columns"]:not(.mobile-managed *):not(.mobile-managed) {
     grid-template-columns: 1fr !important;
-  }
-  [style*="grid-template-columns"] > * {
-    grid-column: auto !important;
-    grid-row: auto !important;
   }
 
   /* Nothing may exceed the viewport — caps fixed-width inline elements. */
@@ -486,11 +482,11 @@ input, button, select, textarea {
     max-width: 100% !important;
   }
 
-  /* Flex rows wrap instead of overflowing. Match both CSSOM
-     serializations ("display:flex" / "display: flex"); skip column
+  /* Flex rows wrap instead of overflowing — only on un-managed pages
+     (mobile-managed subtrees control their own wrapping). Skip column
      flexes and inline-flex (icon+label) which must stay inline. */
-  [style*="display:flex"]:not([style*="column"]):not([style*="inline-flex"]),
-  [style*="display: flex"]:not([style*="column"]):not([style*="inline-flex"]) {
+  [style*="display:flex"]:not([style*="column"]):not([style*="inline-flex"]):not(.mobile-managed *),
+  [style*="display: flex"]:not([style*="column"]):not([style*="inline-flex"]):not(.mobile-managed *) {
     flex-wrap: wrap;
   }
 

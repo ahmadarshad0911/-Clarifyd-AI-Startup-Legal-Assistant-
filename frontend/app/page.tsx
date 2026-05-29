@@ -33,7 +33,7 @@ const EOQ = [0.23, 1, 0.32, 1] as const;
 export default function LandingPage() {
   const reduceMotion = useReducedMotion() ?? false;
   return (
-    <div style={{ background: T.paper, color: T.body, minHeight: "100dvh", fontFeatureSettings: "'tnum', 'ss01'" }}>
+    <div className="mobile-managed" style={{ background: T.paper, color: T.body, minHeight: "100dvh", fontFeatureSettings: "'tnum', 'ss01'" }}>
       <Masthead />
       <Hero reduceMotion={reduceMotion} />
       <LoopholeOfTheWeek reduceMotion={reduceMotion} />

@@ -22,6 +22,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
 
   return (
     <div
+      className="mobile-managed"
       style={{
         background: "var(--bsd-paper)",
         color: "var(--bsd-body)",

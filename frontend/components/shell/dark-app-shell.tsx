@@ -86,7 +86,7 @@ export function DarkAppShell({
   const adminItems = role === "admin" ? [{ href: "/admin", label: "Admin" }] : [];
 
   return (
-    <div style={{ minHeight: "100dvh", background: "var(--bsd-paper)", color: "var(--bsd-body)" }}>
+    <div className="mobile-managed" style={{ minHeight: "100dvh", background: "var(--bsd-paper)", color: "var(--bsd-body)" }}>
       {/* ===== Masthead ===== */}
       <header
         style={

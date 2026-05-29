@@ -69,10 +69,11 @@ class OpenAIProvider(ReasoningProvider):
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0,
-            # Clause assessments are a tight JSON object (~300-500 tokens).
-            # Capping prevents the model from over-generating and cuts wall
-            # time per clause meaningfully.
-            "max_tokens": 800,
+            # Clause assessments are a tight JSON object (~300-500 tokens
+            # typical, up to ~1000 on a complex multi-issue clause). 1200
+            # keeps headroom so the model doesn't truncate mid-finding while
+            # still capping over-generation.
+            "max_tokens": 1200,
         }
 
         try:

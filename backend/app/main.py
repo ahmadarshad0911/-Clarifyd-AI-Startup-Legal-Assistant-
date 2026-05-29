@@ -622,12 +622,16 @@ async def _analyze_and_persist(
     # clause fell through to the rules-based provider with severity=low, the
     # UI was showing zero flags. Fall back to ALL findings (incl. low) so the
     # user can still see what we extracted instead of an empty Findings page.
-    serious = [
-        f
-        for f in analysis.findings
-        if f.severity.value in {"medium", "high", "critical"}
-    ]
-    important_findings = serious if serious else list(analysis.findings)
+    # Keep every finding regardless of severity, ranked critical->low, so a
+    # low-rated loophole isn't dropped just because the contract also has a
+    # high one. Users complained that 2 real loopholes vanished from the UI
+    # because they got rated "low" and the page only showed the medium+ set.
+    _RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+    important_findings = sorted(
+        analysis.findings,
+        key=lambda f: _RANK.get(f.severity.value, 0),
+        reverse=True,
+    )
 
     if existing is not None:
         await session.execute(

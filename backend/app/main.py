@@ -20,6 +20,7 @@ from app.contracts.analysis import ClauseRiskFinding
 from app.contracts.api import (
     AnalyzeContractResponse,
     ClauseFinding,
+    ContractAmbiguity,
     ContractReport,
     RiskLevel,
     RiskSummary,
@@ -61,6 +62,7 @@ from app.services.contract_ingestion import ContractIngestionService
 from app.services.contract_detector import ContractDetector
 from app.services.contract_reporter import ContractReporter
 from app.services.loophole_sweep import LoopholeSweeper
+from app.services.ambiguity_sweep import AmbiguitySweeper
 from app.services.contract_text_extractor import ContractTextExtractor
 from app.services.copilot_advisor import (
     CopilotAdvisor,
@@ -87,6 +89,7 @@ _http_client: "httpx.AsyncClient | None" = None
 _async_analysis: AsyncContractAnalysisService | None = None
 _contract_reporter: ContractReporter | None = None
 _loophole_sweeper: LoopholeSweeper | None = None
+_ambiguity_sweeper: AmbiguitySweeper | None = None
 _copilot_advisor: CopilotAdvisor | None = None
 _contract_detector: ContractDetector | None = None
 
@@ -103,7 +106,7 @@ def _ensure_runtime() -> None:
     serverless containers don't benefit from cross-request caching here
     anyway, and the previous client's network sockets close at scope end.
     """
-    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper, _ambiguity_sweeper
     timeout = httpx.Timeout(
         connect=5.0,
         read=settings.reasoning_timeout_seconds,
@@ -122,6 +125,13 @@ def _ensure_runtime() -> None:
         timeout=180.0,
     )
     _loophole_sweeper = LoopholeSweeper(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=120.0,
+    )
+    _ambiguity_sweeper = AmbiguitySweeper(
         client=_http_client,
         api_key=settings.reasoning_api_key,
         model=settings.reasoning_model,
@@ -158,6 +168,11 @@ def get_contract_reporter() -> ContractReporter | None:
 def get_loophole_sweeper() -> LoopholeSweeper | None:
     _ensure_runtime()
     return _loophole_sweeper
+
+
+def get_ambiguity_sweeper() -> AmbiguitySweeper | None:
+    _ensure_runtime()
+    return _ambiguity_sweeper
 
 
 def get_copilot_advisor() -> CopilotAdvisor | None:
@@ -212,7 +227,7 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper, _ambiguity_sweeper
     timeout = httpx.Timeout(connect=5.0, read=settings.reasoning_timeout_seconds, write=10.0, pool=5.0)
     _http_client = httpx.AsyncClient(timeout=timeout)
     _async_analysis = AsyncContractAnalysisService(provider=_build_provider_chain(_http_client))
@@ -224,6 +239,13 @@ async def lifespan(app: FastAPI):
         timeout=180.0,
     )
     _loophole_sweeper = LoopholeSweeper(
+        client=_http_client,
+        api_key=settings.reasoning_api_key,
+        model=settings.reasoning_model,
+        base_url=settings.reasoning_base_url,
+        timeout=120.0,
+    )
+    _ambiguity_sweeper = AmbiguitySweeper(
         client=_http_client,
         api_key=settings.reasoning_api_key,
         model=settings.reasoning_model,
@@ -640,6 +662,13 @@ async def _analyze_and_persist(
     if sweeper is not None:
         sweep_task = asyncio.create_task(sweeper.sweep(contract_text))
 
+    # Whole-contract ambiguity sweep — vague / undefined / open-to-interpretation
+    # language. Runs concurrently; surfaced separately from risk findings.
+    ambiguity_sweeper = get_ambiguity_sweeper()
+    ambiguity_task: "asyncio.Task[list[ContractAmbiguity]] | None" = None
+    if ambiguity_sweeper is not None:
+        ambiguity_task = asyncio.create_task(ambiguity_sweeper.sweep(contract_text))
+
     try:
         analysis_with_flags = await get_async_analysis().analyze(contract_text, session=session)
     except ValueError as exc:
@@ -801,8 +830,20 @@ async def _analyze_and_persist(
                 logger.exception("Awaiting reporter task failed.")
                 report = None
 
+    ambiguities: list[ContractAmbiguity] = []
+    if ambiguity_task is not None:
+        try:
+            ambiguities = await ambiguity_task
+        except Exception:  # pragma: no cover — never block the response on sweep
+            logger.exception("Awaiting ambiguity sweep failed.")
+            ambiguities = []
+
     response = _build_response(
-        draft_row, finding_rows, report=report, extracted_text=contract_text
+        draft_row,
+        finding_rows,
+        report=report,
+        ambiguities=ambiguities,
+        extracted_text=contract_text,
     )
     # Persist the full response so the Findings tab can rehydrate it on any
     # device or origin (browser localStorage is per-origin and ephemeral).
@@ -957,6 +998,7 @@ def _build_response(
     findings: list[ClauseFindingRow],
     *,
     report: "ContractReport | None" = None,
+    ambiguities: list[ContractAmbiguity] | None = None,
     extracted_text: str | None = None,
 ) -> AnalyzeContractResponse:
     api_findings = [
@@ -989,6 +1031,7 @@ def _build_response(
         ),
         findings=api_findings,
         report=report,
+        ambiguities=ambiguities or [],
         extracted_text=extracted_text,
     )
 

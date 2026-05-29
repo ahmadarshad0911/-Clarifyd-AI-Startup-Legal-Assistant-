@@ -17,6 +17,7 @@ import {
   Stack,
   Files,
   Scales,
+  Question,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
@@ -652,6 +653,73 @@ function Inner() {
               })}
             </ul>
           )}
+
+          {/* ============ Ambiguities · undefined / vague language ============ */}
+          {(active.analysis.ambiguities?.length ?? 0) > 0 ? (
+            <section style={{ marginTop: 32 }}>
+              <div className="cf-eyebrow" style={{ color: "var(--brand-500)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Question weight="duotone" size={16} />
+                Ambiguities · undefined &amp; open to interpretation
+              </div>
+              <p style={{ marginTop: 8, fontSize: 13, color: "var(--ink-muted)", lineHeight: 1.55, maxWidth: 560 }}>
+                Parts of the contract that aren&rsquo;t fully defined. These may be enforceable yet open to more than one reading.
+              </p>
+              <ul style={{ listStyle: "none", margin: "18px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                {active.analysis.ambiguities!.map((a, i) => {
+                  const sev = (a.severity ?? "low").toString().toLowerCase();
+                  const sevColor =
+                    sev === "critical" || sev === "high"
+                      ? "var(--brand-500)"
+                      : sev === "medium"
+                      ? "#a98b2a"
+                      : "var(--ink-muted)";
+                  return (
+                    <li
+                      key={`amb-${i}`}
+                      style={{
+                        background: "var(--bg-elevated-1)",
+                        border: "1px solid var(--border-strong)",
+                        borderRadius: "var(--r-md)",
+                        padding: "16px 18px",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink-primary)", letterSpacing: "-0.01em" }}>
+                          {a.clause_name}
+                        </span>
+                        <span
+                          className="cf-mono"
+                          style={{ fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800, color: sevColor }}
+                        >
+                          {sev}
+                        </span>
+                      </div>
+                      {a.excerpt ? (
+                        <p
+                          style={{
+                            margin: "10px 0 0",
+                            padding: "8px 12px",
+                            background: "var(--bg-elevated-2)",
+                            borderLeft: `2px solid ${sevColor}`,
+                            fontFamily: "Geist Mono, monospace",
+                            fontSize: 12.5,
+                            color: "var(--ink-secondary)",
+                            lineHeight: 1.6,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          &ldquo;{a.excerpt}&rdquo;
+                        </p>
+                      ) : null}
+                      <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--ink-secondary)", lineHeight: 1.6 }}>
+                        {a.issue}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
 
           {/* ============ Collaborator doc bar ============ */}
           {loopholes.length ? (

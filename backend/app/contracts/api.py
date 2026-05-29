@@ -66,6 +66,14 @@ class ReportSuggestion(APIContractModel):
     rationale: str
 
 
+class ContractAmbiguity(APIContractModel):
+    clause_name: str
+    excerpt: str
+    # What is left undefined / open to interpretation, and why it matters.
+    issue: str
+    severity: RiskLevel
+
+
 class CrossVerification(APIContractModel):
     risks_resolved: bool
     residual_concerns: str
@@ -88,6 +96,9 @@ class AnalyzeContractResponse(APIContractModel):
     summary: RiskSummary
     findings: list[ClauseFinding]
     report: ContractReport | None = None
+    # Parts of the contract that are vague / undefined / open to interpretation.
+    # Additive field (default []), surfaced in a dedicated Findings section.
+    ambiguities: list[ContractAmbiguity] = []
     # Full extracted contract text — used by the Findings page to splice in
     # accepted suggestions while keeping the rest of the document verbatim.
     extracted_text: str | None = None

@@ -55,6 +55,13 @@ export type CrossVerification = {
   notes: string;
 };
 
+export type ContractAmbiguity = {
+  clause_name: string;
+  excerpt: string;
+  issue: string;
+  severity: RiskLevel;
+};
+
 export type ContractReport = {
   model_name: string;
   verdict: RiskLevel;
@@ -71,6 +78,7 @@ export type AnalyzeContractResponse = {
   summary: RiskSummary;
   findings: ClauseFinding[];
   report?: ContractReport | null;
+  ambiguities?: ContractAmbiguity[];
   extracted_text?: string | null;
 };
 

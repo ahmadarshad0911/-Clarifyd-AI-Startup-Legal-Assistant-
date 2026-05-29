@@ -107,6 +107,22 @@ input, button, select, textarea {
   font-feature-settings: inherit;
 }
 
+/* Theme the focus ring site-wide — replace the browser's blue outline
+   with the arterial red, matching the Broadsheet system. Applies to any
+   form control that doesn't define its own focus (the .bsd-input class
+   keeps its own treatment). */
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: 2px solid var(--bsd-red) !important;
+  outline-offset: 0 !important;
+  border-color: var(--bsd-red) !important;
+  box-shadow: 0 0 0 3px var(--bsd-red-ring) !important;
+}
+
 ::selection { background: var(--bsd-ink); color: var(--bsd-paper); }
 
 /* ---------- Utility classes used across pages ---------- */

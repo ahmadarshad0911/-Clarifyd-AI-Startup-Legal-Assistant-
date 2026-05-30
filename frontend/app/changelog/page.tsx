@@ -12,6 +12,7 @@ import { Wrench, ShieldCheck, Lightbulb, PaintBrush, ListMagnifyingGlass } from 
 import type { ReactNode } from "react";
 
 import { PublicShell } from "../../components/public-shell";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 const EOQ = [0.23, 1, 0.32, 1] as const;
 
@@ -102,9 +103,10 @@ const RELEASES: Release[] = [
 
 export default function ChangelogPage() {
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   return (
     <PublicShell>
-      <section style={{ padding: "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+      <section style={{ padding: isMobile ? "48px 18px 24px" : "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <motion.div
             initial={{ opacity: 0, y: reduce ? 0 : 10 }}
@@ -125,24 +127,26 @@ export default function ChangelogPage() {
         </div>
       </section>
 
-      <section style={{ padding: "48px 32px 96px" }}>
+      <section style={{ padding: isMobile ? "32px 18px 64px" : "48px 32px 96px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           {RELEASES.map((r, i) => (
             <motion.article
               key={r.version}
               initial={{ opacity: 0, y: reduce ? 0 : 8 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
+              viewport={{ once: true, amount: 0.12 }}
               transition={{ duration: 0.45, ease: EOQ, delay: i * 0.04 }}
               style={{
-                paddingTop: i === 0 ? 0 : 56,
-                paddingBottom: 32,
+                paddingTop: i === 0 ? 0 : isMobile ? 36 : 56,
+                paddingBottom: isMobile ? 24 : 32,
                 borderTop: i === 0 ? "2px solid var(--bsd-ink)" : "1px dotted var(--bsd-hairline)",
-                display: "grid", gridTemplateColumns: "minmax(0, 4fr) minmax(0, 8fr)", gap: 48, alignItems: "start",
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 4fr) minmax(0, 8fr)",
+                gap: isMobile ? 18 : 48,
+                alignItems: "start",
               }}
-              className="grid-cols-1 lg:grid-cols-[4fr_8fr]"
             >
-              <header style={{ position: "sticky", top: 90 }}>
+              <header style={isMobile ? undefined : { position: "sticky", top: 90 }}>
                 <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
                   {r.edition}
                 </span>
@@ -169,7 +173,10 @@ export default function ChangelogPage() {
                       <li
                         key={j}
                         style={{
-                          display: "grid", gridTemplateColumns: "44px 96px minmax(0, 1fr)", gap: 16, alignItems: "baseline",
+                          display: "grid",
+                          gridTemplateColumns: isMobile ? "auto 1fr" : "44px 96px minmax(0, 1fr)",
+                          gap: isMobile ? "6px 12px" : 16,
+                          alignItems: "baseline",
                           padding: "14px 0",
                           borderBottom: j < r.entries.length - 1 ? "1px dotted var(--bsd-hairline)" : "none",
                         }}
@@ -188,7 +195,12 @@ export default function ChangelogPage() {
                         >
                           <Icon weight="duotone" size={13} /> {TAG_LABEL[e.tag]}
                         </span>
-                        <span style={{ fontSize: 14.5, color: "var(--bsd-ink)", lineHeight: 1.55 }}>
+                        <span
+                          style={{
+                            fontSize: 14.5, color: "var(--bsd-ink)", lineHeight: 1.55,
+                            gridColumn: isMobile ? "1 / -1" : "auto",
+                          }}
+                        >
                           {e.body}
                         </span>
                       </li>

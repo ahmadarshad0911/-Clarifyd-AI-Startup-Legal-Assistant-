@@ -14,6 +14,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowClockwise, CheckCircle, Warning, MinusCircle, Pulse } from "@phosphor-icons/react";
 
 import { PublicShell } from "../../components/public-shell";
+import { useIsMobile } from "../../lib/use-is-mobile";
 import { resolveApiBaseUrl } from "../../lib/api";
 
 type Status = "operational" | "degraded" | "down";
@@ -70,6 +71,7 @@ function describeAgo(iso: string | null): string {
 
 export default function StatusPage() {
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   const [rows, setRows] = useState<Service[]>(() => seed());
   const [checkedAt, setCheckedAt] = useState<Date>(new Date());
   const [pinging, setPinging] = useState(false);
@@ -102,7 +104,7 @@ export default function StatusPage() {
 
   return (
     <PublicShell>
-      <section style={{ padding: "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+      <section style={{ padding: isMobile ? "48px 18px 24px" : "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <motion.div
             initial={{ opacity: 0, y: reduce ? 0 : 10 }}
@@ -141,16 +143,20 @@ export default function StatusPage() {
       </section>
 
       {/* Ledger */}
-      <section style={{ padding: "48px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+      <section style={{ padding: isMobile ? "32px 18px" : "48px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "44px minmax(0, 2fr) 88px minmax(0, 1fr) 1fr 1fr", gap: 18, padding: "10px 0", borderTop: "2px solid var(--bsd-ink)", borderBottom: "1px solid var(--bsd-ink)", fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--bsd-muted)" }}>
-            <span>No.</span>
-            <span>Service</span>
-            <span>Region</span>
-            <span>90d uptime</span>
-            <span>Latency p50</span>
-            <span style={{ textAlign: "right" }}>Status</span>
-          </div>
+          {isMobile ? (
+            <div style={{ borderTop: "2px solid var(--bsd-ink)" }} />
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "44px minmax(0, 2fr) 88px minmax(0, 1fr) 1fr 1fr", gap: 18, padding: "10px 0", borderTop: "2px solid var(--bsd-ink)", borderBottom: "1px solid var(--bsd-ink)", fontFamily: "Geist Mono, monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--bsd-muted)" }}>
+              <span>No.</span>
+              <span>Service</span>
+              <span>Region</span>
+              <span>90d uptime</span>
+              <span>Latency p50</span>
+              <span style={{ textAlign: "right" }}>Status</span>
+            </div>
+          )}
           {rows.map((r, i) => {
             const tint = STATUS_COLOR[r.status];
             return (
@@ -161,33 +167,67 @@ export default function StatusPage() {
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.3, ease: EOQ, delay: i * 0.04 }}
                 style={{
-                  display: "grid", gridTemplateColumns: "44px minmax(0, 2fr) 88px minmax(0, 1fr) 1fr 1fr", gap: 18, alignItems: "center",
-                  padding: "20px 0",
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr 1fr 1fr" : "44px minmax(0, 2fr) 88px minmax(0, 1fr) 1fr 1fr",
+                  gap: isMobile ? "14px 12px" : 18,
+                  alignItems: isMobile ? "start" : "center",
+                  padding: isMobile ? "18px 0" : "20px 0",
                   borderBottom: i < rows.length - 1 ? "1px dotted var(--bsd-hairline)" : "2px solid var(--bsd-ink)",
                 }}
               >
-                <span className="cf-mono" style={{ color: "var(--bsd-soft)", fontSize: 13, fontWeight: 800, letterSpacing: "0.10em" }}>
+                <span
+                  className="cf-mono"
+                  style={{
+                    color: "var(--bsd-soft)", fontSize: 13, fontWeight: 800, letterSpacing: "0.10em",
+                    display: isMobile ? "none" : "inline",
+                  }}
+                >
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, gridColumn: isMobile ? "1 / 3" : "auto", gridRow: isMobile ? 1 : "auto" }}>
                   <div style={{ fontSize: 16, color: "var(--bsd-ink)", fontWeight: 600 }}>{r.name}</div>
                   <div className="cf-mono" style={{ marginTop: 2, fontSize: 9.5, color: "var(--bsd-muted)", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
                     Last incident · {describeAgo(r.lastIncident)}
                   </div>
                 </div>
-                <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 11.5, letterSpacing: "0.14em", fontWeight: 700 }}>
+                <span
+                  className="cf-mono"
+                  style={{
+                    color: "var(--bsd-muted)", fontSize: 11.5, letterSpacing: "0.14em", fontWeight: 700,
+                    gridColumn: isMobile ? 1 : "auto", gridRow: isMobile ? 2 : "auto",
+                    display: isMobile ? "flex" : undefined, flexDirection: isMobile ? "column" : undefined, gap: isMobile ? 3 : undefined,
+                  }}
+                >
+                  {isMobile ? <MLabel>Region</MLabel> : null}
                   {r.region}
                 </span>
-                <span className="cf-mono" style={{ color: r.uptime90d >= 99.9 ? "var(--bsd-sev-low)" : "var(--bsd-sev-high)", fontSize: 13, fontWeight: 800, letterSpacing: "0.04em" }}>
+                <span
+                  className="cf-mono"
+                  style={{
+                    color: r.uptime90d >= 99.9 ? "var(--bsd-sev-low)" : "var(--bsd-sev-high)", fontSize: 13, fontWeight: 800, letterSpacing: "0.04em",
+                    gridColumn: isMobile ? 2 : "auto", gridRow: isMobile ? 2 : "auto",
+                    display: isMobile ? "flex" : undefined, flexDirection: isMobile ? "column" : undefined, gap: isMobile ? 3 : undefined,
+                  }}
+                >
+                  {isMobile ? <MLabel>Uptime 90d</MLabel> : null}
                   {r.uptime90d.toFixed(2)}%
                 </span>
-                <span className="cf-mono" style={{ color: "var(--bsd-ink)", fontSize: 13, fontWeight: 700, letterSpacing: "0.04em" }}>
+                <span
+                  className="cf-mono"
+                  style={{
+                    color: "var(--bsd-ink)", fontSize: 13, fontWeight: 700, letterSpacing: "0.04em",
+                    gridColumn: isMobile ? 3 : "auto", gridRow: isMobile ? 2 : "auto",
+                    display: isMobile ? "flex" : undefined, flexDirection: isMobile ? "column" : undefined, gap: isMobile ? 3 : undefined,
+                  }}
+                >
+                  {isMobile ? <MLabel>Latency p50</MLabel> : null}
                   {r.latencyMs > 0 ? `${r.latencyMs} ms` : "—"}
                 </span>
                 <span
                   className="cf-mono"
                   style={{
                     justifySelf: "end",
+                    gridColumn: isMobile ? 3 : "auto", gridRow: isMobile ? 1 : "auto",
                     display: "inline-flex", alignItems: "center", gap: 7,
                     padding: "5px 10px",
                     border: `1.5px solid ${tint}`,
@@ -213,17 +253,25 @@ export default function StatusPage() {
       </section>
 
       {/* Incidents archive (empty by design today) */}
-      <section style={{ padding: "48px 32px 96px" }}>
+      <section style={{ padding: isMobile ? "32px 18px 64px" : "48px 32px 96px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div className="cf-mono" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
+          <div className="cf-mono" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
             <span>Recent incidents</span>
             <span>Last 90 days</span>
           </div>
-          <div style={{ marginTop: 22, border: "2px dashed var(--bsd-rule)", padding: 40, textAlign: "center", color: "var(--bsd-muted)" }}>
+          <div style={{ marginTop: 22, border: "2px dashed var(--bsd-rule)", padding: isMobile ? "28px 18px" : 40, textAlign: "center", color: "var(--bsd-muted)" }}>
             No incidents in the last 90 days.
           </div>
         </div>
       </section>
     </PublicShell>
+  );
+}
+
+function MLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{ fontSize: 8.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--bsd-soft)", fontWeight: 700 }}>
+      {children}
+    </span>
   );
 }

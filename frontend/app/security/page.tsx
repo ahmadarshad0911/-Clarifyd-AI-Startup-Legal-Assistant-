@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { PublicShell } from "../../components/public-shell";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 const EOQ = [0.23, 1, 0.32, 1] as const;
 
@@ -79,9 +80,10 @@ const ARTICLES: Article[] = [
 
 export default function SecurityPage() {
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   return (
     <PublicShell>
-      <section style={{ padding: "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+      <section style={{ padding: isMobile ? "48px 18px 24px" : "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <motion.div
             initial={{ opacity: 0, y: reduce ? 0 : 10 }}
@@ -112,24 +114,25 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      <article style={{ padding: "48px 32px", maxWidth: 1100, margin: "0 auto" }}>
+      <article style={{ padding: isMobile ? "32px 18px" : "48px 32px", maxWidth: 1100, margin: "0 auto" }}>
         {ARTICLES.map((a, i) => (
           <motion.section
             key={a.n}
             initial={{ opacity: 0, y: reduce ? 0 : 8 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 0.4, ease: EOQ, delay: i * 0.04 }}
             style={{
-              display: "grid", gridTemplateColumns: "minmax(0, 4fr) minmax(0, 8fr)", gap: 48,
-              padding: "36px 0",
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 4fr) minmax(0, 8fr)",
+              gap: isMobile ? 18 : 48,
+              padding: isMobile ? "26px 0" : "36px 0",
               borderTop: i === 0 ? "2px solid var(--bsd-ink)" : "1px dotted var(--bsd-hairline)",
               borderBottom: i === ARTICLES.length - 1 ? "2px solid var(--bsd-ink)" : "none",
               alignItems: "start",
             }}
-            className="grid-cols-1 lg:grid-cols-[4fr_8fr]"
           >
-            <header style={{ position: "sticky", top: 100 }}>
+            <header style={isMobile ? undefined : { position: "sticky", top: 100 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em" }}>
                   {a.n}
@@ -171,13 +174,16 @@ export default function SecurityPage() {
       </article>
 
       {/* Disclosure plate */}
-      <section style={{ padding: "0 32px 96px" }}>
+      <section style={{ padding: isMobile ? "0 18px 64px" : "0 32px 96px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div
             style={{
               background: "var(--bsd-ink)", color: "var(--bsd-paper)",
-              padding: "36px 32px",
-              display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 28, alignItems: "center",
+              padding: isMobile ? "28px 20px" : "36px 32px",
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) auto",
+              gap: isMobile ? 22 : 28,
+              alignItems: isMobile ? "start" : "center",
             }}
           >
             <div>
@@ -191,7 +197,7 @@ export default function SecurityPage() {
                 Email <span className="cf-mono" style={{ color: "var(--bsd-paper)", fontWeight: 800 }}>security@clarifyd.com</span> with a reproduction. We acknowledge within 48 hours. Eligible findings receive credit on this page and a token of thanks.
               </p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: isMobile ? "flex-start" : "flex-end" }}>
               <a
                 href="mailto:security@clarifyd.com"
                 className="cursor-pointer cf-mono"

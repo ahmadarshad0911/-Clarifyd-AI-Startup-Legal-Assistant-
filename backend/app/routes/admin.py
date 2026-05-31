@@ -49,6 +49,32 @@ async def _clerk_user_count() -> int | None:
         return None
 
 
+async def _clerk_delete_user(clerk_user_id: str) -> bool:
+    """Delete a user from Clerk. True on success, False if unavailable/failed.
+
+    Clerk is the source of truth for accounts, so removing a user there is
+    what actually deletes them. 404 from Clerk counts as already-gone (True).
+    """
+    secret = get_settings().clerk_secret_key
+    if not secret or not clerk_user_id.startswith("user_"):
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.delete(
+                f"https://api.clerk.com/v1/users/{clerk_user_id}",
+                headers={"Authorization": f"Bearer {secret}"},
+            )
+        if resp.status_code in (200, 204, 404):
+            return True
+        logger.warning(
+            "Clerk delete user %s returned %s", clerk_user_id, resp.status_code
+        )
+        return False
+    except httpx.HTTPError as exc:
+        logger.warning("Clerk delete user %s failed: %r", clerk_user_id, exc)
+        return False
+
+
 async def _clerk_list_users() -> list[dict] | None:
     """Every Clerk user (the real roster). None if Clerk is unavailable.
 
@@ -311,26 +337,38 @@ async def admin_delete_user(
             message="Cannot delete the signed-in admin account.",
             status_code=400,
         )
+
+    # The roster is sourced from Clerk, so the id is usually a Clerk user id
+    # that may have no local row yet. Delete from Clerk (the source of truth)
+    # AND clean up any local rows; do not 404 just because the local table
+    # has no matching row.
     target = (
         await session.execute(select(User).where(User.id == user_id))
     ).scalar_one_or_none()
-    if target is None:
+    local_email = target.email if target is not None else None
+
+    clerk_deleted = await _clerk_delete_user(user_id)
+
+    if target is not None:
+        await session.execute(
+            delete(ContractDraft).where(ContractDraft.owner_id == user_id)
+        )
+        await session.execute(delete(User).where(User.id == user_id))
+
+    if target is None and not clerk_deleted:
         raise AppError(
             code=ErrorCode.request_validation_error,
             message="User not found.",
             status_code=404,
         )
-    await session.execute(
-        delete(ContractDraft).where(ContractDraft.owner_id == user_id)
-    )
-    await session.execute(delete(User).where(User.id == user_id))
+
     await append_audit_event(
         session,
         action="admin.user_deleted",
         target_type="user",
         target_id=user_id,
         actor_id=user.id,
-        payload={"email": target.email},
+        payload={"email": local_email, "clerk_deleted": clerk_deleted},
     )
     await session.commit()
     return UserDeleteResponse(id=user_id, deleted=True)

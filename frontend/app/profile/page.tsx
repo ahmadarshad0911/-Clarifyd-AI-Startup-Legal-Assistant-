@@ -405,7 +405,6 @@ export default function ProfilePage() {
           >
             <ProviderChip label="Email & password" active />
             <ProviderChip label="Google" />
-            <ProviderChip label="Facebook" />
           </div>
         </Card>
 

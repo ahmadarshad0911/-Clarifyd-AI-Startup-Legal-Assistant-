@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ============================================================
  * Clarifyd — design tokens · "The Broadsheet" v6
  *

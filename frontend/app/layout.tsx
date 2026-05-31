@@ -33,7 +33,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const scriptSrc = [
     "'self'",
     "'unsafe-inline'",
-    "https://cdn.tailwindcss.com",
     "https://*.clerk.accounts.dev",
     "https://*.clerk.com",
     "https://*.clarifyd.app",
@@ -83,10 +82,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           ].join("; ")}
         />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
-        {/* Tailwind via CDN — utility-only fallback while we stay on
-            App Router w/o a build step. Bento utilities use plain CSS
-            vars defined in globals.css. */}
-        <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries" />
       </head>
       <body>
         <ClerkProvider

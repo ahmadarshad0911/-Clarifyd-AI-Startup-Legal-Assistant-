@@ -1,37 +1,15 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// Routes that demand a signed-in user. Everything else (landing, /login, /faq,
-// /pricing, etc.) stays public so the marketing site still works for
-// unauthenticated visitors.
-const isProtectedRoute = createRouteMatcher([
-  "/dashboard(.*)",
-  "/findings(.*)",
-  "/copilot(.*)",
-  "/negotiation(.*)",
-  "/exports(.*)",
-  "/profile(.*)",
-  "/admin(.*)",
-  "/onboarding(.*)",
-  "/comments(.*)",
-  "/feedback(.*)",
-  "/lawyer(.*)",
-  "/library(.*)",
-  "/reasoning(.*)",
-  "/integrations(.*)",
-]);
-
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    // Preserve where the user was headed so /login can send them back
-    // there after the session re-hydrates, instead of dumping everyone on
-    // /dashboard (the cause of "refresh always lands on dashboard").
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set(
-      "redirect_url",
-      req.nextUrl.pathname + req.nextUrl.search,
-    );
-    await auth.protect({ unauthenticatedUrl: loginUrl.toString() });
-  }
+// NOTE: We deliberately do NOT call auth.protect() / redirect at the edge.
+// On a hard refresh the server-side session cookie isn't always visible in
+// time, so edge protection bounced authenticated users through /login —
+// and Clerk's own post-handshake redirect then dumped them on /dashboard,
+// losing the page they were on. Gating now lives client-side in the app
+// shells (DarkAppShell redirects to /login when there's no token), which
+// sees the rehydrated Clerk session reliably. clerkMiddleware still runs so
+// auth() context is available; it just never redirects.
+export default clerkMiddleware(async () => {
+  // Intentionally empty — session context only, no protection redirect.
 });
 
 export const config = {

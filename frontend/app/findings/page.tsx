@@ -22,6 +22,7 @@ import {
 
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
 import { ClauseCard, ClauseData } from "../../components/clause-card";
+import { Skeleton, SkeletonCard } from "../../components/common/skeleton";
 import { HealthGauge } from "../../components/health-gauge";
 import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { RiskPill, Severity } from "../../components/risk-pill";
@@ -54,7 +55,14 @@ export default function FindingsPage() {
     <Suspense
       fallback={
         <DarkAppShell>
-          <div style={{ color: "var(--ink-muted)" }}>Loading findings…</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <Skeleton width={120} height={11} />
+            <Skeleton width="55%" height={34} />
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 14 }}>
+              <SkeletonCard lines={2} />
+              <SkeletonCard lines={3} />
+            </div>
+          </div>
         </DarkAppShell>
       }
     >
@@ -316,7 +324,15 @@ function Inner() {
   if (!loaded) {
     return (
       <DarkAppShell>
-        <div style={{ color: "var(--ink-muted)" }}>Loading findings…</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <Skeleton width={120} height={11} />
+          <Skeleton width="55%" height={34} />
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 14 }}>
+            <SkeletonCard lines={2} />
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={2} />
+          </div>
+        </div>
       </DarkAppShell>
     );
   }

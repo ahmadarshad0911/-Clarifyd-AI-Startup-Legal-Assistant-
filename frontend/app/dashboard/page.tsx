@@ -44,6 +44,7 @@ import { ApiError } from "../../lib/api";
 import { pushAnalysis, listAnalyses, type StoredAnalysis } from "../../lib/analyses";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -70,6 +71,7 @@ export default function DashboardPage() {
   const [docType, setDocType] = useState<DocType>("SAFE");
   const [ctx, setCtx] = useState<ContextValue>({ jurisdiction: "US", stage: "pre-seed", role: "founder" });
   const inputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setRecent(listAnalyses().slice(0, 5));
@@ -176,8 +178,8 @@ export default function DashboardPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 8fr) minmax(0, 4fr)",
-          gap: 18,
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 8fr) minmax(0, 4fr)",
+          gap: isMobile ? 14 : 18,
           alignItems: "start",
         }}
         className="grid-cols-1 md:grid-cols-[8fr_4fr]"
@@ -475,7 +477,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ============ Quick links ============ */}
-      <div style={{ marginTop: 36, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }} className="grid-cols-1 sm:grid-cols-3">
+      <div style={{ marginTop: 36, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: isMobile ? 14 : 18 }} className="grid-cols-1 sm:grid-cols-3">
         {[
           { title: "Negotiate", body: "Track contracts you're actively pushing back on.", href: "/negotiation", Icon: Handshake },
           { title: "Co-Pilot", body: "Ask Clarifyd AI anything about a clause.", href: "/copilot", Icon: Sparkle },

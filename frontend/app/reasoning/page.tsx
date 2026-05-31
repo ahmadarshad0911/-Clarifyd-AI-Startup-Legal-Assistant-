@@ -24,6 +24,7 @@ import type {
 } from "../../lib/contracts";
 import { listRecent, type RecentDraft } from "../../lib/recent";
 import { useToast } from "../../lib/toast";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 const EOQ = [0.23, 1, 0.32, 1] as const;
 const SEV_COLOR: Record<string, string> = {
@@ -37,6 +38,7 @@ export default function ReasoningPage() {
   const { client } = useAuth();
   const { push } = useToast();
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
 
   const [recent, setRecent] = useState<RecentDraft[]>([]);
   const [draftId, setDraftId] = useState("");
@@ -118,7 +120,7 @@ export default function ReasoningPage() {
         <form
           onSubmit={onEvaluate}
           style={{
-            display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 18, alignItems: "end",
+            display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) auto", gap: 18, alignItems: "end",
             padding: "24px 0",
             borderBottom: "1px solid var(--bsd-hairline)",
           }}
@@ -157,7 +159,7 @@ export default function ReasoningPage() {
         <form
           onSubmit={onAsk}
           style={{
-            display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "20px 36px",
+            display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(0, 1fr)", gap: isMobile ? "16px" : "20px 36px",
             padding: "24px 0",
             borderBottom: "1px solid var(--bsd-hairline)",
           }}
@@ -165,7 +167,7 @@ export default function ReasoningPage() {
         >
           <DraftSelector label="Draft" value={draftId} onChange={setDraftId} recent={recent} />
           <SimpleField label="Finding id (optional)" value={findingId} onChange={setFindingId} placeholder="f_abc123…" />
-          <div style={{ gridColumn: "1 / -1" }}>
+          <div style={{ gridColumn: isMobile ? "auto" : "1 / -1" }}>
             <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>
               Question
             </div>
@@ -182,7 +184,7 @@ export default function ReasoningPage() {
             type="submit"
             disabled={askBusy || !draftId.trim() || !question.trim()}
             className="bsd-btn cursor-pointer"
-            style={{ gridColumn: "1 / -1", alignSelf: "start", justifySelf: "start" }}
+            style={{ gridColumn: isMobile ? "auto" : "1 / -1", alignSelf: "start", justifySelf: "start" }}
           >
             <Chat weight="duotone" size={12} />
             {askBusy ? "Asking…" : "Ask the advisor"}

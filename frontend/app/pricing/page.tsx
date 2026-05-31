@@ -9,6 +9,7 @@ import { ArrowRight, Check, Coin } from "@phosphor-icons/react";
 
 import { PublicShell } from "../../components/public-shell";
 import { useAuth } from "../../lib/auth";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 type Plan = { id: string; name: string; monthlyUsd: number | null; features: string[]; cta: string; featured?: boolean; hint: string };
 
@@ -28,6 +29,7 @@ const EOQ = [0.23, 1, 0.32, 1] as const;
 
 export default function PricingPage() {
   const { token } = useAuth();
+  const isMobile = useIsMobile();
   const [annual, setAnnual] = useState(true);
   const planHref = token ? "/dashboard" : "/login";
 
@@ -40,8 +42,8 @@ export default function PricingPage() {
 
   return (
     <PublicShell>
-      <section style={{ padding: "72px 32px 24px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 56, alignItems: "end" }}>
+      <section style={{ padding: isMobile ? "48px 18px 24px" : "72px 32px 24px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 7fr) minmax(0, 5fr)", gap: isMobile ? 20 : 56, alignItems: "end" }}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: EOQ }}>
             <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <Coin weight="duotone" size={14} aria-hidden />
@@ -82,11 +84,11 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <section style={{ padding: "56px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+      <section style={{ padding: isMobile ? "48px 18px 24px" : "56px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
         <div
           style={{
             maxWidth: 1280, margin: "0 auto",
-            display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+            display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
             borderTop: "2px solid var(--bsd-ink)", borderBottom: "2px solid var(--bsd-ink)",
           }}
           className="grid-cols-1 md:grid-cols-3"

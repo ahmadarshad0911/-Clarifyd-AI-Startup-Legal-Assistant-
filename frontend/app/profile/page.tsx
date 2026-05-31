@@ -41,6 +41,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
+import { useIsMobile } from "../../lib/use-is-mobile";
 import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
@@ -67,6 +68,7 @@ const JURISDICTION_LABEL: Record<string, string> = {
 export default function ProfilePage() {
   const router = useRouter();
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   const { me, role, token, logout } = useAuth();
   const { push } = useToast();
 
@@ -236,10 +238,10 @@ export default function ProfilePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "92px 1fr auto",
+              gridTemplateColumns: isMobile ? "1fr" : "92px 1fr auto",
               gap: 22,
-              alignItems: "center",
-              padding: "30px 32px 26px",
+              alignItems: isMobile ? "start" : "center",
+              padding: isMobile ? "30px 18px 26px" : "30px 32px 26px",
             }}
           >
             <div
@@ -313,7 +315,7 @@ export default function ProfilePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
               gap: 0,
               borderTop: "1px solid var(--bsd-hairline)",
             }}
@@ -337,6 +339,7 @@ export default function ProfilePage() {
             value={profile.full_name ?? ""}
             placeholder="Add your name"
             editing={editing === "full_name"}
+            isMobile={isMobile}
             onEdit={() => setEditing("full_name")}
             onSave={(v) => saveField("full_name", v)}
             onCancel={() => setEditing(null)}
@@ -347,6 +350,7 @@ export default function ProfilePage() {
             value={profile.company_name ?? ""}
             placeholder="Acme, Inc."
             editing={editing === "company_name"}
+            isMobile={isMobile}
             onEdit={() => setEditing("company_name")}
             onSave={(v) => saveField("company_name", v)}
             onCancel={() => setEditing(null)}
@@ -357,6 +361,7 @@ export default function ProfilePage() {
             value={profile.jurisdiction ? JURISDICTION_LABEL[profile.jurisdiction] ?? profile.jurisdiction : ""}
             placeholder="US, UK, EU, IN, SG"
             editing={editing === "jurisdiction"}
+            isMobile={isMobile}
             onEdit={() => setEditing("jurisdiction")}
             onSave={(v) => saveField("jurisdiction", v.toUpperCase())}
             onCancel={() => setEditing(null)}
@@ -367,6 +372,7 @@ export default function ProfilePage() {
             value={profile.stage ? STAGE_LABEL[profile.stage] ?? profile.stage : ""}
             placeholder="pre_seed, seed, series_a, enterprise"
             editing={editing === "stage"}
+            isMobile={isMobile}
             onEdit={() => setEditing("stage")}
             onSave={(v) => saveField("stage", v.toLowerCase())}
             onCancel={() => setEditing(null)}
@@ -377,6 +383,7 @@ export default function ProfilePage() {
             value={profile.sector ?? ""}
             placeholder="SaaS, Fintech, Health, …"
             editing={editing === "sector"}
+            isMobile={isMobile}
             onEdit={() => setEditing("sector")}
             onSave={(v) => saveField("sector", v)}
             onCancel={() => setEditing(null)}
@@ -408,7 +415,7 @@ export default function ProfilePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
               gap: 0,
               borderTop: "1px solid var(--bsd-hairline)",
             }}
@@ -649,6 +656,7 @@ function FieldRow({
   value,
   placeholder,
   editing,
+  isMobile,
   onEdit,
   onSave,
   onCancel,
@@ -659,6 +667,7 @@ function FieldRow({
   value: string;
   placeholder: string;
   editing: boolean;
+  isMobile: boolean;
   onEdit: () => void;
   onSave: (v: string) => void;
   onCancel: () => void;
@@ -668,6 +677,106 @@ function FieldRow({
   useEffect(() => {
     if (editing) setDraft(value);
   }, [editing, value]);
+
+  const valueCell = (
+    <AnimatePresence mode="wait" initial={false}>
+      {editing ? (
+        <motion.input
+          key="edit"
+          type="text"
+          value={draft}
+          placeholder={placeholder}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSave(draft.trim());
+            if (e.key === "Escape") onCancel();
+          }}
+          autoFocus
+          initial={{ opacity: 0, x: -4 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -4 }}
+          transition={{ duration: 0.18, ease: EOQ }}
+          style={{
+            background: "var(--bsd-paper-low, var(--bsd-paper))",
+            border: "1px solid var(--bsd-red)",
+            borderRadius: 2,
+            padding: "8px 10px",
+            fontSize: 14,
+            color: "var(--bsd-ink)",
+            outline: "none",
+            fontFamily: "Geist, sans-serif",
+            minWidth: 0,
+          }}
+        />
+      ) : (
+        <motion.div
+          key="value"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          style={{
+            fontSize: 14.5,
+            color: value ? "var(--bsd-ink)" : "var(--bsd-muted)",
+            fontStyle: value ? "normal" : "italic",
+            overflowWrap: "anywhere",
+            minWidth: 0,
+          }}
+        >
+          {value || placeholder}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const actionCell = editing ? (
+    <div style={{ display: "flex", gap: 4 }}>
+      <IconBtn onClick={() => onSave(draft.trim())} accent="var(--bsd-red)" label="Save">
+        <Check weight="bold" size={13} />
+      </IconBtn>
+      <IconBtn onClick={onCancel} accent="var(--bsd-muted)" label="Cancel">
+        ✕
+      </IconBtn>
+    </div>
+  ) : (
+    <IconBtn onClick={onEdit} accent="var(--bsd-muted)" label={`Edit ${label}`}>
+      <Pencil weight="bold" size={12} />
+    </IconBtn>
+  );
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gap: 12,
+          alignItems: "center",
+          padding: "14px 18px",
+          borderTop: "1px solid var(--bsd-hairline)",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            className="cf-mono"
+            style={{
+              fontFamily: "Geist Mono, monospace",
+              fontSize: 10,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "var(--bsd-muted)",
+              fontWeight: 700,
+              marginBottom: 4,
+            }}
+          >
+            {label}
+          </div>
+          {valueCell}
+        </div>
+        {actionCell}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -695,68 +804,8 @@ function FieldRow({
       >
         {label}
       </div>
-      <AnimatePresence mode="wait" initial={false}>
-        {editing ? (
-          <motion.input
-            key="edit"
-            type="text"
-            value={draft}
-            placeholder={placeholder}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onSave(draft.trim());
-              if (e.key === "Escape") onCancel();
-            }}
-            autoFocus
-            initial={{ opacity: 0, x: -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -4 }}
-            transition={{ duration: 0.18, ease: EOQ }}
-            style={{
-              background: "var(--bsd-paper-low, var(--bsd-paper))",
-              border: "1px solid var(--bsd-red)",
-              borderRadius: 2,
-              padding: "8px 10px",
-              fontSize: 14,
-              color: "var(--bsd-ink)",
-              outline: "none",
-              fontFamily: "Geist, sans-serif",
-              minWidth: 0,
-            }}
-          />
-        ) : (
-          <motion.div
-            key="value"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            style={{
-              fontSize: 14.5,
-              color: value ? "var(--bsd-ink)" : "var(--bsd-muted)",
-              fontStyle: value ? "normal" : "italic",
-              overflowWrap: "anywhere",
-              minWidth: 0,
-            }}
-          >
-            {value || placeholder}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {editing ? (
-        <div style={{ display: "flex", gap: 4 }}>
-          <IconBtn onClick={() => onSave(draft.trim())} accent="var(--bsd-red)" label="Save">
-            <Check weight="bold" size={13} />
-          </IconBtn>
-          <IconBtn onClick={onCancel} accent="var(--bsd-muted)" label="Cancel">
-            ✕
-          </IconBtn>
-        </div>
-      ) : (
-        <IconBtn onClick={onEdit} accent="var(--bsd-muted)" label={`Edit ${label}`}>
-          <Pencil weight="bold" size={12} />
-        </IconBtn>
-      )}
+      {valueCell}
+      {actionCell}
     </div>
   );
 }

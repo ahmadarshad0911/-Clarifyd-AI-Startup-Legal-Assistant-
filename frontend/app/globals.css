@@ -125,6 +125,31 @@ textarea:focus-visible {
 
 ::selection { background: var(--bsd-ink); color: var(--bsd-paper); }
 
+/* Skeleton shimmer — slow sweep over loading placeholders. */
+.bsd-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.bsd-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(244, 237, 225, 0.65) 50%,
+    transparent 100%
+  );
+  animation: bsd-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes bsd-shimmer {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bsd-shimmer::after { animation: none; }
+}
+
 /* ---------- Utility classes used across pages ---------- */
 .cf-mono {
   font-family: var(--font-geist-mono, "Geist Mono", ui-monospace, "SF Mono", monospace);

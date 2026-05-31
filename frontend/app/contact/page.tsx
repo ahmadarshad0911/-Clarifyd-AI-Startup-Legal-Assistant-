@@ -9,6 +9,7 @@ import { ArrowRight, CheckCircle, WarningCircle, EnvelopeSimple, Clock, Lightnin
 
 import { PublicShell } from "../../components/public-shell";
 import { ApiClient, ApiError } from "../../lib/api";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 type Topic = "general" | "sales" | "support" | "press" | "legal";
 
@@ -29,6 +30,7 @@ export default function ContactPage() {
   const [company, setCompany] = useState("");
   const [topic, setTopic] = useState<Topic>("general");
   const [message, setMessage] = useState("");
+  const isMobile = useIsMobile();
   const [honey, setHoney] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,11 +66,11 @@ export default function ContactPage() {
 
   return (
     <PublicShell>
-      <section style={{ padding: "72px 32px 80px" }}>
+      <section style={{ padding: isMobile ? "48px 18px 32px" : "72px 32px 80px" }}>
         <div
           style={{
             maxWidth: 1280, margin: "0 auto",
-            display: "grid", gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)", gap: 56,
+            display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 5fr) minmax(0, 7fr)", gap: isMobile ? 20 : 56,
           }}
           className="grid-cols-1 lg:grid-cols-[5fr_7fr]"
         >
@@ -139,7 +141,7 @@ export default function ContactPage() {
               style={{ background: "var(--bsd-paper-deep)", border: "2px solid var(--bsd-ink)", padding: 32, display: "flex", flexDirection: "column", gap: 20 }}
             >
               <input type="text" value={honey} onChange={(e) => setHoney(e.target.value)} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }} className="grid-cols-1 sm:grid-cols-2">
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 18 }} className="grid-cols-1 sm:grid-cols-2">
                 <Field label="Name" value={name} onChange={setName} required />
                 <Field label="Email" type="email" value={email} onChange={setEmail} required />
               </div>

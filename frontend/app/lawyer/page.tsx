@@ -15,12 +15,14 @@ import { ArrowRight, Scales, Hammer, Quotes } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
 import { useToast } from "../../lib/toast";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 const EOQ = [0.23, 1, 0.32, 1] as const;
 const STORAGE_KEY = "clarifyd.lawyer-waitlist";
 
 export default function LawyerPage() {
   const { push } = useToast();
+  const isMobile = useIsMobile();
   const reduce = useReducedMotion() ?? false;
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -41,7 +43,7 @@ export default function LawyerPage() {
     <AppShell bare>
       <main style={{ background: "var(--bsd-paper)", color: "var(--bsd-body)", minHeight: "100dvh", position: "relative", overflow: "hidden" }}>
         {/* Plate */}
-        <section style={{ padding: "112px 48px 96px", borderBottom: "1.5px solid var(--bsd-ink)", position: "relative" }}>
+        <section style={{ padding: isMobile ? "48px 18px 32px" : "112px 48px 96px", borderBottom: "1.5px solid var(--bsd-ink)", position: "relative" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative" }}>
             <motion.div
               initial={{ opacity: 0, y: reduce ? 0 : 10 }}
@@ -59,7 +61,7 @@ export default function LawyerPage() {
               </span>
             </motion.div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 64, alignItems: "start", marginTop: 48 }} className="grid-cols-1 lg:grid-cols-[7fr_5fr]">
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 7fr) minmax(0, 5fr)", gap: isMobile ? 20 : 64, alignItems: "start", marginTop: 48 }} className="grid-cols-1 lg:grid-cols-[7fr_5fr]">
               <div>
                 <motion.h1
                   initial={{ opacity: 0, y: reduce ? 0 : 14 }}
@@ -106,7 +108,7 @@ export default function LawyerPage() {
                     <li
                       key={row.label}
                       style={{
-                        display: "grid", gridTemplateColumns: "48px 1fr auto", gap: 24, alignItems: "center",
+                        display: "grid", gridTemplateColumns: isMobile ? "1fr" : "48px 1fr auto", gap: 24, alignItems: "center",
                         padding: "18px 0",
                         borderBottom: i < arr.length - 1 ? "1px dotted var(--bsd-hairline)" : "none",
                       }}
@@ -214,9 +216,9 @@ export default function LawyerPage() {
         </section>
 
         {/* Related */}
-        <section style={{ padding: "72px 48px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+        <section style={{ padding: isMobile ? "48px 18px 32px" : "72px 48px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 14, borderBottom: "1px solid var(--bsd-hairline)" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", paddingBottom: 14, borderBottom: "1px solid var(--bsd-hairline)" }}>
               <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
                 In the meantime
               </span>
@@ -224,7 +226,7 @@ export default function LawyerPage() {
                 Three rooms over
               </span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 0, marginTop: 32, borderTop: "2px solid var(--bsd-ink)", borderBottom: "2px solid var(--bsd-ink)" }} className="grid-cols-1 md:grid-cols-3">
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 0, marginTop: 32, borderTop: "2px solid var(--bsd-ink)", borderBottom: "2px solid var(--bsd-ink)" }} className="grid-cols-1 md:grid-cols-3">
               {[
                 { href: "/findings", n: "I",   title: "Findings", body: "The verdict on your last scan, every clause sorted by severity." },
                 { href: "/copilot",  n: "II",  title: "Co-Pilot", body: "Ask the AI a question scoped to a clause. Cited reasoning, no hallucinations." },

@@ -9,6 +9,8 @@
 
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+
+import { useIsMobile } from "../../lib/use-is-mobile";
 import {
   ArrowRight, ShareNetwork, FileText, Check, Hash, Sparkle, UploadSimple, Tag, X, Books,
 } from "@phosphor-icons/react";
@@ -55,6 +57,7 @@ export default function ExportsPage() {
   const { client } = useAuth();
   const { push } = useToast();
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   const [recent, setRecent] = useState<RecentDraft[]>([]);
   const [active, setActive] = useState<string | null>(null);
 
@@ -139,7 +142,7 @@ export default function ExportsPage() {
       </section>
 
       {/* Body */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 56, marginTop: 40 }} className="grid-cols-1 lg:grid-cols-[7fr_5fr]">
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 7fr) minmax(0, 5fr)", gap: isMobile ? 24 : 56, marginTop: 40 }}>
         {/* Certificate plate */}
         <section>
           <div className="cf-mono" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
@@ -165,7 +168,7 @@ export default function ExportsPage() {
               <FileText aria-hidden weight="duotone" size={80} color="var(--bsd-red)" style={{ opacity: 0.18 }} />
             </div>
 
-            <div style={{ marginTop: 26, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 36px" }}>
+            <div style={{ marginTop: 26, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "0 36px" }}>
               {[
                 { label: "Owner",       value: "Your organization" },
                 { label: "Verified",    value: activeRow?.uploaded_at ? new Date(activeRow.uploaded_at).toUTCString() : "—" },

@@ -25,6 +25,7 @@ import { useToast } from "../../lib/toast";
 import type { CopilotMessage, CopilotMode } from "../../lib/contracts";
 import { STARTUP_TEMPLATES } from "../../lib/startup-templates";
 import { profileContextLine } from "../../lib/founder-profile";
+import { useIsMobile } from "../../lib/use-is-mobile";
 
 type Tile = {
   id: string;
@@ -51,6 +52,7 @@ export default function CopilotPage() {
   const { client } = useAuth();
   const { push } = useToast();
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   const [active, setActive] = useState<Active | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
@@ -225,7 +227,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
       </section>
 
       {/* Body */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 56, marginTop: 40 }} className="grid-cols-1 lg:grid-cols-[7fr_5fr]">
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 7fr) minmax(0, 5fr)", gap: isMobile ? 20 : 56, marginTop: 40 }} className="grid-cols-1 lg:grid-cols-[7fr_5fr]">
         {/* Template ledger */}
         <section>
           <div className="cf-mono" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, marginBottom: 14, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
@@ -335,7 +337,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
         </section>
 
         {/* Chat panel */}
-        <section style={{ position: "sticky", top: 120, alignSelf: "start" }}>
+        <section style={{ position: isMobile ? "static" : "sticky", top: isMobile ? undefined : 120, alignSelf: "start" }}>
           <div style={{ border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper)", display: "flex", flexDirection: "column", height: 620 }}>
             <div style={{ borderBottom: "2px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--bsd-paper-deep)" }}>
               <div style={{ minWidth: 0 }}>

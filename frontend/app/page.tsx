@@ -138,9 +138,10 @@ function Hero({ reduceMotion }: { reduceMotion: boolean }) {
         }}
       >
         <motion.h1
-          initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EOQ }}
+          // Render visible on the server (initial=false) — this is the LCP
+          // element; gating it behind a JS-driven opacity:0→1 animation
+          // delayed Largest Contentful Paint to ~10s on throttled mobile.
+          initial={false}
           style={{
             margin: 0,
             fontSize: isMobile ? "clamp(34px, 11vw, 52px)" : "clamp(44px, 6.4vw, 96px)",
@@ -162,9 +163,7 @@ function Hero({ reduceMotion }: { reduceMotion: boolean }) {
         </motion.h1>
 
         <motion.div
-          initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65, ease: EOQ, delay: 0.12 }}
+          initial={false}
           style={{ display: "flex", flexDirection: "column", gap: 22 }}
         >
           <span className="cf-mono" style={{ color: T.red, fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", fontWeight: 800 }}>

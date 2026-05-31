@@ -411,7 +411,9 @@ export class ApiClient {
       drafts: number;
     }>;
   }> {
-    return this.request("/admin/users");
+    // Cache-bust so a freshly created/deleted user shows immediately — these
+    // GETs were otherwise served stale by the browser/edge cache.
+    return this.request(`/admin/users?t=${Date.now()}`);
   }
 
   async adminStats(): Promise<{
@@ -422,7 +424,7 @@ export class ApiClient {
     feedback_total: number;
     admins: number;
   }> {
-    return this.request("/admin/stats");
+    return this.request(`/admin/stats?t=${Date.now()}`);
   }
 
   async adminDeleteUser(userId: string): Promise<{ id: string; deleted: boolean }> {

@@ -15,6 +15,7 @@ import { CaretDown, CaretRight, List, SignOut, User, X } from "@phosphor-icons/r
 
 import { useAuth } from "../../lib/auth";
 import { useIsMobile } from "../../lib/use-is-mobile";
+import { Skeleton, SkeletonCard } from "../common/skeleton";
 
 type NavItem = { href: string; label: string };
 
@@ -71,14 +72,31 @@ export function DarkAppShell({
 
   if (loading || !token) {
     return (
-      <main style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bsd-paper)" }}>
-        <div style={{ padding: "22px 28px", border: "1.5px solid var(--bsd-ink)" }}>
-          <div className="cf-eyebrow" style={{ color: "var(--bsd-red)" }}>Loading workspace</div>
-          <div style={{ marginTop: 6, fontSize: 17, color: "var(--bsd-ink)", fontWeight: 600, letterSpacing: "-0.01em" }}>
-            One moment.
+      <div className="mobile-managed" style={{ minHeight: "100dvh", background: "var(--bsd-paper)", color: "var(--bsd-body)" }}>
+        {/* Masthead skeleton */}
+        <header
+          style={{
+            borderBottom: "3px double var(--bsd-ink)",
+            padding: "14px 28px 10px",
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+          }}
+        >
+          <Skeleton width={130} height={22} />
+          <Skeleton width={96} height={34} />
+        </header>
+        {/* Content skeleton */}
+        <main style={{ padding: "28px 18px 64px", maxWidth: 1280, margin: "0 auto" }}>
+          <Skeleton width={120} height={11} />
+          <div style={{ marginTop: 14 }}>
+            <Skeleton width="60%" height={34} />
           </div>
-        </div>
-      </main>
+          <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 14 }}>
+            <SkeletonCard lines={2} />
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={2} />
+          </div>
+        </main>
+      </div>
     );
   }
 

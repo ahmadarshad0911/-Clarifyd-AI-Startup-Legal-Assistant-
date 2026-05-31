@@ -58,6 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // backend rejects it ("Missing"/"Invalid bearer token").
   const tokenRef = useRef<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  // True once the first token fetch has resolved. Keeps `loading` true
+  // through the gap between Clerk loading and the async getToken() returning,
+  // so the app shells don't briefly see a signed-in user as token-less and
+  // bounce them to /login (which then forwarded to /dashboard on refresh).
+  const [tokenReady, setTokenReady] = useState(false);
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
   const isSignedInRef = useRef(isSignedIn);
@@ -93,6 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         tokenRef.current = null;
         setToken(null);
+      } finally {
+        if (!cancelled) setTokenReady(true);
       }
       timer = window.setTimeout(pull, 30_000);
     }
@@ -158,7 +165,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role,
     me,
     client,
-    loading: !clerkLoaded,
+    // Stay "loading" until Clerk has loaded AND (for a signed-in user) the
+    // first token has resolved — otherwise the brief token-null window makes
+    // shells redirect a logged-in user to /login on refresh.
+    loading: !clerkLoaded || (isSignedIn === true && !tokenReady),
     error: null,
     login: noop,
     register: noop,

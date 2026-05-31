@@ -184,3 +184,33 @@ export function useAuth(): AuthState {
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
   return ctx;
 }
+
+/**
+ * Clerk-free auth context for PUBLIC marketing pages. Mounting the real
+ * AuthProvider boots ~220KB of Clerk JS; the landing / faq / pricing / etc.
+ * don't need a session, so they use this stub instead (token always null,
+ * CTAs point at /login). Keeps useAuth() working without loading Clerk.
+ */
+export function StubAuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const client = useMemo(() => new ApiClient(() => null), []);
+  const goLogin = useMemo(
+    () => async () => {
+      router.push("/login");
+    },
+    [router],
+  );
+  const value: AuthState = {
+    token: null,
+    role: null,
+    me: null,
+    client,
+    loading: false,
+    error: null,
+    login: goLogin,
+    register: goLogin,
+    verifyOtp: goLogin,
+    logout: goLogin,
+  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

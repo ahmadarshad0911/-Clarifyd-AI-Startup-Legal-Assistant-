@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { GeistSans, GeistMono } from "geist/font";
-import { ClerkProvider } from "@clerk/nextjs";
 
 import "./globals.css";
-import { AuthProvider } from "../lib/auth";
 import { ToastProvider } from "../lib/toast";
-import { AnalysisProvider } from "../lib/analysis-context";
+import { ConditionalProviders } from "../components/conditional-providers";
 import { CookieConsent } from "../components/common/cookie-consent";
 import { NavProgress } from "../components/common/nav-progress";
 
@@ -84,29 +82,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="referrer" content="strict-origin-when-cross-origin" />
       </head>
       <body>
-        <ClerkProvider
-          appearance={{
-            variables: {
-              colorPrimary: "#b8260f",
-              colorBackground: "#f4ede1",
-              colorText: "#0c0a08",
-              colorInputBackground: "#f7f1e7",
-              borderRadius: "2px",
-              fontFamily:
-                "Geist, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif",
-            },
-          }}
-        >
-          <AuthProvider>
-            <ToastProvider>
-              <AnalysisProvider>
-                <NavProgress />
-                {children}
-                <CookieConsent />
-              </AnalysisProvider>
-            </ToastProvider>
-          </AuthProvider>
-        </ClerkProvider>
+        <ToastProvider>
+          <ConditionalProviders>
+            <NavProgress />
+            {children}
+            <CookieConsent />
+          </ConditionalProviders>
+        </ToastProvider>
       </body>
     </html>
   );

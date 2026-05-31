@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -234,7 +236,7 @@ class CopilotAdvisor:
             "model": self._model,
             "messages": messages,
             "temperature": 0.3,
-            "max_tokens": 1024,
+            "max_tokens": 700,
         }
         url = f"{self._base_url}/chat/completions"
         headers = {
@@ -275,3 +277,91 @@ class CopilotAdvisor:
                 "Clarifyd Co-Pilot only answers contract, legal, and startup-operations questions."
             )
         return reply
+
+    def off_topic_reason(self, message: str, mode: str) -> str | None:
+        """Return the off-topic reason for a chat message, else None.
+
+        Lets the streaming route reject out-of-scope questions BEFORE the
+        response stream opens (can't cleanly send a 422 mid-stream).
+        """
+        if mode != "chat":
+            return None
+        off, reason = _is_off_topic(message)
+        return reason if off else None
+
+    def _build_messages(
+        self, *, template: str, history: list[dict[str, str]], message: str, mode: str
+    ) -> list[dict[str, str]]:
+        system_prompt = _PROMPTS.get(mode, TEMPLATE_PROMPT)
+        if mode == "chat":
+            context = "The founder is asking general startup guidance questions."
+        elif mode == "custom":
+            context = f"The founder is designing a custom document: '{template}'."
+        else:
+            context = f"The founder is building a '{template}' document. Help them complete it."
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": context},
+        ]
+        for turn in history[-12:]:
+            role = turn.get("role")
+            content = turn.get("content", "")
+            if role in {"user", "assistant"} and content:
+                messages.append({"role": role, "content": content})
+        messages.append({"role": "user", "content": message})
+        return messages
+
+    async def chat_stream(
+        self,
+        *,
+        template: str,
+        history: list[dict[str, str]],
+        message: str,
+        mode: str = "template",
+    ) -> AsyncIterator[str]:
+        """Stream the reply token-by-token. Off-topic gating is the caller's
+        job (run off_topic_reason before opening the stream)."""
+        if not self._api_key:
+            yield (
+                "The reasoning model is not configured yet — set REASONING_API_KEY in the "
+                "backend .env to enable Clarifyd Assistant. " + DISCLAIMER
+            )
+            return
+
+        body: dict[str, Any] = {
+            "model": self._model,
+            "messages": self._build_messages(
+                template=template, history=history, message=message, mode=mode
+            ),
+            "temperature": 0.3,
+            "max_tokens": 700,
+            "stream": True,
+        }
+        url = f"{self._base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            async with self._client.stream(
+                "POST", url, json=body, headers=headers, timeout=self._timeout
+            ) as resp:
+                if resp.status_code >= 400:
+                    yield "The reasoning model returned an error. Try again shortly. " + DISCLAIMER
+                    return
+                async for line in resp.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data = line[len("data:"):].strip()
+                    if data == "[DONE]":
+                        break
+                    try:
+                        obj = json.loads(data)
+                        delta = obj["choices"][0]["delta"].get("content")
+                    except (KeyError, ValueError, TypeError, IndexError):
+                        continue
+                    if delta:
+                        yield delta
+        except httpx.HTTPError as exc:
+            logger.error("CopilotAdvisor stream error %s: %r", type(exc).__name__, exc)
+            yield "I couldn't reach the reasoning model just now. Try again in a moment. " + DISCLAIMER

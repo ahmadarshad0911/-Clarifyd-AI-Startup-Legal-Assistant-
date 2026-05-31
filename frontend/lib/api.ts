@@ -259,6 +259,46 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Streaming variant — invokes onChunk with reply fragments as they arrive
+   * so the chat feels instant. Throws ApiError on non-2xx (incl. the 422
+   * off-topic case) before any chunk is emitted.
+   */
+  async copilotGuidanceStream(
+    template: string,
+    message: string,
+    history: CopilotMessage[],
+    mode: CopilotMode,
+    onChunk: (text: string) => void,
+  ): Promise<void> {
+    const token = await this.getToken();
+    const res = await fetch(`${this.baseUrl}/api/v1/copilot/guidance/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ template, message, history, mode }),
+    });
+    if (!res.ok || !res.body) {
+      let body: unknown = null;
+      try {
+        body = await res.json();
+      } catch {
+        // ignore
+      }
+      throw new ApiError(res.status, body);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      if (text) onChunk(text);
+    }
+  }
+
   // --- analyze ---
 
   async analyzeContract(file: File): Promise<AnalyzeContractResponse> {

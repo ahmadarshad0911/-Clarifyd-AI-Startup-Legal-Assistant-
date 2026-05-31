@@ -9,7 +9,7 @@ import httpx
 from fastapi import Depends, FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1094,6 +1094,49 @@ async def copilot_guidance(
             status_code=422,
         ) from exc
     return CopilotGuidanceResponse(reply=reply, model=advisor.model)
+
+
+@app.post("/api/v1/copilot/guidance/stream")
+async def copilot_guidance_stream(
+    body: CopilotGuidanceRequest,
+    user: AuthenticatedUser = Depends(require_role("viewer")),
+) -> StreamingResponse:
+    advisor = get_copilot_advisor()
+    if advisor is None:
+        raise AppError(
+            code=ErrorCode.internal_error,
+            message="Co-Pilot advisor not initialized.",
+            status_code=503,
+        )
+    # Reject off-topic chat BEFORE opening the stream — a 422 can't be sent
+    # cleanly once the streaming response has started.
+    reason = advisor.off_topic_reason(body.message, body.mode)
+    if reason:
+        raise AppError(
+            code=ErrorCode.off_topic_question,
+            message=reason,
+            status_code=422,
+        )
+    history = [m.model_dump() for m in body.history]
+
+    async def gen():
+        async for chunk in advisor.chat_stream(
+            template=body.template,
+            history=history,
+            message=body.message,
+            mode=body.mode,
+        ):
+            yield chunk
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @app.get("/")

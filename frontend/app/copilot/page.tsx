@@ -112,8 +112,20 @@ export default function CopilotPage() {
     setBusy(true);
     scrollToBottom();
     try {
-      const res = await client.copilotGuidance(active.name, text, next, active.mode);
-      setMessages([...next, { role: "assistant", content: res.reply }]);
+      // Stream the reply so tokens appear as they're generated (first token
+      // in ~1-2s) instead of blocking ~15s on the full block.
+      setMessages([...next, { role: "assistant", content: "" }]);
+      await client.copilotGuidanceStream(active.name, text, next, active.mode, (chunk) => {
+        setMessages((cur) => {
+          const copy = [...cur];
+          const last = copy[copy.length - 1];
+          if (last && last.role === "assistant") {
+            copy[copy.length - 1] = { role: "assistant", content: last.content + chunk };
+          }
+          return copy;
+        });
+        scrollToBottom();
+      });
     } catch (err) {
       if (err instanceof ApiError && err.code === "off_topic_question") {
         setNotice({

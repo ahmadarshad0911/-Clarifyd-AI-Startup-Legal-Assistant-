@@ -340,67 +340,77 @@ Return ONLY the full revised document text. No commentary.`;
     URL.revokeObjectURL(url);
   }
 
-  function downloadPdf() {
+  async function downloadPdf() {
     if (!exportedDoc || !active) return;
-    const w = window.open("", "_blank", "width=900,height=1100");
-    if (!w) {
-      push("Popup blocked — allow popups to export PDF.", "error");
-      return;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 48;
+      const maxW = pageW - margin * 2;
+      let y = margin;
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      for (const ln of doc.splitTextToSize(
+        `${active.file_name} — Collaborator draft`,
+        maxW,
+      )) {
+        doc.text(ln, margin, y);
+        y += 20;
+      }
+
+      // Meta line
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(110);
+      doc.text(
+        `Negotiated via Clarifyd · ${new Date().toLocaleString()} · ${activePicked.size} clause${
+          activePicked.size === 1 ? "" : "s"
+        } applied · rest unchanged.`,
+        margin,
+        y,
+      );
+      y += 22;
+
+      // Body
+      doc.setTextColor(20);
+      doc.setFontSize(10.5);
+      const lineH = 15;
+      for (const ln of doc.splitTextToSize(exportedDoc, maxW)) {
+        if (y > pageH - margin) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(ln, margin, y);
+        y += lineH;
+      }
+
+      // Footer disclaimer
+      if (y > pageH - margin - 30) {
+        doc.addPage();
+        y = margin;
+      }
+      y += 10;
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      for (const ln of doc.splitTextToSize(
+        "NOT LEGAL ADVICE: Clarifyd is an AI tool. Review every clause with qualified counsel before signing.",
+        maxW,
+      )) {
+        doc.text(ln, margin, y);
+        y += 11;
+      }
+
+      doc.save(`${baseName()}-collaborator.pdf`);
+    } catch (err) {
+      push(
+        err instanceof Error ? `PDF export failed: ${err.message}` : "PDF export failed.",
+        "error",
+      );
     }
-    const title = `${baseName()}-collaborator`;
-    const escapeHtml = (s: string) =>
-      s
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-    w.document.write(`<!doctype html>
-<html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-<style>
-  @page { size: A4; margin: 22mm 18mm; }
-  html, body { background: #fff; color: #0f172a; }
-  body {
-    font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
-    font-size: 11pt;
-    line-height: 1.6;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 24px;
-  }
-  h1 {
-    font-family: "Fraunces", Georgia, serif;
-    font-size: 22pt;
-    margin: 0 0 6px;
-    color: #1E3A8A;
-  }
-  .meta { color: #64748b; font-size: 9pt; margin-bottom: 28px; }
-  pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: inherit;
-    font-size: 11pt;
-    color: #0f172a;
-  }
-  .footer {
-    margin-top: 32px;
-    padding-top: 12px;
-    border-top: 1px solid #cbd5e1;
-    color: #64748b;
-    font-size: 8.5pt;
-  }
-</style></head>
-<body>
-  <h1>${escapeHtml(active.file_name)} — Ultimate collaborator draft</h1>
-  <div class="meta">Negotiated via Clarifyd · ${new Date().toLocaleString()} · ${activePicked.size} clause${
-        activePicked.size === 1 ? "" : "s"
-      } applied · Rest of document unchanged.</div>
-  <pre>${escapeHtml(exportedDoc)}</pre>
-  <div class="footer">NOT LEGAL ADVICE: Clarifyd is an AI tool. Review every clause with qualified counsel before signing.</div>
-</body></html>`);
-    w.document.close();
-    w.onload = () => {
-      w.focus();
-      w.print();
-    };
   }
 
   function relTime(iso: string): string {

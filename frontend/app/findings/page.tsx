@@ -23,6 +23,7 @@ import {
 import { DarkAppShell } from "../../components/shell/dark-app-shell";
 import { ClauseCard, ClauseData } from "../../components/clause-card";
 import { Skeleton, SkeletonCard } from "../../components/common/skeleton";
+import { useIsMobile } from "../../lib/use-is-mobile";
 import { HealthGauge } from "../../components/health-gauge";
 import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { RiskPill, Severity } from "../../components/risk-pill";
@@ -75,6 +76,7 @@ function Inner() {
   const { client } = useAuth();
   const { push } = useToast();
   const params = useSearchParams();
+  const isMobile = useIsMobile();
 
   const [docs, setDocs] = useState<StoredAnalysis[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -503,11 +505,11 @@ function Inner() {
               background: "var(--bg-elevated-1)",
               border: "1px solid var(--border-strong)",
               borderRadius: "var(--r-md)",
-              padding: 28,
+              padding: isMobile ? 18 : 28,
               marginBottom: 24,
               display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto",
-              gap: 28,
+              gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) auto",
+              gap: isMobile ? 18 : 28,
               alignItems: "center",
             }}
           >

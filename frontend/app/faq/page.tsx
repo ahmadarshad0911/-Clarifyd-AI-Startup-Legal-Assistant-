@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { Plus, Minus, Question } from "@phosphor-icons/react";
 
 import { PublicShell } from "../../components/public-shell";
+import { useIsMobile } from "../../lib/use-is-mobile";
 import { BroadsheetSearch } from "../../components/broadsheet-search";
 
 type Category = "all" | "start" | "pricing" | "security" | "reasoning" | "account" | "billing";
@@ -54,6 +55,7 @@ function highlight(text: string, q: string): ReactNode {
 }
 
 export default function FaqPage() {
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [cat, setCat] = useState<Category>("all");
@@ -81,14 +83,14 @@ export default function FaqPage() {
 
   return (
     <PublicShell>
-      <section style={{ padding: "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 5fr)", gap: 56, alignItems: "end" }}>
+      <section style={{ padding: isMobile ? "44px 18px 24px" : "72px 32px 32px", borderBottom: "1.5px solid var(--bsd-ink)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 7fr) minmax(0, 5fr)", gap: isMobile ? 24 : 56, alignItems: isMobile ? "start" : "end" }}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: EOQ }}>
             <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <Question weight="duotone" size={14} aria-hidden />
               Help
             </span>
-            <h1 style={{ margin: "12px 0 0", fontSize: "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>
+            <h1 style={{ margin: "12px 0 0", fontSize: isMobile ? "clamp(40px, 13vw, 60px)" : "clamp(48px, 7vw, 96px)", lineHeight: 0.95, letterSpacing: "-0.04em", color: "var(--bsd-ink)", fontWeight: 700 }}>
               Asked <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>often.</span>
             </h1>
           </motion.div>
@@ -129,7 +131,7 @@ export default function FaqPage() {
         </div>
       </section>
 
-      <section style={{ padding: "48px 32px 72px" }}>
+      <section style={{ padding: isMobile ? "28px 18px 56px" : "48px 32px 72px" }}>
         <ul style={{ margin: 0, padding: 0, listStyle: "none", maxWidth: 920, marginLeft: "auto", marginRight: "auto" }}>
           {filtered.length === 0 ? (
             <li style={{ padding: 32, border: "1.5px solid var(--bsd-rule)", textAlign: "center", color: "var(--bsd-muted)", fontStyle: "italic", fontSize: 14 }}>
@@ -152,16 +154,22 @@ export default function FaqPage() {
                   className="cursor-pointer bsd-row"
                   style={{
                     width: "100%", textAlign: "left",
-                    padding: "20px 0",
+                    padding: isMobile ? "16px 0" : "20px 0",
                     background: open ? "var(--bsd-paper-deep)" : "transparent",
                     border: "none",
-                    display: "flex", alignItems: "baseline", gap: 18,
-                    fontSize: 17, color: "var(--bsd-ink)", fontWeight: 500,
+                    display: "flex", alignItems: "flex-start", gap: isMobile ? 12 : 18,
+                    fontSize: isMobile ? 15 : 17, color: "var(--bsd-ink)", fontWeight: 500,
                     letterSpacing: "-0.005em",
+                    lineHeight: 1.45,
                   }}
                 >
                   <span
-                    style={{ display: "inline-flex", color: open ? "var(--bsd-red)" : "var(--bsd-muted)", flexShrink: 0, marginTop: 3, transition: "color 200ms ease" }}
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      height: isMobile ? 22 : 25, width: 16, flexShrink: 0,
+                      color: open ? "var(--bsd-red)" : "var(--bsd-muted)",
+                      transition: "color 200ms ease",
+                    }}
                   >
                     {open ? (
                       <Minus weight="bold" size={14} aria-hidden />

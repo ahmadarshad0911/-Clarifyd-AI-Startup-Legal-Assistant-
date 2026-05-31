@@ -251,14 +251,14 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
                     transition={{ duration: 0.3, ease: EOQ, delay: i * 0.04 }}
                     style={{ borderBottom: "1px solid var(--bsd-hairline)", padding: "20px 4px", background: selected ? "var(--bsd-paper-deep)" : "transparent" }}
                   >
-                    <div style={{ display: "grid", gridTemplateColumns: "44px 1fr auto", gap: 18, alignItems: "center" }}>
-                      <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 20, letterSpacing: "-0.02em", fontWeight: 800 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "30px 1fr" : "44px 1fr auto", gap: isMobile ? 12 : 18, alignItems: "center" }}>
+                      <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: isMobile ? 16 : 20, letterSpacing: "-0.02em", fontWeight: 800 }}>
                         {String(i + 1).padStart(2, "0")}
                       </span>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <t.Icon weight="duotone" size={18} color="var(--bsd-red)" aria-hidden />
-                          <span style={{ fontSize: 18, fontWeight: 600, color: "var(--bsd-ink)", letterSpacing: "-0.01em" }}>{t.name}</span>
+                          <t.Icon weight="duotone" size={18} color="var(--bsd-red)" aria-hidden style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 600, color: "var(--bsd-ink)", letterSpacing: "-0.01em" }}>{t.name}</span>
                         </div>
                         <p style={{ margin: "4px 0 12px", fontSize: 13.5, color: "var(--bsd-body)", lineHeight: 1.5 }}>{t.blurb}</p>
                         <div className="bsd-field" style={{ display: "flex", alignItems: "flex-end", gap: 10, maxWidth: 460 }}>
@@ -281,9 +281,11 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
                           </button>
                         </div>
                       </div>
-                      <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, alignSelf: "start" }}>
-                        {t.footer}
-                      </span>
+                      {isMobile ? null : (
+                        <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, alignSelf: "start" }}>
+                          {t.footer}
+                        </span>
+                      )}
                     </div>
                   </motion.li>
                 );
@@ -304,30 +306,38 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
                     className={`bsd-row cursor-pointer${selected ? " is-active" : ""}`}
                     style={{
                       width: "100%", textAlign: "left",
-                      display: "grid", gridTemplateColumns: "44px 1fr auto 24px",
-                      gap: 18, alignItems: "center",
-                      padding: "22px 4px",
+                      display: "grid",
+                      gridTemplateColumns: isMobile ? "30px 1fr auto" : "44px 1fr auto 24px",
+                      gap: isMobile ? 12 : 18, alignItems: "center",
+                      padding: isMobile ? "18px 2px" : "22px 4px",
                       background: selected ? "var(--bsd-paper-deep)" : "transparent",
                       border: "none",
                     }}
                   >
-                    <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 20, letterSpacing: "-0.02em", fontWeight: 800 }}>
+                    <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: isMobile ? 16 : 20, letterSpacing: "-0.02em", fontWeight: 800 }}>
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <t.Icon weight="duotone" size={18} color={selected ? "var(--bsd-red)" : "var(--bsd-muted)"} aria-hidden />
-                        <span style={{ fontSize: 18, fontWeight: 600, color: "var(--bsd-ink)", letterSpacing: "-0.01em" }}>{t.name}</span>
+                        <t.Icon weight="duotone" size={18} color={selected ? "var(--bsd-red)" : "var(--bsd-muted)"} aria-hidden style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 600, color: "var(--bsd-ink)", letterSpacing: "-0.01em" }}>{t.name}</span>
                       </div>
                       <p style={{ margin: "4px 0 0", fontSize: 13.5, color: "var(--bsd-body)", lineHeight: 1.5 }}>{t.blurb}</p>
+                      {isMobile ? (
+                        <span className="cf-mono" style={{ display: "block", marginTop: 8, color: selected ? "var(--bsd-red)" : "var(--bsd-muted)", fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700 }}>
+                          {selected ? "Active" : t.footer}
+                        </span>
+                      ) : null}
                     </div>
-                    <span className="cf-mono" style={{ color: selected ? "var(--bsd-red)" : "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {selected ? "Active" : t.footer}
-                    </span>
+                    {isMobile ? null : (
+                      <span className="cf-mono" style={{ color: selected ? "var(--bsd-red)" : "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {selected ? "Active" : t.footer}
+                      </span>
+                    )}
                     {selected ? (
-                      <CheckCircle weight="duotone" size={16} color="var(--bsd-red)" aria-hidden />
+                      <CheckCircle weight="duotone" size={16} color="var(--bsd-red)" aria-hidden style={{ flexShrink: 0 }} />
                     ) : (
-                      <ArrowRight className="bsd-row__caret" weight="bold" size={14} color="var(--bsd-soft)" aria-hidden />
+                      <ArrowRight className="bsd-row__caret" weight="bold" size={14} color="var(--bsd-soft)" aria-hidden style={{ flexShrink: 0 }} />
                     )}
                   </button>
                 </motion.li>

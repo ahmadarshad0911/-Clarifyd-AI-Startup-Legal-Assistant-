@@ -23,6 +23,7 @@ import { OrbitalLoader } from "../../components/common/orbital-loader";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
+import { useIsMobile } from "../../lib/use-is-mobile";
 import type { AnalyzeContractResponse, ReportSuggestion } from "../../lib/contracts";
 import { profileContextLine } from "../../lib/founder-profile";
 
@@ -38,6 +39,7 @@ export default function NegotiationLabPage() {
   const { client } = useAuth();
   const { push } = useToast();
   const reduce = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
 
   const [masterName, setMasterName] = useState<string | null>(null);
   const [counterName, setCounterName] = useState<string | null>(null);
@@ -178,7 +180,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
         <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
           Article I · Docking
         </div>
-        <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 28 }} className="grid-cols-1 md:grid-cols-2">
+        <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) minmax(0, 1fr)", gap: isMobile ? 16 : 28 }}>
           <DropZone
             order="01"
             label="Master Agreement"
@@ -209,7 +211,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
           style={{
             marginTop: 18,
             display: "grid",
-            gridTemplateColumns: `repeat(${pipeline.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: isMobile ? "1fr" : `repeat(${pipeline.length}, minmax(0, 1fr))`,
             borderTop: "2px solid var(--bsd-ink)",
             borderBottom: "2px solid var(--bsd-ink)",
           }}
@@ -223,8 +225,9 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
                 key={step.label}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
-                  padding: "20px 22px",
-                  borderRight: i < arr.length - 1 ? "1px solid var(--bsd-hairline)" : "none",
+                  padding: isMobile ? "16px 14px" : "20px 22px",
+                  borderRight: !isMobile && i < arr.length - 1 ? "1px solid var(--bsd-hairline)" : "none",
+                  borderBottom: isMobile && i < arr.length - 1 ? "1px solid var(--bsd-hairline)" : "none",
                 }}
               >
                 <span
@@ -258,7 +261,7 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
 
       {/* Tactical feed */}
       {analysis ? (
-        <section style={{ marginTop: 56, display: "grid", gridTemplateColumns: "minmax(0, 8fr) minmax(0, 4fr)", gap: 56, alignItems: "start" }} className="grid-cols-1 lg:grid-cols-[8fr_4fr]">
+        <section style={{ marginTop: 56, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 8fr) minmax(0, 4fr)", gap: isMobile ? 28 : 56, alignItems: "start" }}>
           <div>
             <div className="cf-mono" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, paddingBottom: 10, borderBottom: "2px solid var(--bsd-ink)" }}>
               <span>Article III · Tactical feed</span>
@@ -289,11 +292,11 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
                         transition: "background 220ms ease",
                       }}
                     >
-                      <div style={{ display: "grid", gridTemplateColumns: "44px 1fr auto", gap: 18, alignItems: "baseline" }}>
-                        <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "32px 1fr" : "44px 1fr auto", gap: isMobile ? "8px 12px" : 18, alignItems: "baseline" }}>
+                        <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: isMobile ? 16 : 20, fontWeight: 800, letterSpacing: "-0.02em" }}>
                           {String(i + 1).padStart(2, "0")}
                         </span>
-                        <h3 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.015em" }}>
+                        <h3 style={{ margin: 0, fontSize: isMobile ? 16 : 19, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.015em" }}>
                           {lp.clause_name}
                         </h3>
                         <span
@@ -304,13 +307,16 @@ insert a clearly bracketed [TO BE CONFIRMED — <detail>] marker. Return ONLY th
                             border: `1px solid ${tint}`,
                             color: tint,
                             fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800,
+                            gridColumn: isMobile ? "2 / -1" : "auto",
+                            justifySelf: isMobile ? "start" : "auto",
+                            width: "max-content",
                           }}
                         >
                           <Warning weight="duotone" size={10} /> {lp.severity}
                         </span>
                       </div>
 
-                      <div style={{ paddingLeft: 62, marginTop: 14 }}>
+                      <div style={{ paddingLeft: isMobile ? 0 : 62, marginTop: 14 }}>
                         <blockquote style={{ margin: 0, padding: "10px 16px", borderLeft: `2px solid ${tint}`, fontStyle: "italic", color: "var(--bsd-ink)", fontSize: 14.5, lineHeight: 1.55, background: "var(--bsd-paper-deep)" }}>
                           &ldquo;{lp.excerpt}&rdquo;
                         </blockquote>

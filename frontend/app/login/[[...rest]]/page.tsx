@@ -363,7 +363,7 @@ export default function LoginPage() {
                 path="/login"
                 routing="path"
                 signUpUrl="/login"
-                forceRedirectUrl="/dashboard"
+                fallbackRedirectUrl="/dashboard"
                 signUpForceRedirectUrl="/onboarding/profile"
                 appearance={{
                   layout: {

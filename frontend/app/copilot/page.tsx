@@ -338,7 +338,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
 
         {/* Chat panel */}
         <section style={{ position: isMobile ? "static" : "sticky", top: isMobile ? undefined : 120, alignSelf: "start" }}>
-          <div style={{ border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper)", display: "flex", flexDirection: "column", height: 620 }}>
+          <div style={{ border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper)", display: "flex", flexDirection: "column", height: isMobile ? "72dvh" : 620 }}>
             <div style={{ borderBottom: "2px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--bsd-paper-deep)" }}>
               <div style={{ minWidth: 0 }}>
                 <div className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
@@ -463,7 +463,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
               </button>
             </div>
           </div>
-          <pre style={{ margin: 0, padding: "22px 24px", background: "var(--bsd-paper)", fontFamily: "Geist Mono, monospace", fontSize: 13.5, color: "var(--bsd-ink)", lineHeight: 1.7, whiteSpace: "pre-wrap", maxHeight: 600, overflowY: "auto" }}>
+          <pre style={{ margin: 0, padding: isMobile ? "16px 16px" : "22px 24px", background: "var(--bsd-paper)", fontFamily: "Geist Mono, monospace", fontSize: isMobile ? 12.5 : 13.5, color: "var(--bsd-ink)", lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: isMobile ? 420 : 600, overflowY: "auto" }}>
             {doc}
           </pre>
         </motion.section>

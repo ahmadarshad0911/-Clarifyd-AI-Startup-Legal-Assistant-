@@ -146,6 +146,10 @@ textarea:focus-visible {
 @keyframes bsd-shimmer {
   100% { transform: translateX(100%); }
 }
+@keyframes bsd-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 @media (prefers-reduced-motion: reduce) {
   .bsd-shimmer::after { animation: none; }
 }

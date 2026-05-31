@@ -38,13 +38,19 @@ export default function LoginPage() {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
 
-  // If already signed in (e.g. user hits /login after a successful OAuth
-  // return), Clerk sometimes hangs on its catchall-check route while it
-  // probes for the session. Push them to /dashboard explicitly so the
-  // spinner doesn't loop.
+  // If already signed in (e.g. a refresh bounced through here while the
+  // Clerk session re-hydrated, or an OAuth return), send the user back to
+  // where they were headed via ?redirect_url, falling back to /dashboard.
+  // This stops every refresh from dumping the user on /dashboard.
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      router.replace("/dashboard");
+      let dest = "/dashboard";
+      try {
+        const raw = new URLSearchParams(window.location.search).get("redirect_url");
+        // Only honour same-origin absolute paths — never an external URL.
+        if (raw && raw.startsWith("/") && !raw.startsWith("//")) dest = raw;
+      } catch {}
+      router.replace(dest);
     }
   }, [isLoaded, isSignedIn, router]);
 

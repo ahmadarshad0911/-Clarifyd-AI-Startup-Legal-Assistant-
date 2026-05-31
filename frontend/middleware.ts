@@ -22,9 +22,15 @@ const isProtectedRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
-    await auth.protect({
-      unauthenticatedUrl: new URL("/login", req.url).toString(),
-    });
+    // Preserve where the user was headed so /login can send them back
+    // there after the session re-hydrates, instead of dumping everyone on
+    // /dashboard (the cause of "refresh always lands on dashboard").
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set(
+      "redirect_url",
+      req.nextUrl.pathname + req.nextUrl.search,
+    );
+    await auth.protect({ unauthenticatedUrl: loginUrl.toString() });
   }
 });
 

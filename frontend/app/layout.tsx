@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AuthProvider } from "../lib/auth";
 import { ToastProvider } from "../lib/toast";
+import { AnalysisProvider } from "../lib/analysis-context";
 import { CookieConsent } from "../components/common/cookie-consent";
 import { NavProgress } from "../components/common/nav-progress";
 
@@ -103,9 +104,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           <AuthProvider>
             <ToastProvider>
-              <NavProgress />
-              {children}
-              <CookieConsent />
+              <AnalysisProvider>
+                <NavProgress />
+                {children}
+                <CookieConsent />
+              </AnalysisProvider>
             </ToastProvider>
           </AuthProvider>
         </ClerkProvider>

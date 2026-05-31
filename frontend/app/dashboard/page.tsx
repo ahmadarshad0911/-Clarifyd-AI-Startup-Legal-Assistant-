@@ -40,10 +40,9 @@ import { DarkAppShell } from "../../components/shell/dark-app-shell";
 import { AutoClassifyChip, DocType } from "../../components/auto-classify-chip";
 import { ContextSelector, ContextValue } from "../../components/context-selector";
 import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
-import { ApiError } from "../../lib/api";
-import { pushAnalysis, listAnalyses, type StoredAnalysis } from "../../lib/analyses";
+import { listAnalyses, type StoredAnalysis } from "../../lib/analyses";
 import { useAuth } from "../../lib/auth";
-import { useToast } from "../../lib/toast";
+import { useAnalysis } from "../../lib/analysis-context";
 import { useIsMobile } from "../../lib/use-is-mobile";
 
 function fmtBytes(n: number): string {
@@ -56,8 +55,8 @@ type Mode = "file" | "text";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { client, me, role } = useAuth();
-  const { push } = useToast();
+  const { me, role } = useAuth();
+  const { startAnalysis, isAnalyzing } = useAnalysis();
 
   const [mode, setMode] = useState<Mode>("file");
   const [file, setFile] = useState<File | null>(null);
@@ -92,45 +91,36 @@ export default function DashboardPage() {
   async function analyze() {
     setError(null);
     setSubmitting(true);
-    try {
-      let res; let source: string;
-      if (mode === "file") {
-        if (!file) throw new Error("Pick a file first.");
-        res = await client.analyzeContract(file);
-        source = file.name;
-      } else {
-        if (text.trim().length < 40) throw new Error("Paste at least 40 characters of contract text.");
-        const srcName = name.trim() || "Pasted contract";
-        res = await client.analyzeText(text, srcName);
-        source = srcName;
-      }
-      pushAnalysis(res, source);
-      push("Analysis ready", "success", `${res.findings.length} finding(s).`);
-      router.push(`/findings?draft=${encodeURIComponent(res.draft_id)}`);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === "not_a_contract") {
-        setNotice({
-          kind: "rejection",
-          caption: "STOP PRESS · UPLOAD REFUSED",
-          headline: "That document isn't a contract.",
-          body:
-            err.message ||
-            "Clarifyd only analyzes contracts, term sheets, NDAs, SAFEs, MSAs, leases, and similar legally binding documents.",
-          hint: "Try uploading an actual agreement — anything with parties, clauses, and signatures.",
-          primaryLabel: "Pick another file",
-        });
-      } else {
-        const msg = err instanceof ApiError
-          ? `${err.message} [${err.status}]`
-          : err instanceof Error ? err.message : "Analysis failed.";
-        setError(msg);
-      }
-    } finally {
-      setSubmitting(false);
+    // The fetch runs in AnalysisProvider (above the route outlet), so it
+    // survives navigation — the user can switch pages without aborting the
+    // analysis. We still await here to drive the dashboard's own UX.
+    const outcome = await startAnalysis(
+      mode === "file"
+        ? { mode, file }
+        : { mode, text, name },
+    );
+    setSubmitting(false);
+    if (outcome.ok && outcome.draftId) {
+      router.push(`/findings?draft=${encodeURIComponent(outcome.draftId)}`);
+      return;
+    }
+    if (outcome.notContract) {
+      setNotice({
+        kind: "rejection",
+        caption: "STOP PRESS · UPLOAD REFUSED",
+        headline: "That document isn't a contract.",
+        body:
+          outcome.message ||
+          "Clarifyd only analyzes contracts, term sheets, NDAs, SAFEs, MSAs, leases, and similar legally binding documents.",
+        hint: "Try uploading an actual agreement — anything with parties, clauses, and signatures.",
+        primaryLabel: "Pick another file",
+      });
+    } else if (outcome.message) {
+      setError(outcome.message);
     }
   }
 
-  const canSubmit = !submitting && (mode === "file" ? !!file : text.trim().length >= 40);
+  const canSubmit = !submitting && !isAnalyzing && (mode === "file" ? !!file : text.trim().length >= 40);
 
   return (
     <DarkAppShell>

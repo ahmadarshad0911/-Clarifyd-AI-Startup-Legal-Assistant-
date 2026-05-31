@@ -291,11 +291,23 @@ export class ApiClient {
     }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const text = decoder.decode(value, { stream: true });
-      if (text) onChunk(text);
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        if (text) onChunk(text);
+      }
+      // Flush any trailing multibyte sequence held across the last chunk.
+      const tail = decoder.decode();
+      if (tail) onChunk(tail);
+    } finally {
+      // Always release the lock, even if onChunk throws or the stream errors.
+      try {
+        reader.releaseLock();
+      } catch {
+        // already released
+      }
     }
   }
 

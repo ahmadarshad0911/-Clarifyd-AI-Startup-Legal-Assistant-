@@ -26,6 +26,8 @@ from app.contracts.api import (
     RiskSummary,
 )
 import asyncio
+import ipaddress
+from urllib.parse import urlparse
 
 from app.db import create_engine_and_sessionmaker, dispose_engine, get_session
 from app.db.engine import get_sessionmaker
@@ -311,11 +313,13 @@ async def _security_headers(request: Request, call_next):
     return response
 
 _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
-# Always allow our managed-platform domains + the production domain via regex,
-# so the API keeps working even if CORS_ORIGINS wasn't set on the host. The
-# explicit list still takes precedence for exact-match localhost dev origins.
+# Pin to our own origins only. The previous regex trusted EVERY *.vercel.app
+# and *.ondigitalocean.app origin with credentials, i.e. any app a stranger
+# deploys there. Allow just clarifyd.app (+ www) and our specific DO frontend
+# app hostname (clarifyd-frontend-<id>.ondigitalocean.app).
 _cors_origin_regex = (
-    r"https://([a-z0-9-]+\.)*(ondigitalocean\.app|vercel\.app|clarifyd\.app)"
+    r"https://(www\.)?clarifyd\.app|"
+    r"https://clarifyd-frontend-[a-z0-9]+\.ondigitalocean\.app"
 )
 app.add_middleware(
     CORSMiddleware,
@@ -671,12 +675,19 @@ async def _analyze_and_persist(
 
     try:
         analysis_with_flags = await get_async_analysis().analyze(contract_text, session=session)
-    except ValueError as exc:
-        raise AppError(
-            code=ErrorCode.upload_rejected,
-            message=str(exc),
-            status_code=422,
-        ) from exc
+    except BaseException as exc:
+        # Don't leave the concurrent sweep/reporter tasks orphaned (they'd
+        # log "task was never retrieved" and keep burning an LLM call).
+        for t in (sweep_task, ambiguity_task, reporter_task):
+            if t is not None:
+                t.cancel()
+        if isinstance(exc, ValueError):
+            raise AppError(
+                code=ErrorCode.upload_rejected,
+                message=str(exc),
+                status_code=422,
+            ) from exc
+        raise
     analysis = analysis_with_flags.result
     injection_flags = analysis_with_flags.injection_flags
 
@@ -910,6 +921,51 @@ async def analyze_text(
     )
 
 
+async def _assert_public_url(url: str) -> None:
+    """Reject URLs that resolve to non-public addresses (SSRF guard)."""
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        raise AppError(
+            code=ErrorCode.request_validation_error,
+            message="Invalid URL.",
+            status_code=422,
+        )
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    if port not in (80, 443):
+        raise AppError(
+            code=ErrorCode.upload_rejected,
+            message="Only standard web ports (80/443) are allowed.",
+            status_code=422,
+        )
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(host, port)
+    except OSError as exc:
+        raise AppError(
+            code=ErrorCode.upload_rejected,
+            message="Could not resolve the URL's host.",
+            status_code=422,
+        ) from exc
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            continue
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise AppError(
+                code=ErrorCode.upload_rejected,
+                message="That URL points to a private or internal address.",
+                status_code=422,
+            )
+
+
 @app.post(
     "/analyze/url",
     response_model=AnalyzeContractResponse,
@@ -933,14 +989,26 @@ async def analyze_url(
             message="HTTP client not initialized.",
             status_code=503,
         )
+    # SSRF guard: resolve the host and refuse anything that maps to a
+    # private / loopback / link-local / metadata address, restrict ports,
+    # and never follow redirects (a public URL could 30x into the internal
+    # network). DNS is resolved here and the fetch targets the same host, so
+    # a rebind would have to beat this check within the request.
+    await _assert_public_url(url)
     try:
-        resp = await _http_client.get(url, timeout=20.0, follow_redirects=True)
+        resp = await _http_client.get(url, timeout=20.0, follow_redirects=False)
     except httpx.HTTPError as exc:
         raise AppError(
             code=ErrorCode.upload_rejected,
             message=f"Could not fetch the URL: {exc}",
             status_code=422,
         ) from exc
+    if 300 <= resp.status_code < 400:
+        raise AppError(
+            code=ErrorCode.upload_rejected,
+            message="URL redirects are not allowed — provide a direct link.",
+            status_code=422,
+        )
     if resp.status_code >= 400:
         raise AppError(
             code=ErrorCode.upload_rejected,

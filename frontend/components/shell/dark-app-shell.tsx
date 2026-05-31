@@ -298,7 +298,6 @@ export function DarkAppShell({
                 onClick={() => {
                   setAcctOpen(false);
                   logout();
-                  router.replace("/login");
                 }}
                 className="cursor-pointer cf-mono"
                 style={{
@@ -369,7 +368,7 @@ export function DarkAppShell({
 
             <button
               type="button"
-              onClick={() => { setMobileOpen(false); logout(); router.replace("/login"); }}
+              onClick={() => { setMobileOpen(false); logout(); }}
               className="cursor-pointer cf-mono"
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,

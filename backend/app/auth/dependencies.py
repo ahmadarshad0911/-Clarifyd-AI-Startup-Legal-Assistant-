@@ -182,8 +182,15 @@ async def current_user(
     if clerk_user is not None:
         return clerk_user
 
-    # 2) Fall back to legacy local JWT (kept while Clerk integration
-    #    rolls out; remove once every client uses Clerk-issued tokens).
+    # 2) Legacy local HS256 JWT — DEV ONLY. In production Clerk is the sole
+    #    issuer, so refuse the HS256 path entirely: it would otherwise accept
+    #    tokens forged with a leaked/weak JWT_SECRET (auth-bypass risk).
+    if settings.environment == "production":
+        raise AppError(
+            code=ErrorCode.request_validation_error,
+            message="Invalid token.",
+            status_code=401,
+        )
     try:
         payload = decode_token(token, settings)
     except jwt.ExpiredSignatureError as exc:

@@ -357,8 +357,15 @@ class CopilotAdvisor:
                         break
                     try:
                         obj = json.loads(data)
+                    except ValueError:
+                        continue
+                    if isinstance(obj, dict) and obj.get("error"):
+                        logger.error("CopilotAdvisor stream provider error: %s", obj["error"])
+                        yield "The reasoning model returned an error. Try again shortly. " + DISCLAIMER
+                        return
+                    try:
                         delta = obj["choices"][0]["delta"].get("content")
-                    except (KeyError, ValueError, TypeError, IndexError):
+                    except (KeyError, TypeError, IndexError):
                         continue
                     if delta:
                         yield delta

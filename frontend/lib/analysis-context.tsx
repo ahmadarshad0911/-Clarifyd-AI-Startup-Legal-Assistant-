@@ -13,6 +13,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -55,9 +56,15 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [source, setSource] = useState<string | null>(null);
   const [lastDraftId, setLastDraftId] = useState<string | null>(null);
+  // Ref guard so a second call is rejected even though the callback closes
+  // over a stale isAnalyzing value.
+  const runningRef = useRef(false);
 
   const startAnalysis = useCallback(
     async (args: StartAnalysisArgs): Promise<AnalysisOutcome> => {
+      if (runningRef.current) {
+        return { ok: false, message: "An analysis is already running — please wait." };
+      }
       let label: string;
       let work: Promise<AnalyzeContractResponse>;
       if (args.mode === "file") {
@@ -72,6 +79,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         work = client.analyzeText(text, label);
       }
 
+      runningRef.current = true;
       setSource(label);
       setIsAnalyzing(true);
 
@@ -94,6 +102,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         push("Analysis failed", "error", msg);
         return { ok: false, message: msg };
       } finally {
+        runningRef.current = false;
         setIsAnalyzing(false);
       }
     },

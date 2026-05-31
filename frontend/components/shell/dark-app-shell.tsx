@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { CaretDown, CaretRight, List, SignOut, User, X } from "@phosphor-icons/react";
+import { useUser } from "@clerk/nextjs";
 
 import { useAuth } from "../../lib/auth";
 import { useIsMobile } from "../../lib/use-is-mobile";
@@ -42,6 +43,7 @@ export function DarkAppShell({
   bare?: boolean;
 }) {
   const { token, loading, me, role, logout } = useAuth();
+  const { isLoaded: userLoaded, user } = useUser();
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const isMobile = useIsMobile();
@@ -52,8 +54,18 @@ export function DarkAppShell({
   const acctRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!loading && !token) router.replace("/login");
-  }, [loading, token, router]);
+    if (loading) return;
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+    // Brand-new accounts (no onboarded flag on the Clerk user) must finish
+    // the founder form first. Returning users carry the flag and pass
+    // straight through — so this only fires once, on first sign-up.
+    if (userLoaded && user && user.unsafeMetadata?.onboarded !== true) {
+      router.replace("/onboarding/profile");
+    }
+  }, [loading, token, userLoaded, user, router]);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {

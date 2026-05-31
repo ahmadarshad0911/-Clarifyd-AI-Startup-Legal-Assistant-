@@ -18,6 +18,8 @@ import {
   type Icon,
 } from "@phosphor-icons/react";
 
+import { useUser } from "@clerk/nextjs";
+
 import { useAuth } from "../../../lib/auth";
 import { useToast } from "../../../lib/toast";
 import {
@@ -64,6 +66,7 @@ function rigorLabel(v: number): string {
 export default function FounderProfilePage() {
   const router = useRouter();
   const { token, loading, me } = useAuth();
+  const { user } = useUser();
   const { push } = useToast();
   const reduceMotion = useReducedMotion() ?? false;
 
@@ -97,7 +100,7 @@ export default function FounderProfilePage() {
     setStep(target);
   }
 
-  function continueStep() {
+  async function continueStep() {
     if (step === 2) {
       update({ stage: "pre_seed", steps_completed: Math.max(profile.steps_completed ?? 1, 2) });
       go(3);
@@ -110,6 +113,14 @@ export default function FounderProfilePage() {
       }
       update({ steps_completed: 3 });
       markOnboarded();
+      // Persist the onboarded flag on the Clerk user (server-side, per-user)
+      // so the dashboard gate lets this account straight through next time —
+      // only brand-new accounts without the flag get routed to this form.
+      try {
+        await user?.update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), onboarded: true } });
+      } catch {
+        // Non-fatal: local markOnboarded() still lets them through this session.
+      }
       push("Founder profile saved", "success", "Clarifyd is tuned to your stage.");
       router.push("/dashboard");
     }

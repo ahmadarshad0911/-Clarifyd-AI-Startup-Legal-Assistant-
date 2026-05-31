@@ -45,11 +45,16 @@ export function pushAnalysis(
   analysis: AnalyzeContractResponse,
   fileName: string
 ): StoredAnalysis[] {
+  // Privacy: never persist the raw contract body in the browser. The full
+  // text lives server-side (draft.analysis_json); Findings / Negotiate fall
+  // back to rebuilding from the server when it's absent. Keep only derived
+  // findings + summary in this local switcher cache.
+  const safe: AnalyzeContractResponse = { ...analysis, extracted_text: null };
   const entry: StoredAnalysis = {
     draft_id: analysis.draft_id,
     file_name: fileName,
     analyzed_at: new Date().toISOString(),
-    analysis,
+    analysis: safe,
   };
   const rest = read().filter((a) => a.draft_id !== entry.draft_id);
   const next = [entry, ...rest].slice(0, MAX);

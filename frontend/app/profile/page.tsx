@@ -45,6 +45,7 @@ import { useIsMobile } from "../../lib/use-is-mobile";
 import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { useAuth } from "../../lib/auth";
 import { useToast } from "../../lib/toast";
+import { ApiError } from "../../lib/api";
 import { listAnalyses, type StoredAnalysis } from "../../lib/analyses";
 import { getProfile, setProfile, type FounderProfile } from "../../lib/founder-profile";
 
@@ -69,7 +70,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const reduce = useReducedMotion() ?? false;
   const isMobile = useIsMobile();
-  const { me, role, token, logout } = useAuth();
+  const { me, role, token, logout, client } = useAuth();
   const { push } = useToast();
 
   const [profile, setProfileState] = useState<FounderProfile>({});
@@ -118,13 +119,22 @@ export default function ProfilePage() {
       kind: "rejection",
       caption: "STOP PRESS · DELETE ACCOUNT",
       headline: "Delete your founder account?",
-      body: "This signs you out and removes the account from your device. Contact support to fully erase server-side data.",
+      body: "This permanently erases your account and every contract, finding, and analysis you've uploaded — from our servers and from sign-in. It cannot be undone.",
       hint: "This action can't be undone.",
-      primaryLabel: "Delete & sign out",
+      primaryLabel: "Delete everything & sign out",
       secondaryLabel: "Keep account",
-      onPrimary: () => {
-        logout();
-        router.replace("/login");
+      onPrimary: async () => {
+        try {
+          await client.deleteAccount();
+          push("Account and all data deleted.", "success");
+        } catch (err) {
+          push(
+            err instanceof ApiError ? err.message : "Delete failed — try again.",
+            "error",
+          );
+        } finally {
+          logout();
+        }
       },
     });
   }

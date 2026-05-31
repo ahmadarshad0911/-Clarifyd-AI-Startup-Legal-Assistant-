@@ -449,6 +449,11 @@ export class ApiClient {
     return this.request("/auth/oauth/providers");
   }
 
+  /** Right-to-erasure: delete the signed-in user's account + all their data. */
+  async deleteAccount(): Promise<{ deleted: boolean }> {
+    return this.request("/auth/account", { method: "DELETE" });
+  }
+
   async claimReview(itemId: string): Promise<{
     item_id: string;
     state: "in_review";

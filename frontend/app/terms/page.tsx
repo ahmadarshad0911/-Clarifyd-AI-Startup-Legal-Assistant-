@@ -46,16 +46,21 @@ const CONTENT: Record<TabId, { label: string; subtitle: string; sections: Sectio
     subtitle: "How Clarifyd handles, processes, and protects the contracts you trust us with.",
     sections: [
       { n: "01", title: "What we collect", body: [
-        "Account: email, role, and OAuth identity claims if you sign in with Google or Facebook.",
-        "Contracts: only what you upload. We never scrape email or third-party stores.",
+        "Account: your email and authentication identity, managed by our sign-in provider Clerk (you may sign in with Google).",
+        "Contracts: only the documents you upload. We never scrape your email or third-party stores.",
         "Telemetry: anonymous page-view + latency buckets so we can find slow surfaces.",
       ]},
-      { n: "02", title: "How we use it", body: [
-        "Contracts are sent to Clarifyd AI for reasoning, then cached by SHA-256 so a re-upload of the same contract is byte-identical and free.",
-        "No customer contract content trains any model — ever.",
+      { n: "02", title: "How we use it — and the AI provider", body: [
+        "To analyze a contract, its text is sent to our third-party AI provider, NVIDIA (the Kimi K2 model on NVIDIA's hosted inference API), which returns the risk findings. Your document leaves our servers only for this analysis.",
+        "Our AI provider processes the text to generate your results and does not use your contracts to train its models. No customer contract content is ever used to train any model.",
+        "Results are cached by a one-way hash of the contract so re-uploading the identical document is instant and free.",
       ]},
-      { n: "03", title: "Where it lives", body: ["Hosted in our managed cloud. Industry-standard encryption protects data in transit and at rest."] },
-      { n: "04", title: "Your controls", body: ["Delete account anytime from Settings. We hard-delete user row + owned drafts within 24h. Audit log entries are anonymized — user_id zeroed, hash chain stays intact for compliance."] },
+      { n: "03", title: "Where it lives", body: ["Stored in our managed cloud database (encrypted in transit and at rest). Sensitive document text is kept on our servers, not in your browser."] },
+      { n: "04", title: "Retention & your controls", body: [
+        "Retention: uploaded contracts and their analyses are automatically and permanently deleted after 365 days.",
+        "Delete anytime: the “Delete account” button in your Profile permanently erases your account and every contract, finding, and analysis you've uploaded — from our database and from our sign-in provider. This cannot be undone.",
+        "Audit entries are retained in anonymized form (no document content) for security and compliance.",
+      ]},
     ],
   },
   cookies: {

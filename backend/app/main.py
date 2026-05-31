@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import AuthenticatedUser, require_role
+from app.auth.dependencies import AuthenticatedUser, current_user, require_role
 from app.config import get_settings
 from app.contracts.analysis import ClauseRiskFinding
 from app.contracts.api import (
@@ -27,6 +27,7 @@ from app.contracts.api import (
 )
 import asyncio
 import ipaddress
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from app.db import create_engine_and_sessionmaker, dispose_engine, get_session
@@ -36,6 +37,7 @@ from app.db import models as _orm_models  # noqa: F401  (register tables on Base
 from app.db.models import ClauseFinding as ClauseFindingRow
 from app.db.models import ContractDraft as ContractDraftRow
 from app.db.models import ReviewQueueItem as ReviewQueueItemRow
+from app.db.models import User as UserRow
 from app.errors import AppError, ErrorCode
 from app.services.audit import append_audit_event
 from app.logging_config import clear_request_id, configure_logging, get_request_id, set_request_id
@@ -215,6 +217,46 @@ def _build_provider_chain(client: "httpx.AsyncClient"):
     return FallbackChainProvider(chain)
 
 
+async def _purge_expired_data() -> None:
+    """Hard-delete contracts (and their findings/queue rows) older than the
+    configured retention window. Enforces the data-retention promise in the
+    privacy policy — the less we keep, the less can leak or be subpoenaed."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.retention_days)
+    sm = get_sessionmaker()
+    async with sm() as s:
+        expired = (
+            await s.execute(
+                select(ContractDraftRow.id).where(ContractDraftRow.uploaded_at < cutoff)
+            )
+        ).scalars().all()
+        if not expired:
+            return
+        await s.execute(delete(ReviewQueueItemRow).where(ReviewQueueItemRow.draft_id.in_(expired)))
+        await s.execute(delete(ClauseFindingRow).where(ClauseFindingRow.draft_id.in_(expired)))
+        await s.execute(delete(ContractDraftRow).where(ContractDraftRow.id.in_(expired)))
+        await s.commit()
+        logger.info("Retention sweep purged %d expired contract(s).", len(expired))
+
+
+async def _retention_loop() -> None:
+    # One sweep shortly after boot, then daily.
+    try:
+        await asyncio.sleep(60)
+        await _purge_expired_data()
+    except asyncio.CancelledError:
+        return
+    except Exception:
+        logger.exception("Initial retention sweep failed.")
+    while True:
+        try:
+            await asyncio.sleep(24 * 3600)
+            await _purge_expired_data()
+        except asyncio.CancelledError:
+            return
+        except Exception:
+            logger.exception("Retention sweep failed.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(
@@ -269,9 +311,16 @@ async def lifespan(app: FastAPI):
         timeout=20.0,
     )
 
+    retention_task = asyncio.create_task(_retention_loop())
+
     try:
         yield
     finally:
+        retention_task.cancel()
+        try:
+            await retention_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
         if _http_client is not None:
             await _http_client.aclose()
         _http_client = None
@@ -349,6 +398,28 @@ app.include_router(comments_router)
 app.include_router(workflow_router)
 app.include_router(webhooks_router)
 _analyze_limiter = rate_limit("analyze.contract", limit_attr="rate_limit_analyze_per_min")
+
+# Global cap on simultaneous contract analyses. Each analysis is a long
+# (~10-18s), CPU/IO-heavy LLM fan-out; on a single small instance, letting
+# unlimited uploads run at once makes them all queue past the timeout. Cap
+# the count and shed excess with a fast 429 "busy, retry" instead.
+_ANALYZE_MAX_CONCURRENCY = 4
+_analyze_sem = asyncio.Semaphore(_ANALYZE_MAX_CONCURRENCY)
+
+
+async def _analyze_slot():
+    try:
+        await asyncio.wait_for(_analyze_sem.acquire(), timeout=0.5)
+    except asyncio.TimeoutError as exc:
+        raise AppError(
+            code=ErrorCode.upload_rejected,
+            message="The analyzer is busy right now — please try again in a few seconds.",
+            status_code=429,
+        ) from exc
+    try:
+        yield
+    finally:
+        _analyze_sem.release()
 
 
 # Vercel's ASGI adapter never fires the lifespan event, so the
@@ -497,7 +568,7 @@ def _parse_content_length(header: str | None) -> int | None:
 @app.post(
     "/analyze/contract",
     response_model=AnalyzeContractResponse,
-    dependencies=[Depends(_analyze_limiter)],
+    dependencies=[Depends(_analyze_limiter), Depends(_analyze_slot)],
 )
 async def analyze_contract(
     request: Request,
@@ -891,7 +962,7 @@ class AnalyzeUrlRequest(BaseModel):
 @app.post(
     "/analyze/text",
     response_model=AnalyzeContractResponse,
-    dependencies=[Depends(_analyze_limiter)],
+    dependencies=[Depends(_analyze_limiter), Depends(_analyze_slot)],
 )
 async def analyze_text(
     body: AnalyzeTextRequest,
@@ -969,7 +1040,7 @@ async def _assert_public_url(url: str) -> None:
 @app.post(
     "/analyze/url",
     response_model=AnalyzeContractResponse,
-    dependencies=[Depends(_analyze_limiter)],
+    dependencies=[Depends(_analyze_limiter), Depends(_analyze_slot)],
 )
 async def analyze_url(
     body: AnalyzeUrlRequest,
@@ -1205,6 +1276,38 @@ async def copilot_guidance_stream(
             "Connection": "keep-alive",
         },
     )
+
+
+@app.delete("/auth/account")
+async def delete_my_account(
+    user: AuthenticatedUser = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, bool]:
+    """Right-to-erasure: the signed-in user deletes their own account and all
+    their contracts/findings — from our DB and from Clerk (source of truth)."""
+    from app.routes.admin import _clerk_delete_user
+
+    drafts = (
+        await session.execute(
+            select(ContractDraftRow.id).where(ContractDraftRow.owner_id == user.id)
+        )
+    ).scalars().all()
+    if drafts:
+        await session.execute(delete(ReviewQueueItemRow).where(ReviewQueueItemRow.draft_id.in_(drafts)))
+        await session.execute(delete(ClauseFindingRow).where(ClauseFindingRow.draft_id.in_(drafts)))
+        await session.execute(delete(ContractDraftRow).where(ContractDraftRow.id.in_(drafts)))
+    await session.execute(delete(UserRow).where(UserRow.id == user.id))
+    await append_audit_event(
+        session,
+        action="account.self_deleted",
+        target_type="user",
+        target_id=user.id,
+        actor_id=user.id,
+        payload={"drafts_purged": len(drafts)},
+    )
+    await session.commit()
+    await _clerk_delete_user(user.id)
+    return {"deleted": True}
 
 
 @app.get("/")

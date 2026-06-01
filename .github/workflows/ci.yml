@@ -49,9 +49,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Scan working tree for secrets (gitleaks)
+        # --no-git scans files on disk (current committed state), not full
+        # history, so a green run means no live secret sits in current files.
+        # The Docker image avoids version-pinned release-asset breakage.
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
-          # --no-git: scan files on disk (the committed state), not full history,
-          # so a green run means no live secret is present in current files.
-          ./gitleaks detect --no-git --source . --redact --exit-code 1
+          docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:latest \
+            detect --no-git --source /repo --redact --exit-code 1
 

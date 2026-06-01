@@ -1,0 +1,21 @@
+# Gitleaks config for the working-tree secret scan (see .github/workflows/ci.yml).
+# Uses the built-in rules, plus an allowlist for intentional placeholders:
+# *.env.example templates, the DEPLOY.md instruction placeholders, and the
+# CI build's dummy Clerk PUBLISHABLE key (public by design, not a secret).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional placeholders and public/dummy values"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.local\.example$''',
+  '''(^|/)DEPLOY\.md$''',
+  '''(^|/)\.github/workflows/ci\.yml$''',
+]
+regexes = [
+  '''nvapi-(xxx|<your-key>)''',
+  '''pk_test_[A-Za-z0-9]+''',
+  '''pk_live_[A-Za-z0-9]+''',
+]

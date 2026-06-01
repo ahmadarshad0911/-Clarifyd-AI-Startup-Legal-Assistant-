@@ -92,7 +92,9 @@ async def test_openai_provider_happy_path() -> None:
     assert assessment.risk_score == 8
     assert len(seen) == 1
     body = json.loads(seen[0].content)
-    assert body["response_format"]["type"] == "json_schema"
+    # json_object (not json_schema): the provider standardizes on it for
+    # Kimi/NIM compatibility, matching the detector and the sweeps.
+    assert body["response_format"]["type"] == "json_object"
 
 
 @pytest.mark.asyncio

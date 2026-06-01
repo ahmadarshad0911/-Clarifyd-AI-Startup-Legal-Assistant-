@@ -8,7 +8,7 @@
  * context, custom builder, doc generation + copy + download.
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, Handshake, FileText, BriefcaseMetal, Receipt, Sparkle, Chat,
@@ -25,7 +25,17 @@ import { useToast } from "../../lib/toast";
 import type { CopilotMessage, CopilotMode } from "../../lib/contracts";
 import { STARTUP_TEMPLATES } from "../../lib/startup-templates";
 import { profileContextLine } from "../../lib/founder-profile";
+import { readJSON, writeJSON } from "../../lib/user-storage";
 import { useIsMobile } from "../../lib/use-is-mobile";
+
+// Persist the live draft-room session so navigating away and back doesn't
+// wipe the thread (the page is a client route that unmounts on navigation).
+const SESSION_KEY = "clarifyd.copilot-session";
+type SavedSession = {
+  active?: Active | null;
+  messages?: CopilotMessage[];
+  doc?: string | null;
+};
 
 type Tile = {
   id: string;
@@ -53,15 +63,22 @@ export default function CopilotPage() {
   const { push } = useToast();
   const reduce = useReducedMotion() ?? false;
   const isMobile = useIsMobile();
-  const [active, setActive] = useState<Active | null>(null);
-  const [messages, setMessages] = useState<CopilotMessage[]>([]);
+  // Restore any in-progress draft-room session (survives page navigation).
+  const saved = useRef<SavedSession>(readJSON<SavedSession>(SESSION_KEY, {}));
+  const [active, setActive] = useState<Active | null>(saved.current.active ?? null);
+  const [messages, setMessages] = useState<CopilotMessage[]>(saved.current.messages ?? []);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [doc, setDoc] = useState<string | null>(null);
+  const [doc, setDoc] = useState<string | null>(saved.current.doc ?? null);
   const [customDraft, setCustomDraft] = useState("");
   const [notice, setNotice] = useState<NoticeContent | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Persist the thread on every change so a route switch never loses it.
+  useEffect(() => {
+    writeJSON(SESSION_KEY, { active, messages, doc });
+  }, [active, messages, doc]);
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
@@ -76,9 +93,7 @@ export default function CopilotPage() {
     setDoc(null);
     setBusy(true);
     try {
-      const ctx = profileContextLine();
-      const fullOpener = ctx ? `${ctx}\n\n${opener}` : opener;
-      const res = await client.copilotGuidance(name, fullOpener, [], mode);
+      const res = await client.copilotGuidance(name, opener, [], mode, profileContextLine());
       setMessages([{ role: "assistant", content: res.reply }]);
     } catch (err) {
       push(err instanceof ApiError ? err.message : "Co-Pilot failed to start.", "error");
@@ -125,7 +140,7 @@ export default function CopilotPage() {
           return copy;
         });
         scrollToBottom();
-      });
+      }, profileContextLine());
     } catch (err) {
       if (err instanceof ApiError && err.code === "off_topic_question") {
         setNotice({
@@ -169,7 +184,7 @@ conversation. Produce a clean, professionally structured legal document with num
 a title, and signature blocks. Where a specific term was not provided, insert a clearly bracketed
 [TO BE CONFIRMED — <term name>] marker. Return ONLY the document text, no commentary.`;
       }
-      const res = await client.copilotGuidance(active.name, prompt, messages, active.mode);
+      const res = await client.copilotGuidance(active.name, prompt, messages, active.mode, profileContextLine());
       setDoc(res.reply);
       push("Document drafted", "success", "Review every clause with counsel before signing.");
     } catch (err) {

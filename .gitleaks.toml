@@ -13,6 +13,7 @@ paths = [
   '''\.env\.local\.example$''',
   '''(^|/)DEPLOY\.md$''',
   '''(^|/)\.github/workflows/ci\.yml$''',
+  '''(^|/)tests/''',
 ]
 regexes = [
   '''nvapi-(xxx|<your-key>)''',

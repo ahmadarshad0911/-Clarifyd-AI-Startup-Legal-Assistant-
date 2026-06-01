@@ -11,9 +11,9 @@ description = "Intentional placeholders and public/dummy values"
 paths = [
   '''\.env\.example$''',
   '''\.env\.local\.example$''',
-  '''(^|/)DEPLOY\.md$''',
-  '''(^|/)\.github/workflows/ci\.yml$''',
-  '''(^|/)tests/''',
+  '''(^|[\\/])DEPLOY\.md$''',
+  '''(^|[\\/])\.github[\\/]workflows[\\/]ci\.yml$''',
+  '''(^|[\\/])tests[\\/]''',
 ]
 regexes = [
   '''nvapi-(xxx|<your-key>)''',

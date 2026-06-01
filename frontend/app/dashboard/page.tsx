@@ -43,6 +43,7 @@ import { NoticeModal, type NoticeContent } from "../../components/notice-modal";
 import { listAnalyses, type StoredAnalysis } from "../../lib/analyses";
 import { useAuth } from "../../lib/auth";
 import { useAnalysis } from "../../lib/analysis-context";
+import { getProfile } from "../../lib/founder-profile";
 import { useIsMobile } from "../../lib/use-is-mobile";
 
 function fmtBytes(n: number): string {
@@ -69,6 +70,13 @@ export default function DashboardPage() {
   const [recent, setRecent] = useState<StoredAnalysis[]>([]);
   const [docType, setDocType] = useState<DocType>("SAFE");
   const [ctx, setCtx] = useState<ContextValue>({ jurisdiction: "US", stage: "pre-seed", role: "founder" });
+  // Founder's first name from onboarding (localStorage). Set post-mount to
+  // avoid a hydration mismatch; greeting falls back to the email handle.
+  const [founderName, setFounderName] = useState("");
+  useEffect(() => {
+    const n = getProfile().full_name?.trim().split(/\s+/)[0];
+    if (n) setFounderName(n);
+  }, []);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
@@ -136,7 +144,10 @@ export default function DashboardPage() {
           The reading room
         </div>
         <h1 style={{ marginTop: 10, fontSize: 38, fontWeight: 500, letterSpacing: "-0.025em", lineHeight: 1.05 }}>
-          {`Welcome${me?.email ? `, ${me.email.split("@")[0]}` : ""}.`}
+          {(() => {
+            const greet = founderName || (me?.email ? me.email.split("@")[0] : "");
+            return `Welcome${greet ? `, ${greet}` : ""}.`;
+          })()}
         </h1>
         <p style={{ marginTop: 10, color: "var(--ink-secondary)", fontSize: 15, lineHeight: 1.6, maxWidth: 600 }}>
           Drop a contract. Every clause scored, every loophole flagged, every replacement written.

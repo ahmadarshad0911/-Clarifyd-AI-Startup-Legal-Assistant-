@@ -26,7 +26,7 @@ From `C:\Users\ahmed\clarifyd-backend`:
 Required (paste current dev values OR generate new for prod):
 ```bash
 ! vercel env add DATABASE_URL production
-# paste: postgresql://neondb_owner:npg_UoJRrLePW73M@ep-royal-glade-aq0rj6h7-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# paste your Neon pooler connection string: postgresql://<user>:<password>@<host>-pooler.../neondb?sslmode=require&channel_binding=require
 
 ! vercel env add POSTGRES_URL production
 # paste same as DATABASE_URL
@@ -35,7 +35,7 @@ Required (paste current dev values OR generate new for prod):
 # paste: https://integrate.api.nvidia.com/v1/chat/completions
 
 ! vercel env add NIM_API_KEY production
-# paste: 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
+# paste your NVIDIA NIM key: nvapi-<your-key>
 
 ! vercel env add NIM_MODEL_ID production
 # paste: meta/llama-3.3-70b-instruct
@@ -47,13 +47,13 @@ Required (paste current dev values OR generate new for prod):
 # paste: nvidia/nv-embedqa-e5-v5
 
 ! vercel env add AUTH_SECRET production
-# paste: Iq2AG3J3zEIKgaXiRu+DAvDM1QOiU75TadzG567apMA=
+# paste a fresh 32-byte base64 secret: `openssl rand -base64 32`
 
 ! vercel env add VAULT_KEY production
-# paste: nQV0fhorxxSec9o8xI2wasOsvtAETafEtU9WeKwPDMc=
+# paste a fresh 32-byte base64 key (encrypts the vault): `openssl rand -base64 32`
 
 ! vercel env add CRON_SECRET production
-# paste: b3611f847bc9ae97b448137f94512bc8c7b28a82a1bfcd64947d5f54cba7aded
+# paste a fresh random hex secret: `openssl rand -hex 32`
 
 ! vercel env add APP_URL production
 # paste: https://clarifyd-backend.vercel.app   (or your real domain)

@@ -34,6 +34,18 @@ _ADMIN_EMAILS = frozenset({"ahmedarshad260@gmail.com"})
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _block_legacy_auth_in_prod(settings: Settings = Depends(get_settings)) -> None:
+    """Disable password-based local auth in production. Clerk is the issuer
+    there; the legacy register/login path issued tokens without email
+    verification and could self-promote admin, so it must not be reachable."""
+    if settings.environment == "production":
+        raise AppError(
+            code=ErrorCode.policy_violation,
+            message="Local authentication is disabled. Sign in via the hosted provider.",
+            status_code=404,
+        )
+
+
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(min_length=1, max_length=256)
@@ -126,7 +138,7 @@ async def _create_and_send_otp(
 @router.post(
     "/login",
     response_model=LoginResponse,
-    dependencies=[Depends(_login_limiter)],
+    dependencies=[Depends(_login_limiter), Depends(_block_legacy_auth_in_prod)],
 )
 async def login(
     body: LoginRequest,
@@ -179,7 +191,7 @@ async def login(
 @router.post(
     "/register",
     response_model=LoginResponse,
-    dependencies=[Depends(_login_limiter)],
+    dependencies=[Depends(_login_limiter), Depends(_block_legacy_auth_in_prod)],
 )
 async def register(
     body: RegisterRequest,
@@ -245,7 +257,7 @@ async def _expire_pending_otps(session: AsyncSession, email: str) -> None:
 @router.post(
     "/verify-otp",
     response_model=LoginResponse,
-    dependencies=[Depends(_login_limiter)],
+    dependencies=[Depends(_login_limiter), Depends(_block_legacy_auth_in_prod)],
 )
 async def verify_otp(
     body: VerifyOtpRequest,
@@ -330,7 +342,7 @@ async def verify_otp(
 @router.post(
     "/resend-otp",
     response_model=RegisterResponse,
-    dependencies=[Depends(_login_limiter)],
+    dependencies=[Depends(_login_limiter), Depends(_block_legacy_auth_in_prod)],
 )
 async def resend_otp(
     body: ResendOtpRequest,

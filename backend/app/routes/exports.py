@@ -26,6 +26,35 @@ from app.services.export import finalize_export_job, is_pdf_supported
 router = APIRouter(tags=["exports"])
 
 
+async def _owned_export_job(
+    session: AsyncSession, export_id: str, user_id: str
+) -> ExportJob:
+    """Fetch an export job ONLY if its draft belongs to the caller. Prevents
+    cross-tenant export access (IDOR) — ids are non-enumerable but still leak
+    via audit/exports, so ownership must be enforced server-side."""
+    job = (
+        await session.execute(select(ExportJob).where(ExportJob.id == export_id))
+    ).scalar_one_or_none()
+    if job is not None:
+        owns = (
+            await session.execute(
+                select(ContractDraft.id).where(
+                    ContractDraft.id == job.draft_id,
+                    ContractDraft.owner_id == user_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if owns is None:
+            job = None
+    if job is None:
+        raise AppError(
+            code=ErrorCode.request_validation_error,
+            message="Export not found.",
+            status_code=404,
+        )
+    return job
+
+
 class ExportStatusResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     contract_version: str = API_CONTRACT_VERSION
@@ -54,7 +83,10 @@ async def create_export(
 
     draft = (
         await session.execute(
-            select(ContractDraft).where(ContractDraft.id == body.draft_id)
+            select(ContractDraft).where(
+                ContractDraft.id == body.draft_id,
+                ContractDraft.owner_id == user.id,
+            )
         )
     ).scalar_one_or_none()
     if draft is None or draft.deleted_at is not None:
@@ -101,15 +133,7 @@ async def get_export_status(
     session: AsyncSession = Depends(get_session),
     user: AuthenticatedUser = Depends(require_role("viewer")),
 ) -> ExportStatusResponse:
-    job = (
-        await session.execute(select(ExportJob).where(ExportJob.id == export_id))
-    ).scalar_one_or_none()
-    if job is None:
-        raise AppError(
-            code=ErrorCode.request_validation_error,
-            message="Export not found.",
-            status_code=404,
-        )
+    job = await _owned_export_job(session, export_id, user.id)
     return ExportStatusResponse(
         export_id=job.id,
         draft_id=job.draft_id,
@@ -127,15 +151,7 @@ async def download_export(
     settings: Settings = Depends(get_settings),
     user: AuthenticatedUser = Depends(require_role("viewer")),
 ) -> FileResponse:
-    job = (
-        await session.execute(select(ExportJob).where(ExportJob.id == export_id))
-    ).scalar_one_or_none()
-    if job is None:
-        raise AppError(
-            code=ErrorCode.request_validation_error,
-            message="Export not found.",
-            status_code=404,
-        )
+    job = await _owned_export_job(session, export_id, user.id)
     if job.status != "ready" or not job.file_path:
         raise AppError(
             code=ErrorCode.policy_violation,

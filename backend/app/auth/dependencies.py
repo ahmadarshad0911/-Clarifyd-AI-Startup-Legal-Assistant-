@@ -159,6 +159,10 @@ async def _resolve_clerk_user(
                 await session.commit()
             except Exception:  # pragma: no cover
                 await session.rollback()
+                logger.warning(
+                    "Failed to reconcile role/email for user %s; kept previous values.",
+                    row.id,
+                )
 
     return AuthenticatedUser(id=row.id, email=row.email, role=row.role)
 

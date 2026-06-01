@@ -29,6 +29,7 @@ async def create_comment(
         await session.execute(
             select(ContractDraft).where(
                 ContractDraft.id == body.draft_id,
+                ContractDraft.owner_id == user.id,
                 ContractDraft.deleted_at.is_(None),
             )
         )
@@ -89,6 +90,21 @@ async def list_comments(
     session: AsyncSession = Depends(get_session),
     user: AuthenticatedUser = Depends(require_role("viewer")),
 ) -> CommentListResponse:
+    # Only the draft owner may read its comments (prevents cross-tenant reads).
+    owns = (
+        await session.execute(
+            select(ContractDraft.id).where(
+                ContractDraft.id == draft_id,
+                ContractDraft.owner_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if owns is None:
+        raise AppError(
+            code=ErrorCode.request_validation_error,
+            message="Draft not found.",
+            status_code=404,
+        )
     rows = list(
         (
             await session.execute(

@@ -25,6 +25,7 @@ async def compare(
             await session.execute(
                 select(ContractDraft).where(
                     ContractDraft.id.in_(body.draft_ids),
+                    ContractDraft.owner_id == user.id,
                     ContractDraft.deleted_at.is_(None),
                 )
             )

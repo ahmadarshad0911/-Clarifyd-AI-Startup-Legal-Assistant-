@@ -2,8 +2,10 @@ import os
 from functools import lru_cache
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_JWT_SECRETS = {"", "dev-only-change-me", "change-me"}
 
 
 class Settings(BaseSettings):
@@ -83,6 +85,17 @@ class Settings(BaseSettings):
         if provider != "kimi":
             raise ValueError("reasoning_provider must be 'kimi'")
         return provider
+
+    @model_validator(mode="after")
+    def _reject_insecure_prod_secret(self) -> "Settings":
+        # A default/blank JWT secret in production would let anyone forge
+        # tokens and OAuth-state HMACs. Fail fast at startup instead.
+        if self.environment == "production" and self.jwt_secret in _INSECURE_JWT_SECRETS:
+            raise ValueError(
+                "jwt_secret must be set to a strong random value in production "
+                "(JWT_SECRET env var)."
+            )
+        return self
 
 
 _ASYNCPG_UNSUPPORTED_QS_KEYS = {

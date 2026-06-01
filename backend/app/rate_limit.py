@@ -46,6 +46,16 @@ def rate_limit(route: str, *, limit_attr: str) -> Callable[[Request], None]:
     from app.config import Settings, get_settings  # local import for cycle safety
 
     def _client_ip(request: Request) -> str:
+        # Behind Cloudflare/DigitalOcean, request.client.host is the proxy IP —
+        # identical for every visitor, so a per-IP limit becomes effectively
+        # global. Prefer the real client IP the edge forwards.
+        cf = request.headers.get("cf-connecting-ip")
+        if cf:
+            return cf.strip()
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            # Leftmost entry is the original client.
+            return xff.split(",")[0].strip()
         if request.client and request.client.host:
             return request.client.host
         return "unknown"

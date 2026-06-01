@@ -111,7 +111,7 @@ def test_export_create_requires_reviewer(
     assert r.status_code == 403
 
 
-def test_viewer_can_download_existing_export(
+def test_owner_can_download_own_export(
     app_client: TestClient, seeded_users: dict[str, dict[str, str]]
 ) -> None:
     reviewer_token = _login(app_client, seeded_users["reviewer"])
@@ -122,8 +122,9 @@ def test_viewer_can_download_existing_export(
         json={"draft_id": draft_id, "format": "json"},
     ).json()["export_id"]
 
-    viewer_token = _login(app_client, seeded_users["viewer"])
-    r = app_client.get(f"/exports/{export_id}/download", headers=_bearer(viewer_token))
+    # The draft owner can download their own export. (Cross-user access is
+    # rejected — see test_security_audit.test_export_not_downloadable_by_other_user.)
+    r = app_client.get(f"/exports/{export_id}/download", headers=_bearer(reviewer_token))
     assert r.status_code == 200
 
 

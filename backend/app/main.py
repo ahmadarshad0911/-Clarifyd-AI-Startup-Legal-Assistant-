@@ -96,6 +96,10 @@ _loophole_sweeper: LoopholeSweeper | None = None
 _ambiguity_sweeper: AmbiguitySweeper | None = None
 _copilot_advisor: CopilotAdvisor | None = None
 _contract_detector: ContractDetector | None = None
+# id() of the event loop the current _http_client was built on. Lets us REUSE
+# the client across requests on a stable server (no per-request rebuild/leak)
+# while still rebuilding when a new serverless invocation brings a fresh loop.
+_runtime_loop_id: int | None = None
 
 
 def _ensure_runtime() -> None:
@@ -110,7 +114,17 @@ def _ensure_runtime() -> None:
     serverless containers don't benefit from cross-request caching here
     anyway, and the previous client's network sockets close at scope end.
     """
-    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper, _ambiguity_sweeper
+    global _http_client, _async_analysis, _contract_reporter, _copilot_advisor, _contract_detector, _loophole_sweeper, _ambiguity_sweeper, _runtime_loop_id
+    try:
+        loop_id: int | None = id(asyncio.get_running_loop())
+    except RuntimeError:
+        loop_id = None
+    # Reuse the existing client+services if they were built on THIS loop —
+    # the multiple getter calls within one request must not each rebuild and
+    # orphan a client (socket/FD leak). Only rebuild on first use or when a
+    # new event loop appears (fresh serverless invocation).
+    if _http_client is not None and _runtime_loop_id == loop_id:
+        return
     timeout = httpx.Timeout(
         connect=5.0,
         read=settings.reasoning_timeout_seconds,
@@ -118,6 +132,7 @@ def _ensure_runtime() -> None:
         pool=5.0,
     )
     _http_client = httpx.AsyncClient(timeout=timeout)
+    _runtime_loop_id = loop_id
     _async_analysis = AsyncContractAnalysisService(
         provider=_build_provider_chain(_http_client)
     )

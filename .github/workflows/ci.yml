@@ -36,4 +36,23 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Build
+        run: npm run build
+        env:
+          # Dummy build-time values so the production build compiles
+          # deterministically in CI (real values are set in the deploy env).
+          NEXT_PUBLIC_API_URL: "https://example.invalid"
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2ktYnVpbGQuY2xlcmsuYWNjb3VudHMuZGV2JA"
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan working tree for secrets (gitleaks)
+        # --no-git scans files on disk (current committed state), not full
+        # history, so a green run means no live secret sits in current files.
+        # The Docker image avoids version-pinned release-asset breakage.
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:latest \
+            detect --no-git --source /repo --redact --exit-code 1
 

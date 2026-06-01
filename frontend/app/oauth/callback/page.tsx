@@ -6,9 +6,6 @@ import { Suspense, useEffect, useState } from "react";
 import { AuroraBackground } from "../../../components/common/aurora-background";
 import { OrbitalLoader } from "../../../components/common/orbital-loader";
 
-const TOKEN_KEY = "clarifyd.token";
-const ROLE_KEY = "clarifyd.role";
-
 export default function OAuthCallbackPage() {
   // useSearchParams() requires a Suspense boundary in Next 14 App Router.
   return (
@@ -24,29 +21,16 @@ function OAuthCallbackInner() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = params.get("token");
-    const role = params.get("role") ?? "reviewer";
+    // Auth is handled by Clerk; this legacy callback no longer persists a
+    // bearer token client-side (a localStorage token is XSS-readable). Surface
+    // any provider error, otherwise send the user to the Clerk sign-in flow.
     const err = params.get("error");
-    const isNew = params.get("new") === "1";
-
     if (err) {
       setError(err);
       return;
     }
-    if (!token) {
-      setError("missing_token");
-      return;
-    }
-    try {
-      window.localStorage.setItem(TOKEN_KEY, token);
-      window.localStorage.setItem(ROLE_KEY, role);
-    } catch {
-      setError("storage_blocked");
-      return;
-    }
-    // Hard reload so AuthProvider re-hydrates from the freshly written token.
-    const next = isNew ? "/terms?next=/onboarding/profile" : "/dashboard";
-    window.location.replace(next);
+    const isNew = params.get("new") === "1";
+    window.location.replace(isNew ? "/terms?next=/onboarding/profile" : "/login");
   }, [params, router]);
 
   return (

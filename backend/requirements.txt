@@ -1,4 +1,8 @@
 fastapi==0.115.0
+# Pin the FastAPI core deps explicitly: leaving pydantic/starlette unpinned let
+# newer releases resolve in CI and break the validation-error envelope + tests.
+pydantic==2.13.4
+starlette==0.38.6
 uvicorn[standard]==0.30.6
 pydantic-settings==2.5.2
 pypdf==6.1.2

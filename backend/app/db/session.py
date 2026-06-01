@@ -36,6 +36,12 @@ def build_request_scoped_engine() -> tuple[AsyncEngine, async_sessionmaker[Async
     """
     settings = get_settings()
     kwargs: dict = {"echo": settings.db_echo, "future": True, "poolclass": NullPool}
+    # Match create_engine_and_sessionmaker: Postgres/Neon needs TLS and
+    # statement_cache_size=0 behind the PgBouncer pooler, else asyncpg fails
+    # with "prepared statement does not exist". Without this, the serverless
+    # get_session path and the reporter's isolated engine break on Neon.
+    if settings.database_url.startswith(("postgresql+asyncpg://", "postgresql://")):
+        kwargs["connect_args"] = {"ssl": True, "statement_cache_size": 0}
     engine = create_async_engine(settings.database_url, **kwargs)
     sm = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     return engine, sm

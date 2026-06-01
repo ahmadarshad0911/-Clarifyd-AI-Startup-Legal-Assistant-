@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { GeistSans, GeistMono } from "geist/font";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 import "./globals.css";
 import { ToastProvider } from "../lib/toast";
@@ -28,6 +29,9 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   const isDev = process.env.NODE_ENV !== "production";
+  // GA4 Measurement ID is public (ships in client HTML), so a hardcoded
+  // fallback is safe; env var still overrides per environment.
+  const gaId = process.env.NEXT_PUBLIC_GA_ID ?? "G-P6CTYG3TD1";
   const scriptSrc = [
     "'self'",
     "'unsafe-inline'",
@@ -35,6 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     "https://*.clerk.com",
     "https://*.clarifyd.app",
     "https://challenges.cloudflare.com",
+    "https://www.googletagmanager.com",
     isDev ? "'unsafe-eval'" : null,
   ]
     .filter(Boolean)
@@ -52,6 +57,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     "https://*.clerk.accounts.dev",
     "https://*.clerk.com",
     "https://clerk-telemetry.com",
+    "https://www.googletagmanager.com",
+    "https://www.google-analytics.com",
+    "https://*.google-analytics.com",
+    "https://*.analytics.google.com",
     isDev ? "ws://localhost:*" : null,
     isDev ? "http://localhost:*" : null,
   ]
@@ -68,7 +77,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             `script-src ${scriptSrc}`,
             "style-src 'self' 'unsafe-inline'",
             "font-src 'self' data:",
-            "img-src 'self' data: blob: https://*.clerk.accounts.dev https://*.clarifyd.app https://img.clerk.com https://graph.facebook.com https://lh3.googleusercontent.com",
+            "img-src 'self' data: blob: https://*.clerk.accounts.dev https://*.clarifyd.app https://img.clerk.com https://graph.facebook.com https://lh3.googleusercontent.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com",
             `connect-src ${connectSrc}`,
             // Clerk uses Cloudflare Turnstile (challenges.cloudflare.com)
             // and Clerk-hosted iframes for OAuth/captcha flows.
@@ -89,6 +98,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <CookieConsent />
           </ConditionalProviders>
         </ToastProvider>
+        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
     </html>
   );

@@ -15,8 +15,14 @@ import { CaretDown, CaretRight, List, SignOut, User, X } from "@phosphor-icons/r
 import { useUser } from "@clerk/nextjs";
 
 import { useAuth } from "../../lib/auth";
+import { isOnboarded, isProfileComplete } from "../../lib/founder-profile";
 import { useIsMobile } from "../../lib/use-is-mobile";
 import { Skeleton, SkeletonCard } from "../common/skeleton";
+
+// Accounts created before onboarding shipped predate the `onboarded` flag.
+// Grandfather them so returning founders are never forced through the
+// new-user form. Anyone created after this onboards exactly once.
+const ONBOARDING_LAUNCH_MS = Date.parse("2026-06-02T00:00:00Z");
 
 type NavItem = { href: string; label: string };
 
@@ -59,12 +65,28 @@ export function DarkAppShell({
       router.replace("/login");
       return;
     }
-    // Brand-new accounts (no onboarded flag on the Clerk user) must finish
-    // the founder form first. Returning users carry the flag and pass
-    // straight through — so this only fires once, on first sign-up.
-    if (userLoaded && user && user.unsafeMetadata?.onboarded !== true) {
-      router.replace("/onboarding/profile");
+    if (!userLoaded || !user) return;
+    // Pass straight through if ANY signal says this founder already onboarded:
+    //   1. the account-level Clerk flag (set when the form completes),
+    //   2. a pre-launch account that predates the flag (grandfathered),
+    //   3. a completed profile already saved on this device.
+    // Only a genuinely new account with none of these sees the form, once.
+    const flagged = user.unsafeMetadata?.onboarded === true;
+    const createdMs = user.createdAt ? user.createdAt.getTime() : 0;
+    const grandfathered = createdMs > 0 && createdMs < ONBOARDING_LAUNCH_MS;
+    const doneLocally = isOnboarded() || isProfileComplete();
+
+    if (flagged || grandfathered || doneLocally) {
+      // Self-heal: stamp the account-level flag so the check is a no-op next
+      // time (incl. on other devices) and never re-prompts this founder.
+      if (!flagged) {
+        user
+          .update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), onboarded: true } })
+          .catch(() => {});
+      }
+      return;
     }
+    router.replace("/onboarding/profile");
   }, [loading, token, userLoaded, user, router]);
 
   useEffect(() => {

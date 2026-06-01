@@ -488,7 +488,24 @@ async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
 @app.exception_handler(RequestValidationError)
 async def handle_request_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     logger.warning("Validation error on %s", request.url.path)
-    issues = exc.errors()
+    # Pydantic/Starlette stuff a raw exception object into some issues' `ctx`
+    # (e.g. ValueError("Expected UploadFile, received: str") for a bad
+    # multipart field). That object isn't JSON-serializable and would crash
+    # JSONResponse below, turning a clean 422 into a 500. Stringify any such
+    # non-primitive ctx value.
+    def _serializable_issue(issue: dict) -> dict:
+        ctx = issue.get("ctx")
+        if isinstance(ctx, dict):
+            issue = {
+                **issue,
+                "ctx": {
+                    k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v))
+                    for k, v in ctx.items()
+                },
+            }
+        return issue
+
+    issues = [_serializable_issue(i) for i in exc.errors()]
     first_issue = issues[0] if issues else {}
     loc = first_issue.get("loc", [])
     loc_suffix = (

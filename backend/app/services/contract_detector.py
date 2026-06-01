@@ -113,8 +113,12 @@ class ContractDetector:
         # here because the heuristic already exhausted the easy cases —
         # anything reaching the LLM is genuinely uncertain.
         if not self._api_key:
+            # No classifier configured. Fail OPEN — the heuristic already
+            # rejected strong non-contracts above, so blocking the remaining
+            # ambiguous docs would wrongly turn away real contracts whenever
+            # the LLM key is absent (keyless/local/CI). Let analysis proceed.
             return DetectionResult(
-                False, 0.6, "Classifier unavailable; document not confirmed as a contract."
+                True, 0.5, "Classifier unavailable; proceeding without contract confirmation."
             )
         snippet = text[:3500]
         body = {

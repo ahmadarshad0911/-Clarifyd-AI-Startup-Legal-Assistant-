@@ -406,6 +406,13 @@ _analyze_limiter = rate_limit("analyze.contract", limit_attr="rate_limit_analyze
 _ANALYZE_MAX_CONCURRENCY = 4
 _analyze_sem = asyncio.Semaphore(_ANALYZE_MAX_CONCURRENCY)
 
+# Max time to wait for the whole-contract loophole/ambiguity sweeps AFTER the
+# per-clause loop has finished. The sweeps run concurrently with that loop, so
+# this is only the leftover tail. Bounds cold-path latency when the provider is
+# throttled — the sweeps are supplementary, so a slow one is dropped, not waited
+# on (their own internal timeout is 120s, far too long to block a response).
+_SWEEP_AWAIT_BUDGET_S = 20.0
+
 
 async def _analyze_slot():
     try:
@@ -767,7 +774,21 @@ async def _analyze_and_persist(
     # finding's clause text (case-insensitive substring on the first 6 words).
     if sweep_task is not None:
         try:
-            sweep_findings = await sweep_task
+            # The sweep has already overlapped the per-clause loop above, so
+            # it's usually done by now. Cap the *remaining* wait: under provider
+            # throttling the sweep can otherwise run toward its own 120s
+            # internal timeout and stretch cold-path latency. Supplementary
+            # finding — drop it rather than make the founder wait.
+            sweep_findings = await asyncio.wait_for(
+                sweep_task, timeout=_SWEEP_AWAIT_BUDGET_S
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "LoopholeSweep exceeded %ss await budget — skipping.",
+                _SWEEP_AWAIT_BUDGET_S,
+            )
+            sweep_task.cancel()
+            sweep_findings = []
         except Exception:  # pragma: no cover — never fail the request on sweep
             logger.exception("LoopholeSweep task failed.")
             sweep_findings = []
@@ -925,7 +946,16 @@ async def _analyze_and_persist(
     ambiguities: list[ContractAmbiguity] = []
     if ambiguity_task is not None:
         try:
-            ambiguities = await ambiguity_task
+            ambiguities = await asyncio.wait_for(
+                ambiguity_task, timeout=_SWEEP_AWAIT_BUDGET_S
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "AmbiguitySweep exceeded %ss await budget — skipping.",
+                _SWEEP_AWAIT_BUDGET_S,
+            )
+            ambiguity_task.cancel()
+            ambiguities = []
         except Exception:  # pragma: no cover — never block the response on sweep
             logger.exception("Awaiting ambiguity sweep failed.")
             ambiguities = []
@@ -1197,6 +1227,9 @@ class CopilotGuidanceRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     history: list[CopilotMessage] = Field(default_factory=list)
     mode: str = Field(default="template", pattern="^(template|custom|chat)$")
+    # One-line founder/company context from onboarding so the advisor never
+    # re-asks the basics (name, company, stage, sector, jurisdiction).
+    startup_profile: str | None = Field(default=None, max_length=1000)
 
 
 class CopilotGuidanceResponse(BaseModel):
@@ -1225,6 +1258,7 @@ async def copilot_guidance(
             history=[m.model_dump() for m in body.history],
             message=body.message,
             mode=body.mode,
+            startup_profile=body.startup_profile,
         )
     except OffTopicQuestion as exc:
         raise AppError(
@@ -1264,6 +1298,7 @@ async def copilot_guidance_stream(
             history=history,
             message=body.message,
             mode=body.mode,
+            startup_profile=body.startup_profile,
         ):
             yield chunk
 

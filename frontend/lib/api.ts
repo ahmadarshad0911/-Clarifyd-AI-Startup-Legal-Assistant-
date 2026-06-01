@@ -250,12 +250,19 @@ export class ApiClient {
     template: string,
     message: string,
     history: CopilotMessage[] = [],
-    mode: CopilotMode = "template"
+    mode: CopilotMode = "template",
+    startupProfile?: string | null
   ): Promise<CopilotGuidanceResponse> {
     return this.request<CopilotGuidanceResponse>("/api/v1/copilot/guidance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ template, message, history, mode }),
+      body: JSON.stringify({
+        template,
+        message,
+        history,
+        mode,
+        startup_profile: startupProfile || null,
+      }),
     });
   }
 
@@ -270,6 +277,7 @@ export class ApiClient {
     history: CopilotMessage[],
     mode: CopilotMode,
     onChunk: (text: string) => void,
+    startupProfile?: string | null,
   ): Promise<void> {
     const token = await this.getToken();
     const res = await fetch(`${this.baseUrl}/api/v1/copilot/guidance/stream`, {
@@ -278,7 +286,13 @@ export class ApiClient {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ template, message, history, mode }),
+      body: JSON.stringify({
+        template,
+        message,
+        history,
+        mode,
+        startup_profile: startupProfile || null,
+      }),
     });
     if (!res.ok || !res.body) {
       let body: unknown = null;

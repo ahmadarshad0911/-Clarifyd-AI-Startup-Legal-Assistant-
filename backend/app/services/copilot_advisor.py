@@ -197,6 +197,7 @@ class CopilotAdvisor:
         history: list[dict[str, str]],
         message: str,
         mode: str = "template",
+        startup_profile: str | None = None,
     ) -> str:
         # Off-topic gate runs first so we never burn an LLM call on
         # "print an array from 1 to 10" style requests. Skip for non-chat
@@ -224,6 +225,8 @@ class CopilotAdvisor:
             {"role": "system", "content": system_prompt},
             {"role": "system", "content": context},
         ]
+        if startup_profile:
+            messages.append({"role": "system", "content": startup_profile})
         # Only keep role/content pairs we trust.
         for turn in history[-12:]:
             role = turn.get("role")
@@ -290,7 +293,13 @@ class CopilotAdvisor:
         return reason if off else None
 
     def _build_messages(
-        self, *, template: str, history: list[dict[str, str]], message: str, mode: str
+        self,
+        *,
+        template: str,
+        history: list[dict[str, str]],
+        message: str,
+        mode: str,
+        startup_profile: str | None = None,
     ) -> list[dict[str, str]]:
         system_prompt = _PROMPTS.get(mode, TEMPLATE_PROMPT)
         if mode == "chat":
@@ -303,6 +312,8 @@ class CopilotAdvisor:
             {"role": "system", "content": system_prompt},
             {"role": "system", "content": context},
         ]
+        if startup_profile:
+            messages.append({"role": "system", "content": startup_profile})
         for turn in history[-12:]:
             role = turn.get("role")
             content = turn.get("content", "")
@@ -318,6 +329,7 @@ class CopilotAdvisor:
         history: list[dict[str, str]],
         message: str,
         mode: str = "template",
+        startup_profile: str | None = None,
     ) -> AsyncIterator[str]:
         """Stream the reply token-by-token. Off-topic gating is the caller's
         job (run off_topic_reason before opening the stream)."""
@@ -331,7 +343,11 @@ class CopilotAdvisor:
         body: dict[str, Any] = {
             "model": self._model,
             "messages": self._build_messages(
-                template=template, history=history, message=message, mode=mode
+                template=template,
+                history=history,
+                message=message,
+                mode=mode,
+                startup_profile=startup_profile,
             ),
             "temperature": 0.3,
             "max_tokens": 700,

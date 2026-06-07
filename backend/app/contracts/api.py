@@ -72,6 +72,9 @@ class ContractAmbiguity(APIContractModel):
     # What is left undefined / open to interpretation, and why it matters.
     issue: str
     severity: RiskLevel
+    # A concrete line/sentence the founder can add to cure the ambiguity.
+    # Additive, defaulted for backward compatibility with cached analyses.
+    suggestion: str = ""
 
 
 class CrossVerification(APIContractModel):

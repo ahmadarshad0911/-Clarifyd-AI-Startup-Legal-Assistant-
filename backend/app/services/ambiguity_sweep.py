@@ -29,10 +29,14 @@ _SYSTEM = (
     "terms ('reasonable', 'promptly', 'material'), missing definitions, "
     "unspecified amounts/dates/parties/scope, or clauses open to more than "
     "one reading. For each, quote the exact phrase and say what is "
-    "undefined and why it matters. A clearly-drafted contract may have few "
-    "or zero such issues — if so, return a short list or an empty list. Do "
-    "NOT invent ambiguities, pad the list, or flag precise, standard "
-    "wording. Return strict JSON only."
+    "undefined and why it matters. THEN give a concrete fix: the exact "
+    "sentence or clause line the founder should add or substitute to remove "
+    "the ambiguity (define the term, name the amount/date/party, or pin the "
+    "single intended reading). Make the fix specific and drop-in ready, not "
+    "generic advice. A clearly-drafted contract may have few or zero such "
+    "issues — if so, return a short list or an empty list. Do NOT invent "
+    "ambiguities, pad the list, or flag precise, standard wording. Return "
+    "strict JSON only."
 )
 
 _USER_TEMPLATE = (
@@ -44,6 +48,8 @@ _USER_TEMPLATE = (
     '     "excerpt": "<the exact ambiguous phrase, verbatim>",\n'
     '     "issue": "<what is undefined / open to interpretation and the '
     "risk it creates>\",\n"
+    '     "suggestion": "<the exact sentence/clause line to ADD or substitute '
+    "to remove this ambiguity — drop-in ready, specific>\",\n"
     '     "severity": "<low|medium|high|critical>"}}\n'
     "  ]\n"
     "}}\n"
@@ -110,6 +116,7 @@ class AmbiguitySweeper:
             clause_name = str(item.get("clause_name") or "").strip()
             excerpt = str(item.get("excerpt") or "").strip()
             issue = str(item.get("issue") or "").strip()
+            suggestion = str(item.get("suggestion") or "").strip()
             sev_raw = str(item.get("severity") or "low").strip().lower()
             if sev_raw not in _VALID_SEV:
                 sev_raw = "low"
@@ -120,6 +127,7 @@ class AmbiguitySweeper:
                     clause_name=clause_name or "Unnamed clause",
                     excerpt=excerpt,
                     issue=issue,
+                    suggestion=suggestion,
                     severity=RiskLevel(sev_raw),
                 )
             )

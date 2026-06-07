@@ -59,6 +59,7 @@ export type ContractAmbiguity = {
   clause_name: string;
   excerpt: string;
   issue: string;
+  suggestion?: string;
   severity: RiskLevel;
 };
 

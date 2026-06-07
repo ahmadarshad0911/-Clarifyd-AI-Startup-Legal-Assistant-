@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   Plus,
+  CheckCircle,
   Trash,
   Sparkle,
   Download,
@@ -82,6 +83,8 @@ function Inner() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [picked, setPicked] = useState<Record<string, Set<number>>>({});
+  // Ambiguity fixes selected to insert into the collaborator document.
+  const [pickedAmb, setPickedAmb] = useState<Record<string, Set<number>>>({});
   const [exporting, setExporting] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [notice, setNotice] = useState<NoticeContent | null>(null);
@@ -285,6 +288,60 @@ function Inner() {
       push("Ultimate collaborator document drafted", "success", "Counsel review still recommended.");
     } catch (err) {
       push(err instanceof ApiError ? err.message : "Export failed.", "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function togglePickAmb(idx: number) {
+    if (!active) return;
+    setPickedAmb((prev) => {
+      const set = new Set(prev[active.draft_id] ?? []);
+      if (set.has(idx)) set.delete(idx); else set.add(idx);
+      return { ...prev, [active.draft_id]: set };
+    });
+    setExportedDoc(null);
+  }
+
+  // Build a revised document that INSERTS the chosen ambiguity-removal lines
+  // into the contract (loopholes swap a clause; ambiguities add a clarifying
+  // sentence). Uses the LLM so the line lands inside the right clause and
+  // every other word is reproduced verbatim.
+  async function addAmbiguitiesToDoc() {
+    if (!active) return;
+    const ambs = active.analysis.ambiguities ?? [];
+    const chosenSet = pickedAmb[active.draft_id] ?? new Set<number>();
+    const chosen = ambs.filter((a, i) => chosenSet.has(i) && a.suggestion);
+    if (!chosen.length) {
+      push("Pick at least one ambiguity fix to add.", "info");
+      return;
+    }
+    setExporting(true);
+    try {
+      const original = active.analysis.extracted_text ?? "";
+      const ctx = profileContextLine();
+      const block = chosen
+        .map(
+          (a, i) =>
+            `${i + 1}. CLAUSE: ${a.clause_name}\n   AMBIGUOUS PHRASE: "${a.excerpt}"\n   ADD THIS LINE: ${a.suggestion}`,
+        )
+        .join("\n\n");
+      const prompt = `${ctx ? ctx + "\n\n" : ""}The user reviewed "${active.file_name}" and accepted the ambiguity fixes below. Produce the COMPLETE revised document with these clarifying lines added.\n\nSTRICT RULES:\n- INSERT each "ADD THIS LINE" sentence into the clause named, immediately after the ambiguous phrase or at the end of that clause.\n- Reproduce every other clause exactly as written — do not paraphrase, summarize, or reorder.\n- Preserve original headings, numbering, and signature blocks.\n- Where a specific detail is unknown, insert [TO BE CONFIRMED — <field>].\n\n${original ? `ORIGINAL DOCUMENT:\n"""\n${original}\n"""\n\n` : ""}AMBIGUITY FIXES TO ADD:\n\n${block}\n\nReturn ONLY the full revised document text. No commentary.`;
+      const res = await client.copilotGuidance(
+        active.file_name || "Collaborator document",
+        prompt,
+        [],
+        "custom",
+        ctx,
+      );
+      setExportedDoc(res.reply);
+      push(
+        "Ambiguity fixes added to document",
+        "success",
+        `${chosen.length} clarifying line${chosen.length === 1 ? "" : "s"} inserted. Counsel review still recommended.`,
+      );
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "Adding fixes failed.", "error");
     } finally {
       setExporting(false);
     }
@@ -691,6 +748,7 @@ function Inner() {
                       : sev === "medium"
                       ? "#a98b2a"
                       : "var(--ink-muted)";
+                  const ambChecked = (pickedAmb[active.draft_id] ?? new Set<number>()).has(i);
                   return (
                     <li
                       key={`amb-${i}`}
@@ -734,9 +792,35 @@ function Inner() {
                       </p>
                       {a.suggestion ? (
                         <div style={{ marginTop: 12 }}>
-                          <div className="cf-mono" style={{ fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800, color: "var(--brand-500)", display: "flex", alignItems: "center", gap: 6 }}>
-                            <Sparkle weight="duotone" size={13} aria-hidden />
-                            Suggested fix · add this line
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                            <div className="cf-mono" style={{ fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800, color: "var(--brand-500)", display: "flex", alignItems: "center", gap: 6 }}>
+                              <Sparkle weight="duotone" size={13} aria-hidden />
+                              Suggested fix · add this line
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => togglePickAmb(i)}
+                              aria-pressed={ambChecked}
+                              className="cf-mono"
+                              style={{
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                fontSize: 9.5,
+                                letterSpacing: "0.12em",
+                                textTransform: "uppercase",
+                                fontWeight: 800,
+                                padding: "5px 10px",
+                                borderRadius: "var(--r-sm)",
+                                border: `1px solid ${ambChecked ? "var(--brand-500)" : "var(--border-strong)"}`,
+                                background: ambChecked ? "var(--brand-500)" : "transparent",
+                                color: ambChecked ? "#fff" : "var(--ink-muted)",
+                              }}
+                            >
+                              {ambChecked ? <CheckCircle weight="fill" size={13} aria-hidden /> : <Plus weight="bold" size={12} aria-hidden />}
+                              {ambChecked ? "Added to doc" : "Add to doc"}
+                            </button>
                           </div>
                           <p
                             style={{
@@ -758,6 +842,58 @@ function Inner() {
                   );
                 })}
               </ul>
+              {(active.analysis.ambiguities ?? []).some((a) => a.suggestion) ? (
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 14,
+                    flexWrap: "wrap",
+                    padding: "14px 18px",
+                    background: "var(--bg-elevated-2)",
+                    border: "1px solid var(--brand-500)",
+                    borderRadius: "var(--r-md)",
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-primary)", lineHeight: 1.5, maxWidth: 520 }}>
+                    {(pickedAmb[active.draft_id]?.size ?? 0)
+                      ? `${pickedAmb[active.draft_id]!.size} clarifying line${pickedAmb[active.draft_id]!.size === 1 ? "" : "s"} will be inserted into the document — everything else stays as written.`
+                      : "Mark one or more fixes “Add to doc”, then generate the revised document."}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={addAmbiguitiesToDoc}
+                      disabled={exporting || !(pickedAmb[active.draft_id]?.size ?? 0)}
+                      className="cursor-pointer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        background: "var(--brand-500)",
+                        color: "var(--ink-on-brand)",
+                        padding: "12px 22px",
+                        border: "none",
+                        fontSize: 13.5,
+                        fontWeight: 500,
+                        borderRadius: "var(--r-sm)",
+                        opacity: exporting || !(pickedAmb[active.draft_id]?.size ?? 0) ? 0.4 : 1,
+                        cursor: exporting || !(pickedAmb[active.draft_id]?.size ?? 0) ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <Sparkle weight="duotone" size={13} /> {exporting ? "Drafting…" : "Add fixes to document"}
+                    </button>
+                    {exportedDoc ? (
+                      <>
+                        <DownloadBtn label="PDF" onClick={downloadPdf} icon={<Download weight="bold" size={12} />} />
+                        <DownloadBtn label=".txt" onClick={downloadTxt} icon={<FileText weight="duotone" size={12} />} />
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : null}
 

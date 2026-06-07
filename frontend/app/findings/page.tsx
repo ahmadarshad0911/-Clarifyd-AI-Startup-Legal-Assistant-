@@ -732,6 +732,28 @@ function Inner() {
                       <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--ink-secondary)", lineHeight: 1.6 }}>
                         {a.issue}
                       </p>
+                      {a.suggestion ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div className="cf-mono" style={{ fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800, color: "var(--brand-500)", display: "flex", alignItems: "center", gap: 6 }}>
+                            <Sparkle weight="duotone" size={13} aria-hidden />
+                            Suggested fix · add this line
+                          </div>
+                          <p
+                            style={{
+                              margin: "6px 0 0",
+                              padding: "10px 12px",
+                              background: "var(--bg-elevated-2)",
+                              border: "1px dashed var(--brand-500)",
+                              borderRadius: "var(--r-sm)",
+                              fontSize: 13,
+                              color: "var(--ink-primary)",
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {a.suggestion}
+                          </p>
+                        </div>
+                      ) : null}
                     </li>
                   );
                 })}

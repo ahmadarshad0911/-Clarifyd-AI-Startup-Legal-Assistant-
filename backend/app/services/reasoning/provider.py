@@ -49,3 +49,14 @@ class ReasoningProvider(ABC):
     @abstractmethod
     async def assess_clause(self, clause: ExtractedClause) -> ClauseAssessment:  # pragma: no cover
         ...
+
+    async def assess_clauses(
+        self, clauses: list[ExtractedClause]
+    ) -> list[ClauseAssessment]:
+        """Assess several clauses, returned in input order.
+
+        Default routes each clause through `assess_clause`. Network providers
+        override this with a single batched call to cut round-trips; local
+        providers (e.g. rules) inherit the default since they have no latency.
+        """
+        return [await self.assess_clause(c) for c in clauses]

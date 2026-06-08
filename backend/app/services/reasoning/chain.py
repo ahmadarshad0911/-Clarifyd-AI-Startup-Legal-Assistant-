@@ -46,3 +46,23 @@ class FallbackChainProvider(ReasoningProvider):
         raise ProviderError(
             f"All providers in chain failed; last error: {last_error}"
         )
+
+    async def assess_clauses(
+        self, clauses: list[ExtractedClause]
+    ) -> list[ClauseAssessment]:
+        last_error: Exception | None = None
+        for provider in self._providers:
+            try:
+                return await provider.assess_clauses(clauses)
+            except ProviderError as exc:
+                last_error = exc
+                logger.error(
+                    "Reasoning provider %s/%s batch failed: %s — falling through.",
+                    provider.name,
+                    provider.model,
+                    exc,
+                )
+                continue
+        raise ProviderError(
+            f"All providers in chain failed (batch); last error: {last_error}"
+        )

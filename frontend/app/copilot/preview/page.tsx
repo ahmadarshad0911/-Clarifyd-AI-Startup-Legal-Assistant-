@@ -1,25 +1,24 @@
 "use client";
 
 /**
- * /copilot/preview — Clarifyd AI · redesign preview
+ * /copilot/preview — Clarifyd AI · redesign preview (chat-first)
  *
- * Standalone review route; does NOT replace /copilot. Two entry options only
- * (no template tiles — the Library covers those): Startup Q&A and Custom
- * Template. The chatbot is the centerpiece and opens as an animated popup
- * (right-docked panel on desktop, near-fullscreen sheet on mobile) from a
- * floating launcher. Streaming, off-topic handling, doc generation, and
+ * Standalone review route; does NOT replace /copilot. The page is one focused
+ * entry: a command bar that asks a question or describes a document, plus
+ * suggestion chips. Submitting opens the chat popup (right-docked panel on
+ * desktop, near-fullscreen sheet on mobile). A floating launcher resumes it.
+ * Streaming, off-topic handling, doc generation, readiness-gated drafting, and
  * session persistence are ported verbatim from the live page.
  *
- * Design: product register (impeccable). Motion conveys state (popup open,
- * launcher, draft reveal), never page-load decoration; no numbered-section
- * scaffolding; no em dashes in copy.
+ * Design: product register (impeccable). Motion is state-only (bar focus,
+ * popup, launcher, draft reveal); no page-load choreography, no em dashes.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, Chat, Sparkle, PaperPlaneRight, X, Download, Copy,
-  FileText, Compass, PenNib, ChatCircleDots,
+  FileText, Compass, ChatCircleDots, PenNib, MagnifyingGlass,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../../components/shell/dark-app-shell";
@@ -34,11 +33,10 @@ import { profileContextLine } from "../../../lib/founder-profile";
 import { readJSON, writeJSON } from "../../../lib/user-storage";
 import { useIsMobile } from "../../../lib/use-is-mobile";
 
-// Distinct key from the live page so the preview never collides with a
-// real in-progress session on /copilot.
 const SESSION_KEY = "clarifyd.copilot-preview-session";
 
 type Active = { id: string; name: string; mode: CopilotMode };
+type BarMode = "ask" | "draft";
 type SavedSession = {
   active?: Active | null;
   messages?: CopilotMessage[];
@@ -50,12 +48,25 @@ const EOQ = [0.23, 1, 0.32, 1] as const;
 const SPRING = { type: "spring" as const, stiffness: 380, damping: 32, mass: 0.9 };
 
 // The assistant emits this token (instructed in the custom opener) only once
-// it has collected every detail needed to draft. The "Generate document"
-// action stays hidden until it appears, and the token is stripped from the
-// visible reply so the founder never sees it.
+// it has every detail needed to draft. "Generate document" stays hidden until
+// then, and the token is stripped from the visible reply.
 const READY_TOKEN = "READY_TO_DRAFT";
 function stripReadyToken(text: string): string {
   return text.replace(new RegExp(`\\s*${READY_TOKEN}\\s*`, "g"), " ").trimEnd();
+}
+
+const ASK_SUGGESTIONS = [
+  "What should I watch for in a SAFE valuation cap?",
+  "Explain the cliff in employee vesting.",
+  "Is this MSA liability clause one-sided?",
+  "What IP terms protect me as a founder?",
+];
+
+const GREETING =
+  "Hi — I'm a startup founder. Introduce yourself briefly and ask what I'd like guidance on.";
+
+function customOpener(name: string): string {
+  return `I want to create a custom document: "${name}". Confirm the purpose and parties, then guide me through the clauses it should contain, asking for each required detail ONE at a time. Only once you have gathered every detail needed to draft a complete document, end that single message with the token ${READY_TOKEN} on its own line. Never output that token before you truly have everything.`;
 }
 
 export default function CopilotPreviewPage() {
@@ -69,8 +80,11 @@ export default function CopilotPreviewPage() {
   const [messages, setMessages] = useState<CopilotMessage[]>(saved.current.messages ?? []);
   const [doc, setDoc] = useState<string | null>(saved.current.doc ?? null);
   const [open, setOpen] = useState<boolean>(saved.current.open ?? false);
+
+  const [bar, setBar] = useState("");
+  const [barMode, setBarMode] = useState<BarMode>("ask");
+  const [barFocused, setBarFocused] = useState(false);
   const [input, setInput] = useState("");
-  const [customDraft, setCustomDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [notice, setNotice] = useState<NoticeContent | null>(null);
@@ -82,8 +96,8 @@ export default function CopilotPreviewPage() {
     writeJSON(SESSION_KEY, { active, messages, doc, open });
   }, [active, messages, doc, open]);
 
-  // Lock body scroll + Escape-to-close while the popup is open, and move
-  // focus to the chat input so keyboard users land inside the dialog.
+  // Lock body scroll + Escape-to-close while the popup is open, and focus the
+  // chat input so keyboard users land inside the dialog.
   useEffect(() => {
     if (!open) return;
     const prevOverflow = document.body.style.overflow;
@@ -127,25 +141,31 @@ export default function CopilotPreviewPage() {
     [client, push, scrollToBottom],
   );
 
+  // Hero command bar submit, routed by mode.
+  function submitBar() {
+    const text = bar.trim();
+    if (barMode === "draft") {
+      if (!text) return;
+      setBar("");
+      startSession(text, text, "custom", customOpener(text));
+    } else {
+      setBar("");
+      startSession("Startup Q&A", "Startup Q&A", "chat", text || GREETING);
+    }
+  }
+
+  function askSuggestion(q: string) {
+    setBarMode("ask");
+    startSession("Startup Q&A", "Startup Q&A", "chat", q);
+  }
+
+  // Floating launcher: resume an existing thread, else open a fresh Q&A.
   function openChat() {
-    if (active?.mode === "chat") {
+    if (active) {
       setOpen(true);
       return;
     }
-    startSession(
-      "Startup Q&A", "Startup Q&A", "chat",
-      "Hi — I'm a startup founder. Introduce yourself briefly and ask what I'd like guidance on.",
-    );
-  }
-
-  function startCustom() {
-    const name = customDraft.trim();
-    if (!name) return;
-    setCustomDraft("");
-    startSession(
-      name, name, "custom",
-      `I want to create a custom document: "${name}". Confirm the purpose and parties, then guide me through the clauses it should contain, asking for each required detail ONE at a time. Only once you have gathered every detail needed to draft a complete document, end that single message with the token ${READY_TOKEN} on its own line. Never output that token before you truly have everything.`,
-    );
+    startSession("Startup Q&A", "Startup Q&A", "chat", GREETING);
   }
 
   async function send() {
@@ -181,7 +201,7 @@ export default function CopilotPreviewPage() {
           hint: "Try: 'What should I look for in a SAFE valuation cap?' or 'Explain the cliff in employee vesting.'",
           primaryLabel: "Got it",
         });
-        setMessages(messages); // drop the off-topic turn from history
+        setMessages(messages);
       } else {
         push(err instanceof ApiError ? err.message : "Clarifyd AI request failed.", "error");
         setMessages(next);
@@ -252,18 +272,19 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
 
   const statusLabel = active
     ? active.mode === "chat" ? "Startup Q&A · ask anything"
-      : active.mode === "custom" ? `Custom builder · ${active.name}`
-      : `Builder · ${active.name}`
+      : `Custom builder · ${active.name}`
     : "New session";
 
   const hasThread = active !== null && messages.length > 0;
-  const qaResuming = active?.mode === "chat" && messages.length > 0;
-  // Show "Generate document" only after the assistant signals it has every
-  // detail (sticky once seen, so later turns don't hide it again).
   const readyToDraft =
     active !== null &&
     active.mode !== "chat" &&
     messages.some((m) => m.role === "assistant" && m.content.includes(READY_TOKEN));
+
+  const draft = barMode === "draft";
+  const barPlaceholder = draft
+    ? "Describe a document: Advisor Agreement, Co-Founder Vesting…"
+    : "Ask a startup legal question…";
 
   return (
     <AppShell>
@@ -271,126 +292,146 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
         <OrbitalLoader fullscreen statusLines={["Drafting clauses…", "Filling deal terms…", "Cross-checking…"]} />
       ) : null}
 
-      {/* ===== Hero ===== */}
-      <section style={{ paddingBottom: 28, borderBottom: "1px solid var(--bsd-hairline)" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-          <div style={{ maxWidth: 720 }}>
-            <span className="cf-eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--bsd-red)" }}>
-              <Compass weight="duotone" size={14} aria-hidden />
-              Clarifyd AI · Draft room
-            </span>
-            <h1 style={{ margin: "12px 0 0", fontSize: "clamp(38px, 6vw, 68px)", fontWeight: 800, color: "var(--bsd-ink)", letterSpacing: "-0.035em", lineHeight: 0.98, textWrap: "balance" }}>
-              Your advisor,{" "}
-              <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>on call.</span>
-            </h1>
-            <p style={{ margin: "16px 0 0", color: "var(--bsd-body)", fontSize: 16, lineHeight: 1.6, maxWidth: 560, textWrap: "pretty" }}>
-              Ask a founder-grade legal question, or describe a document and draft it clause by
-              clause. Clarifyd AI thinks alongside you. It is decision support, not a substitute
-              for licensed counsel.
-            </p>
-          </div>
-          <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
-            ◆ Audited 2026
-          </span>
-        </div>
-      </section>
-
-      {/* ===== Two entry options (Q&A primary, Custom secondary) ===== */}
-      <div
+      {/* ===== Chat-first hero ===== */}
+      <section
         style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "1.08fr 0.92fr",
-          gap: isMobile ? 18 : 28,
-          marginTop: 40,
-          alignItems: "stretch",
+          minHeight: isMobile ? "auto" : "62vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          paddingTop: isMobile ? 8 : 0,
+          paddingBottom: isMobile ? 8 : 0,
+          maxWidth: 760,
+          margin: "0 auto",
         }}
       >
-        {/* Q&A — the primary, filled action */}
-        <article
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            padding: isMobile ? "24px 20px" : "30px 28px",
-            background: "var(--bsd-paper-deep)",
-            border: "2px solid var(--bsd-ink)",
-          }}
-        >
-          <ChatCircleDots weight="duotone" size={32} color="var(--bsd-red)" aria-hidden />
-          <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? 24 : 28, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.025em" }}>
-              Startup Q&amp;A
-            </h2>
-            <p style={{ margin: "10px 0 0", fontSize: 14.5, color: "var(--bsd-body)", lineHeight: 1.55, maxWidth: 420 }}>
-              Open chat for legal, fundraising, hiring, IP, or compliance questions. Answers
-              stream in, scoped to your founder profile.
-            </p>
-          </div>
-          <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-            <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>
-              Ask anything · streamed
-            </span>
-            <button
-              type="button"
-              onClick={openChat}
-              className="bsd-btn cursor-pointer"
-              style={{ width: "100%", justifyContent: "center", minHeight: 48 }}
-            >
-              <Chat weight="duotone" size={14} />
-              {qaResuming ? "Resume conversation" : "Open chat"}
-            </button>
-          </div>
-        </article>
+        <span className="cf-eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--bsd-red)" }}>
+          <Compass weight="duotone" size={14} aria-hidden />
+          Clarifyd AI · Draft room
+        </span>
+        <h1 style={{ margin: "14px 0 0", fontSize: "clamp(40px, 7vw, 74px)", fontWeight: 800, color: "var(--bsd-ink)", letterSpacing: "-0.04em", lineHeight: 0.95, textWrap: "balance" }}>
+          Your advisor,{" "}
+          <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>on call.</span>
+        </h1>
+        <p style={{ margin: "16px 0 0", color: "var(--bsd-body)", fontSize: 16.5, lineHeight: 1.6, maxWidth: 560, textWrap: "pretty" }}>
+          Ask a founder-grade legal question, or describe a document and draft it clause by clause.
+          Decision support, not a substitute for licensed counsel.
+        </p>
 
-        {/* Custom Template — secondary, input-led */}
-        <article
+        {/* Mode segmented control */}
+        <div
+          role="tablist"
+          aria-label="Mode"
+          style={{ marginTop: 28, display: "inline-flex", alignSelf: "flex-start", border: "1.5px solid var(--bsd-ink)" }}
+        >
+          {(["ask", "draft"] as BarMode[]).map((m) => {
+            const on = barMode === m;
+            return (
+              <button
+                key={m}
+                role="tab"
+                aria-selected={on}
+                type="button"
+                onClick={() => setBarMode(m)}
+                className="cf-mono cursor-pointer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  minHeight: 40, padding: "0 16px",
+                  background: on ? "var(--bsd-ink)" : "transparent",
+                  color: on ? "var(--bsd-paper)" : "var(--bsd-muted)",
+                  border: "none",
+                  borderRight: m === "ask" ? "1.5px solid var(--bsd-ink)" : "none",
+                  fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800,
+                }}
+              >
+                {m === "ask" ? <ChatCircleDots weight="duotone" size={14} /> : <PenNib weight="duotone" size={14} />}
+                {m === "ask" ? "Ask" : "Draft a doc"}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* The command bar — the page's center of gravity */}
+        <div
+          className="bsd-field"
           style={{
+            marginTop: 12,
             display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            padding: isMobile ? "24px 20px" : "30px 28px",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 8px 8px 16px",
             background: "var(--bsd-paper)",
-            border: "1.5px solid var(--bsd-hairline)",
+            border: "2px solid var(--bsd-ink)",
+            transition: "box-shadow 180ms var(--ease-out, ease-out), transform 180ms var(--ease-out, ease-out)",
+            boxShadow: barFocused && !reduce ? "0 0 0 4px color-mix(in oklab, var(--bsd-red) 22%, transparent)" : "none",
           }}
         >
-          <PenNib weight="duotone" size={30} color="var(--bsd-ink)" aria-hidden />
-          <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 24, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.02em" }}>
-              Custom Template
-            </h2>
-            <p style={{ margin: "10px 0 0", fontSize: 14, color: "var(--bsd-body)", lineHeight: 1.55, maxWidth: 420 }}>
-              Describe any document (an Advisor Agreement, Co-Founder Vesting, a SAFE side letter)
-              and Clarifyd AI designs the clauses with you, then drafts it from scratch.
-            </p>
-          </div>
-          <div className="bsd-field" style={{ marginTop: "auto", display: "flex", alignItems: "flex-end", gap: 10 }}>
-            <label htmlFor="preview-custom" style={SR_ONLY}>
-              Describe the document you want to create
-            </label>
-            <input
-              id="preview-custom"
-              type="text"
-              value={customDraft}
-              onChange={(e) => setCustomDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") startCustom(); }}
-              placeholder="Advisor Agreement, Co-Founder Vesting…"
-              className="bsd-input"
-              style={{ flex: 1, fontSize: 15, minHeight: 44 }}
-            />
-            <button
-              type="button"
-              onClick={startCustom}
-              disabled={!customDraft.trim()}
-              className="bsd-btn bsd-btn--sm cursor-pointer"
-              style={{ minHeight: 44 }}
-            >
-              Start <ArrowRight weight="bold" size={11} />
-            </button>
-          </div>
-        </article>
-      </div>
+          {draft ? (
+            <PenNib weight="duotone" size={20} color="var(--bsd-red)" aria-hidden style={{ flexShrink: 0 }} />
+          ) : (
+            <MagnifyingGlass weight="bold" size={19} color="var(--bsd-red)" aria-hidden style={{ flexShrink: 0 }} />
+          )}
+          <label htmlFor="clarifyd-bar" style={SR_ONLY}>
+            {draft ? "Describe the document to draft" : "Ask Clarifyd AI a question"}
+          </label>
+          <input
+            id="clarifyd-bar"
+            type="text"
+            value={bar}
+            onChange={(e) => setBar(e.target.value)}
+            onFocus={() => setBarFocused(true)}
+            onBlur={() => setBarFocused(false)}
+            onKeyDown={(e) => { if (e.key === "Enter") submitBar(); }}
+            placeholder={barPlaceholder}
+            className="bsd-input"
+            style={{ flex: 1, fontSize: 16, minHeight: 44, border: "none", background: "transparent", padding: 0 }}
+          />
+          <button
+            type="button"
+            onClick={submitBar}
+            disabled={draft && !bar.trim()}
+            className="bsd-btn cursor-pointer"
+            aria-label={draft ? "Start drafting" : "Ask Clarifyd AI"}
+            style={{ flexShrink: 0, minHeight: 44, padding: "0 18px", justifyContent: "center" }}
+          >
+            {draft ? "Start" : "Ask"} <ArrowRight weight="bold" size={12} />
+          </button>
+        </div>
 
-      {/* ===== Generated document (custom flow output) — revealed on state ===== */}
+        {/* Suggestion chips (Ask mode only) */}
+        {!draft ? (
+          <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {ASK_SUGGESTIONS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => askSuggestion(q)}
+                className="cursor-pointer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  minHeight: 34, padding: "0 12px",
+                  background: "transparent",
+                  border: "1px solid var(--bsd-hairline)",
+                  color: "var(--bsd-body)",
+                  fontSize: 12.5, lineHeight: 1.2,
+                  transition: "border-color 140ms var(--ease-out, ease-out), color 140ms var(--ease-out, ease-out)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--bsd-ink)"; e.currentTarget.style.color = "var(--bsd-ink)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--bsd-hairline)"; e.currentTarget.style.color = "var(--bsd-body)"; }}
+              >
+                <Sparkle weight="duotone" size={13} color="var(--bsd-red)" aria-hidden />
+                {q}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="cf-mono" style={{ marginTop: 16, color: "var(--bsd-muted)", fontSize: 11, letterSpacing: "0.06em", lineHeight: 1.5, maxWidth: 520 }}>
+            Clarifyd AI asks one detail at a time, then drafts the full document. Library has ready-made templates.
+          </p>
+        )}
+      </section>
+
+      {/* ===== Generated document (custom flow output), revealed on state ===== */}
       <AnimatePresence>
         {doc ? (
           <motion.section
@@ -399,7 +440,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22, ease: EOQ }}
-            style={{ marginTop: 48, border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper-deep)" }}
+            style={{ marginTop: 8, marginBottom: 16, border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper-deep)", maxWidth: 920, marginLeft: "auto", marginRight: "auto" }}
           >
             <div style={{ padding: "16px 20px", borderBottom: "1.5px solid var(--bsd-ink)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
@@ -426,9 +467,9 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
         ) : null}
       </AnimatePresence>
 
-      {/* ===== Floating launcher (state-driven motion) ===== */}
+      {/* ===== Floating launcher ===== */}
       <AnimatePresence>
-        {!open ? (
+        {!open && hasThread ? (
           <motion.button
             key="launcher"
             type="button"
@@ -439,36 +480,24 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
             transition={reduce ? { duration: 0.16 } : SPRING}
             whileHover={reduce ? undefined : { scale: 1.04 }}
             whileTap={reduce ? undefined : { scale: 0.96 }}
-            aria-label={hasThread ? "Resume Clarifyd AI chat" : "Open Clarifyd AI chat"}
+            aria-label="Resume Clarifyd AI chat"
             className="cf-mono cursor-pointer"
             style={{
               position: "fixed",
               right: isMobile ? 18 : 28,
               bottom: isMobile ? 18 : 28,
               zIndex: 80,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              minHeight: 56,
-              padding: "0 20px",
-              background: "var(--bsd-ink)",
-              color: "var(--bsd-paper)",
+              display: "inline-flex", alignItems: "center", gap: 10,
+              minHeight: 56, padding: "0 20px",
+              background: "var(--bsd-ink)", color: "var(--bsd-paper)",
               border: "2px solid var(--bsd-ink)",
-              fontSize: 11,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              fontWeight: 800,
+              fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800,
               boxShadow: "0 14px 40px -14px rgba(12,10,8,0.45)",
             }}
           >
             <Chat weight="duotone" size={20} color="var(--bsd-red)" aria-hidden />
-            {isMobile ? null : (hasThread ? "Resume Clarifyd AI" : "Ask Clarifyd AI")}
-            {hasThread ? (
-              <span
-                aria-hidden
-                style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--bsd-red)", animation: "cf-pulse 1.4s ease-in-out infinite" }}
-              />
-            ) : null}
+            {isMobile ? null : "Resume Clarifyd AI"}
+            <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--bsd-red)", animation: "cf-pulse 1.4s ease-in-out infinite" }} />
           </motion.button>
         ) : null}
       </AnimatePresence>
@@ -484,12 +513,9 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
             transition={{ duration: 0.2, ease: EOQ }}
             onClick={() => setOpen(false)}
             style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 90,
+              position: "fixed", inset: 0, zIndex: 90,
               background: "rgba(12, 10, 8, 0.46)",
-              backdropFilter: "blur(2px)",
-              WebkitBackdropFilter: "blur(2px)",
+              backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
               display: "flex",
               alignItems: isMobile ? "flex-end" : "center",
               justifyContent: isMobile ? "stretch" : "flex-end",
@@ -507,12 +533,9 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
               exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: isMobile ? 40 : 12 }}
               transition={reduce ? { duration: 0.16 } : SPRING}
               style={{
-                display: "flex",
-                flexDirection: "column",
-                background: "var(--bsd-paper)",
-                border: "2px solid var(--bsd-ink)",
-                width: isMobile ? "100%" : 460,
-                maxWidth: "100%",
+                display: "flex", flexDirection: "column",
+                background: "var(--bsd-paper)", border: "2px solid var(--bsd-ink)",
+                width: isMobile ? "100%" : 460, maxWidth: "100%",
                 height: isMobile ? "90dvh" : "min(680px, 82dvh)",
                 boxShadow: "0 28px 80px -24px rgba(12,10,8,0.55)",
               }}

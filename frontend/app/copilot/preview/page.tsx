@@ -49,6 +49,15 @@ type SavedSession = {
 const EOQ = [0.23, 1, 0.32, 1] as const;
 const SPRING = { type: "spring" as const, stiffness: 380, damping: 32, mass: 0.9 };
 
+// The assistant emits this token (instructed in the custom opener) only once
+// it has collected every detail needed to draft. The "Generate document"
+// action stays hidden until it appears, and the token is stripped from the
+// visible reply so the founder never sees it.
+const READY_TOKEN = "READY_TO_DRAFT";
+function stripReadyToken(text: string): string {
+  return text.replace(new RegExp(`\\s*${READY_TOKEN}\\s*`, "g"), " ").trimEnd();
+}
+
 export default function CopilotPreviewPage() {
   const { client } = useAuth();
   const { push } = useToast();
@@ -135,7 +144,7 @@ export default function CopilotPreviewPage() {
     setCustomDraft("");
     startSession(
       name, name, "custom",
-      `I want to create a custom document: "${name}". Confirm the purpose and parties, then guide me through the clauses it should contain.`,
+      `I want to create a custom document: "${name}". Confirm the purpose and parties, then guide me through the clauses it should contain, asking for each required detail ONE at a time. Only once you have gathered every detail needed to draft a complete document, end that single message with the token ${READY_TOKEN} on its own line. Never output that token before you truly have everything.`,
     );
   }
 
@@ -249,6 +258,12 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
 
   const hasThread = active !== null && messages.length > 0;
   const qaResuming = active?.mode === "chat" && messages.length > 0;
+  // Show "Generate document" only after the assistant signals it has every
+  // detail (sticky once seen, so later turns don't hide it again).
+  const readyToDraft =
+    active !== null &&
+    active.mode !== "chat" &&
+    messages.some((m) => m.role === "assistant" && m.content.includes(READY_TOKEN));
 
   return (
     <AppShell>
@@ -568,7 +583,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
                           Reply
                         </div>
                       ) : null}
-                      {m.content}
+                      {m.role === "assistant" ? stripReadyToken(m.content) : m.content}
                     </div>
                   ))
                 )}
@@ -582,7 +597,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
 
               {/* Composer */}
               <div style={{ borderTop: "1.5px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10, background: "var(--bsd-paper-deep)" }}>
-                {active && active.mode !== "chat" ? (
+                {readyToDraft ? (
                   <button
                     type="button"
                     onClick={generateDocument}

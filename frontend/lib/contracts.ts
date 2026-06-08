@@ -79,6 +79,9 @@ export type AnalyzeContractResponse = {
   findings: ClauseFinding[];
   report?: ContractReport | null;
   ambiguities?: ContractAmbiguity[];
+  // True while loopholes / ambiguities / deep report are still being computed.
+  // The client calls enrichAnalysis(draft_id) to fill them in, then re-renders.
+  analysis_pending?: boolean;
   extracted_text?: string | null;
 };
 

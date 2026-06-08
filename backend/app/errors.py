@@ -7,6 +7,7 @@ class ErrorCode(str, Enum):
     upload_rejected = "upload_rejected"
     not_a_contract = "not_a_contract"
     off_topic_question = "off_topic_question"
+    not_found = "not_found"
     internal_error = "internal_error"
 
 

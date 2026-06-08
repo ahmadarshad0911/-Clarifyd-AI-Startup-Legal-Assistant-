@@ -421,17 +421,6 @@ _analyze_limiter = rate_limit("analyze.contract", limit_attr="rate_limit_analyze
 _ANALYZE_MAX_CONCURRENCY = 4
 _analyze_sem = asyncio.Semaphore(_ANALYZE_MAX_CONCURRENCY)
 
-# Max time to wait for the whole-contract loophole/ambiguity sweeps AFTER the
-# per-clause batch has finished. The sweeps run concurrently with that work, so
-# this is only the leftover tail. Bounds cold-path latency when the provider is
-# throttled — the sweeps are supplementary, so a slow one is dropped, not waited
-# on (their own internal timeout is 120s, far too long to block a response).
-# Kept small so a typical analysis returns inside the ~20s target.
-_SWEEP_AWAIT_BUDGET_S = 8.0
-# Same idea for the full-contract reporter: it overlaps the clause batch, so
-# only its tail is charged here. Dropped (rules-only response) if it overruns.
-_REPORTER_AWAIT_BUDGET_S = 10.0
-
 
 async def _analyze_slot():
     try:
@@ -706,135 +695,23 @@ async def _analyze_and_persist(
         )
     ).scalar_one_or_none()
 
-    # ----- #2 parallel reporter --------------------------------------------
-    # Kick off the full-contract reporter NOW, in parallel with the per-clause
-    # analysis + every DB write below. Saves ~50 % cold-path latency because
-    # the reporter LLM call (~15 s) overlaps with the per-clause loop (~15 s)
-    # instead of running sequentially.
-    #
-    # The reporter gets its OWN AsyncSession from the sessionmaker — async
-    # SQLAlchemy sessions are not coroutine-safe for concurrent writes, and
-    # the main session is busy with finding/audit/draft writes throughout
-    # this handler. Reporter's own session handles ReportCache I/O and
-    # commits independently.
-    #
-    # If the rules-based pre-screen below finds no high/critical clauses
-    # (#3), we cancel the in-flight reporter task — the local httpx request
-    # is aborted, NIM may still complete server-side but we don't wait on it.
-    reporter = get_contract_reporter()
-    reporter_task: "asyncio.Task[ContractReport | None] | None" = None
-    if reporter is not None:
-        async def _run_reporter_isolated() -> ContractReport | None:
-            # On serverless we must build a fresh engine bound to THIS
-            # coroutine's loop. Reusing the request session would be a race
-            # (the request session is being written to concurrently), and
-            # reusing a cached module-level sessionmaker would bind us to
-            # whatever loop made it (often dead in the next invocation).
-            engine = None
-            try:
-                from app.db.session import IS_SERVERLESS, build_request_scoped_engine
-                if IS_SERVERLESS:
-                    engine, sessionmaker = build_request_scoped_engine()
-                else:
-                    sessionmaker = get_sessionmaker()
-            except Exception:  # pragma: no cover — DB not initialised
-                # Degrade to cache-bypass mode rather than fail the request.
-                return await asyncio.wait_for(
-                    reporter.generate(contract_text), timeout=240.0
-                )
-            try:
-                async with sessionmaker() as own_session:
-                    rep = await asyncio.wait_for(
-                        reporter.generate(contract_text, session=own_session),
-                        timeout=240.0,
-                    )
-                    try:
-                        await own_session.commit()
-                    except Exception:  # pragma: no cover — cache write race
-                        await own_session.rollback()
-                    return rep
-            except asyncio.TimeoutError:
-                logger.warning("Reporter timed out after 240s — rules-only response.")
-                return None
-            except asyncio.CancelledError:
-                raise
-            except Exception:  # pragma: no cover — never block the response
-                logger.exception("Reporter task failed.")
-                return None
-            finally:
-                if engine is not None:
-                    try:
-                        await engine.dispose()
-                    except Exception:  # pragma: no cover — best-effort cleanup
-                        pass
-
-        reporter_task = asyncio.create_task(_run_reporter_isolated())
-
-    # Whole-contract loophole sweep, runs concurrently with the per-clause
-    # analyzer + the reporter. Catches multi-issue clauses (per-clause only
-    # ever emits ONE finding) and loopholes from ABSENT clauses (no exit
-    # obligations, missing IP assignment, no data return on termination,
-    # etc.) — which per-clause analysis is structurally blind to.
-    sweeper = get_loophole_sweeper()
-    sweep_task: "asyncio.Task[list[ClauseRiskFinding]] | None" = None
-    if sweeper is not None:
-        sweep_task = asyncio.create_task(sweeper.sweep(contract_text))
-
-    # Whole-contract ambiguity sweep — vague / undefined / open-to-interpretation
-    # language. Runs concurrently; surfaced separately from risk findings.
-    ambiguity_sweeper = get_ambiguity_sweeper()
-    ambiguity_task: "asyncio.Task[list[ContractAmbiguity]] | None" = None
-    if ambiguity_sweeper is not None:
-        ambiguity_task = asyncio.create_task(ambiguity_sweeper.sweep(contract_text))
-
+    # Findings-first: this fast path runs ONLY the per-clause batch and
+    # returns immediately (~10s). The slow whole-contract passes — loophole
+    # sweep, ambiguity sweep, deep report — are deferred to
+    # POST /analyze/{draft_id}/enrich, which the client calls right after and
+    # which streams its result into the stored analysis. analysis_pending=True
+    # on this response tells the client to make that call.
     try:
         analysis_with_flags = await get_async_analysis().analyze(contract_text, session=session)
-    except BaseException as exc:
-        # Don't leave the concurrent sweep/reporter tasks orphaned (they'd
-        # log "task was never retrieved" and keep burning an LLM call).
-        for t in (sweep_task, ambiguity_task, reporter_task):
-            if t is not None:
-                t.cancel()
-        if isinstance(exc, ValueError):
-            raise AppError(
-                code=ErrorCode.upload_rejected,
-                message=str(exc),
-                status_code=422,
-            ) from exc
-        raise
+    except ValueError as exc:
+        raise AppError(
+            code=ErrorCode.upload_rejected,
+            message=str(exc),
+            status_code=422,
+        ) from exc
     analysis = analysis_with_flags.result
     injection_flags = analysis_with_flags.injection_flags
 
-    # Merge sweep findings into per-clause findings. Dedupe is best-effort:
-    # we drop any sweep item whose title materially matches an existing
-    # finding's clause text (case-insensitive substring on the first 6 words).
-    if sweep_task is not None:
-        try:
-            # The sweep has already overlapped the per-clause loop above, so
-            # it's usually done by now. Cap the *remaining* wait: under provider
-            # throttling the sweep can otherwise run toward its own 120s
-            # internal timeout and stretch cold-path latency. Supplementary
-            # finding — drop it rather than make the founder wait.
-            sweep_findings = await asyncio.wait_for(
-                sweep_task, timeout=_SWEEP_AWAIT_BUDGET_S
-            )
-        except asyncio.TimeoutError:
-            logger.warning(
-                "LoopholeSweep exceeded %ss await budget — skipping.",
-                _SWEEP_AWAIT_BUDGET_S,
-            )
-            sweep_task.cancel()
-            sweep_findings = []
-        except Exception:  # pragma: no cover — never fail the request on sweep
-            logger.exception("LoopholeSweep task failed.")
-            sweep_findings = []
-        if sweep_findings:
-            seen = {(f.clause.text or "").strip().lower()[:60] for f in analysis.findings}
-            for s in sweep_findings:
-                key = (s.clause.text or "").strip().lower()[:60]
-                if key and key not in seen:
-                    analysis.findings.append(s)
-                    seen.add(key)
     # Surface medium/high/critical first. If Kimi was rate-limited and every
     # clause fell through to the rules-based provider with severity=low, the
     # UI was showing zero flags. Fall back to ALL findings (incl. low) so the
@@ -944,76 +821,17 @@ async def _analyze_and_persist(
     )
     await session.commit()
 
-    # The reporter has been running in parallel since the top of this handler
-    # (#2). Decide whether to keep its result or cancel based on whether the
-    # rules pre-screen surfaced anything serious (#3).
-    has_serious = any(
-        (row.risk_level or "").lower() in {"high", "critical"}
-        for row in finding_rows
-    )
-    report = None
-    if reporter_task is not None:
-        if not has_serious:
-            # Rules-based pre-screen found nothing high/critical. The reporter
-            # has nothing to add on a clean NDA / SOW — cancel the in-flight
-            # task. The local httpx request is aborted; NIM may still complete
-            # server-side but we don't wait on it.
-            reporter_task.cancel()
-            try:
-                await reporter_task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
-                pass
-            logger.info(
-                "Skipping reporter (cancelled in-flight) — rules found 0 "
-                "high/critical findings on draft %s.",
-                draft_row.id,
-            )
-        else:
-            try:
-                # Reporter may already be complete (parallel kickoff), in which
-                # case this returns immediately. Otherwise wait only the tail
-                # budget — keeps the response inside the ~20s target; if it
-                # overruns we serve the per-clause findings without the report.
-                report = await asyncio.wait_for(
-                    reporter_task, timeout=_REPORTER_AWAIT_BUDGET_S
-                )
-            except asyncio.TimeoutError:
-                logger.warning(
-                    "Reporter exceeded %ss await budget — rules-only response.",
-                    _REPORTER_AWAIT_BUDGET_S,
-                )
-                reporter_task.cancel()
-                report = None
-            except Exception:  # pragma: no cover — never block the response
-                logger.exception("Awaiting reporter task failed.")
-                report = None
-
-    ambiguities: list[ContractAmbiguity] = []
-    if ambiguity_task is not None:
-        try:
-            ambiguities = await asyncio.wait_for(
-                ambiguity_task, timeout=_SWEEP_AWAIT_BUDGET_S
-            )
-        except asyncio.TimeoutError:
-            logger.warning(
-                "AmbiguitySweep exceeded %ss await budget — skipping.",
-                _SWEEP_AWAIT_BUDGET_S,
-            )
-            ambiguity_task.cancel()
-            ambiguities = []
-        except Exception:  # pragma: no cover — never block the response on sweep
-            logger.exception("Awaiting ambiguity sweep failed.")
-            ambiguities = []
-
+    # Fast response: per-clause findings only. Loopholes / ambiguities / deep
+    # report arrive via the enrich call (analysis_pending=True signals that).
     response = _build_response(
         draft_row,
         finding_rows,
-        report=report,
-        ambiguities=ambiguities,
+        report=None,
+        ambiguities=[],
+        analysis_pending=True,
         extracted_text=contract_text,
     )
-    # Persist the full response so the Findings tab can rehydrate it on any
-    # device or origin (browser localStorage is per-origin and ephemeral).
+    # Persist so the Findings tab can rehydrate on any device or origin.
     try:
         draft_row.analysis_json = response.model_dump_json()
         await session.commit()
@@ -1021,6 +839,128 @@ async def _analyze_and_persist(
         logger.exception("Failed to persist analysis_json for draft %s", draft_row.id)
         await session.rollback()
     return response
+
+
+_LEVEL_RANK = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
+
+@app.post(
+    "/analyze/{draft_id}/enrich",
+    response_model=AnalyzeContractResponse,
+    dependencies=[Depends(_analyze_limiter), Depends(_analyze_slot)],
+)
+async def enrich_analysis(
+    draft_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: AuthenticatedUser = Depends(require_role("reviewer")),
+) -> AnalyzeContractResponse:
+    """Second-stage enrichment: run the slow whole-contract passes (loophole
+    sweep, ambiguity sweep, deep report) on an already-analyzed draft and fold
+    them into the stored analysis. The fast /analyze response returns
+    `analysis_pending=True`; the client calls this to fill in the rest."""
+    draft = (
+        await session.execute(
+            select(ContractDraftRow).where(
+                ContractDraftRow.id == draft_id,
+                ContractDraftRow.owner_id == user.id,
+                ContractDraftRow.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if draft is None or not draft.analysis_json:
+        raise AppError(
+            code=ErrorCode.not_found,
+            message="Analysis not found for this draft.",
+            status_code=404,
+        )
+    base = AnalyzeContractResponse.model_validate_json(draft.analysis_json)
+    text = base.extracted_text or ""
+    # Idempotent: if already enriched (or nothing to work with) return as-is.
+    if not base.analysis_pending or not text:
+        if base.analysis_pending:
+            base = base.model_copy(update={"analysis_pending": False})
+            draft.analysis_json = base.model_dump_json()
+            await session.commit()
+        return base
+
+    loophole = get_loophole_sweeper()
+    ambiguity = get_ambiguity_sweeper()
+    reporter = get_contract_reporter()
+    has_serious = any(
+        f.risk_level in (RiskLevel.high, RiskLevel.critical) for f in base.findings
+    )
+
+    async def _run_loophole() -> list[ClauseRiskFinding]:
+        return await loophole.sweep(text) if loophole is not None else []
+
+    async def _run_ambiguity() -> list[ContractAmbiguity]:
+        return await ambiguity.sweep(text) if ambiguity is not None else []
+
+    async def _run_reporter() -> "ContractReport | None":
+        # Skip the deep report on a clean contract — nothing serious to expand.
+        if reporter is None or not has_serious:
+            return None
+        try:
+            return await asyncio.wait_for(
+                reporter.generate(text, session=session), timeout=120.0
+            )
+        except Exception:  # pragma: no cover — never fail enrich on the report
+            logger.exception("Enrich reporter failed.")
+            return None
+
+    loop_findings, ambiguities, report = await asyncio.gather(
+        _run_loophole(), _run_ambiguity(), _run_reporter()
+    )
+
+    # Fold absent-clause / multi-issue loopholes into the findings list, deduped
+    # against what the per-clause pass already surfaced.
+    seen = {(f.excerpt or "").strip().lower()[:60] for f in base.findings}
+    extra: list[ClauseFinding] = []
+    for i, lf in enumerate(loop_findings, start=1):
+        key = (lf.clause.text or "").strip().lower()[:60]
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        extra.append(
+            ClauseFinding(
+                finding_id=f"loophole-{i}",
+                clause_name="Loophole",
+                excerpt=lf.clause.text,
+                risk_level=RiskLevel(lf.severity.value),
+                risk_score=min(100, int(lf.risk_score) * 10),
+                confidence=lf.confidence,
+                explanation=lf.rationale,
+                safer_language=None,
+            )
+        )
+
+    all_findings = list(base.findings) + extra
+    overall = max((f.risk_score for f in all_findings), default=1)
+    highest = (
+        max(all_findings, key=lambda f: _LEVEL_RANK[f.risk_level.value]).risk_level
+        if all_findings
+        else RiskLevel.low
+    )
+    enriched = base.model_copy(
+        update={
+            "findings": all_findings,
+            "summary": RiskSummary(
+                overall_score=overall,
+                highest_risk=highest,
+                findings_count=len(all_findings),
+            ),
+            "ambiguities": ambiguities,
+            "report": report,
+            "analysis_pending": False,
+        }
+    )
+    try:
+        draft.analysis_json = enriched.model_dump_json()
+        await session.commit()
+    except Exception:  # pragma: no cover — never fail enrich on storage
+        logger.exception("Failed to persist enriched analysis for %s", draft_id)
+        await session.rollback()
+    return enriched
 
 
 class AnalyzeTextRequest(BaseModel):
@@ -1223,6 +1163,7 @@ def _build_response(
     *,
     report: "ContractReport | None" = None,
     ambiguities: list[ContractAmbiguity] | None = None,
+    analysis_pending: bool = False,
     extracted_text: str | None = None,
 ) -> AnalyzeContractResponse:
     api_findings = [
@@ -1256,6 +1197,7 @@ def _build_response(
         findings=api_findings,
         report=report,
         ambiguities=ambiguities or [],
+        analysis_pending=analysis_pending,
         extracted_text=extracted_text,
     )
 

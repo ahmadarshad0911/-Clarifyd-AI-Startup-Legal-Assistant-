@@ -352,6 +352,19 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Second-stage enrichment: runs the slow whole-contract passes (loopholes,
+   * ambiguities, deep report) on an already-analyzed draft and returns the
+   * full analysis. Called after a fast analyze that came back
+   * `analysis_pending`. Idempotent server-side.
+   */
+  async enrichAnalysis(draftId: string): Promise<AnalyzeContractResponse> {
+    return this.request<AnalyzeContractResponse>(
+      `/analyze/${encodeURIComponent(draftId)}/enrich`,
+      { method: "POST" },
+    );
+  }
+
   // --- reviews ---
 
   async listReviews(state?: ReviewQueueState): Promise<ReviewListResponse> {

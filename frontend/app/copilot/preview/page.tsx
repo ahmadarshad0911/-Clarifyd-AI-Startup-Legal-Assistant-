@@ -6,9 +6,13 @@
  * Standalone review route; does NOT replace /copilot. Two entry options only
  * (no template tiles — the Library covers those): Startup Q&A and Custom
  * Template. The chatbot is the centerpiece and opens as an animated popup
- * (centered dialog on desktop, near-fullscreen sheet on mobile) with a
+ * (right-docked panel on desktop, near-fullscreen sheet on mobile) from a
  * floating launcher. Streaming, off-topic handling, doc generation, and
  * session persistence are ported verbatim from the live page.
+ *
+ * Design: product register (impeccable). Motion conveys state (popup open,
+ * launcher, draft reveal), never page-load decoration; no numbered-section
+ * scaffolding; no em dashes in copy.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -164,7 +168,7 @@ export default function CopilotPreviewPage() {
           headline: "Clarifyd AI only answers legal & startup questions.",
           body:
             err.message ||
-            "I can help with contracts, term sheets, NDAs, fundraising, hiring, IP, equity, and compliance — not coding tasks, math problems, or general chat.",
+            "I can help with contracts, term sheets, NDAs, fundraising, hiring, IP, equity, and compliance, but not coding tasks, math problems, or general chat.",
           hint: "Try: 'What should I look for in a SAFE valuation cap?' or 'Explain the cliff in employee vesting.'",
           primaryLabel: "Got it",
         });
@@ -238,12 +242,13 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
   }
 
   const statusLabel = active
-    ? active.mode === "chat" ? "Startup Q&A — ask anything"
+    ? active.mode === "chat" ? "Startup Q&A · ask anything"
       : active.mode === "custom" ? `Custom builder · ${active.name}`
       : `Builder · ${active.name}`
     : "New session";
 
   const hasThread = active !== null && messages.length > 0;
+  const qaResuming = active?.mode === "chat" && messages.length > 0;
 
   return (
     <AppShell>
@@ -253,63 +258,98 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
 
       {/* ===== Hero ===== */}
       <section style={{ paddingBottom: 28, borderBottom: "1px solid var(--bsd-hairline)" }}>
-        <motion.div
-          initial={{ opacity: 0, y: reduce ? 0 : 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: EOQ }}
-          style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}
-        >
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
           <div style={{ maxWidth: 720 }}>
             <span className="cf-eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--bsd-red)" }}>
               <Compass weight="duotone" size={14} aria-hidden />
               Clarifyd AI · Draft room
             </span>
-            <h1 style={{ margin: "12px 0 0", fontSize: "clamp(38px, 6vw, 68px)", fontWeight: 800, color: "var(--bsd-ink)", letterSpacing: "-0.035em", lineHeight: 0.98 }}>
+            <h1 style={{ margin: "12px 0 0", fontSize: "clamp(38px, 6vw, 68px)", fontWeight: 800, color: "var(--bsd-ink)", letterSpacing: "-0.035em", lineHeight: 0.98, textWrap: "balance" }}>
               Your advisor,{" "}
               <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>on call.</span>
             </h1>
-            <p style={{ margin: "16px 0 0", color: "var(--bsd-body)", fontSize: 16, lineHeight: 1.6, maxWidth: 560 }}>
+            <p style={{ margin: "16px 0 0", color: "var(--bsd-body)", fontSize: 16, lineHeight: 1.6, maxWidth: 560, textWrap: "pretty" }}>
               Ask a founder-grade legal question, or describe a document and draft it clause by
-              clause. Clarifyd AI thinks alongside you — it is not a substitute for licensed counsel.
+              clause. Clarifyd AI thinks alongside you. It is decision support, not a substitute
+              for licensed counsel.
             </p>
           </div>
           <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
             ◆ Audited 2026
           </span>
-        </motion.div>
+        </div>
       </section>
 
-      {/* ===== Two entry options ===== */}
+      {/* ===== Two entry options (Q&A primary, Custom secondary) ===== */}
       <div
-        className="grid-cols-1 lg:grid-cols-2"
-        style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 18 : 28, marginTop: 40 }}
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1.08fr 0.92fr",
+          gap: isMobile ? 18 : 28,
+          marginTop: 40,
+          alignItems: "stretch",
+        }}
       >
-        <EntryCard
-          index="01"
-          Icon={ChatCircleDots}
-          title="Startup Q&A"
-          blurb="Open chat for legal, fundraising, hiring, IP, or compliance questions. Streamed answers, scoped to your founder profile."
-          ctaLabel={active?.mode === "chat" && messages.length > 0 ? "Resume conversation" : "Open chat"}
-          onActivate={openChat}
-          highlight
-          reduce={reduce}
-          delay={0.05}
+        {/* Q&A — the primary, filled action */}
+        <article
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+            padding: isMobile ? "24px 20px" : "30px 28px",
+            background: "var(--bsd-paper-deep)",
+            border: "2px solid var(--bsd-ink)",
+          }}
         >
-          <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>
-            Ask anything · streamed
-          </span>
-        </EntryCard>
+          <ChatCircleDots weight="duotone" size={32} color="var(--bsd-red)" aria-hidden />
+          <div>
+            <h2 style={{ margin: 0, fontSize: isMobile ? 24 : 28, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.025em" }}>
+              Startup Q&amp;A
+            </h2>
+            <p style={{ margin: "10px 0 0", fontSize: 14.5, color: "var(--bsd-body)", lineHeight: 1.55, maxWidth: 420 }}>
+              Open chat for legal, fundraising, hiring, IP, or compliance questions. Answers
+              stream in, scoped to your founder profile.
+            </p>
+          </div>
+          <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+            <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>
+              Ask anything · streamed
+            </span>
+            <button
+              type="button"
+              onClick={openChat}
+              className="bsd-btn cursor-pointer"
+              style={{ width: "100%", justifyContent: "center", minHeight: 48 }}
+            >
+              <Chat weight="duotone" size={14} />
+              {qaResuming ? "Resume conversation" : "Open chat"}
+            </button>
+          </div>
+        </article>
 
-        <EntryCard
-          index="02"
-          Icon={PenNib}
-          title="Custom Template"
-          blurb="Describe any document — Advisor Agreement, Co-Founder Vesting, SAFE side letter — and Clarifyd AI designs the clauses with you, then drafts it from scratch."
-          reduce={reduce}
-          delay={0.1}
+        {/* Custom Template — secondary, input-led */}
+        <article
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+            padding: isMobile ? "24px 20px" : "30px 28px",
+            background: "var(--bsd-paper)",
+            border: "1.5px solid var(--bsd-hairline)",
+          }}
         >
-          <div className="bsd-field" style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-            <label htmlFor="preview-custom" className="sr-only" style={SR_ONLY}>
+          <PenNib weight="duotone" size={30} color="var(--bsd-ink)" aria-hidden />
+          <div>
+            <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 24, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.02em" }}>
+              Custom Template
+            </h2>
+            <p style={{ margin: "10px 0 0", fontSize: 14, color: "var(--bsd-body)", lineHeight: 1.55, maxWidth: 420 }}>
+              Describe any document (an Advisor Agreement, Co-Founder Vesting, a SAFE side letter)
+              and Clarifyd AI designs the clauses with you, then drafts it from scratch.
+            </p>
+          </div>
+          <div className="bsd-field" style={{ marginTop: "auto", display: "flex", alignItems: "flex-end", gap: 10 }}>
+            <label htmlFor="preview-custom" style={SR_ONLY}>
               Describe the document you want to create
             </label>
             <input
@@ -332,42 +372,46 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
               Start <ArrowRight weight="bold" size={11} />
             </button>
           </div>
-        </EntryCard>
+        </article>
       </div>
 
-      {/* ===== Generated document (custom flow output) ===== */}
-      {doc ? (
-        <motion.section
-          initial={{ opacity: 0, y: reduce ? 0 : 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: EOQ }}
-          style={{ marginTop: 48, border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper-deep)" }}
-        >
-          <div style={{ padding: "16px 20px", borderBottom: "1.5px solid var(--bsd-ink)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-              <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                Galley proof
-              </span>
-              <span style={{ fontSize: 16, color: "var(--bsd-ink)", fontWeight: 600 }}>
-                {active?.name ?? "Generated"} · draft
-              </span>
+      {/* ===== Generated document (custom flow output) — revealed on state ===== */}
+      <AnimatePresence>
+        {doc ? (
+          <motion.section
+            key="galley"
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: EOQ }}
+            style={{ marginTop: 48, border: "2px solid var(--bsd-ink)", background: "var(--bsd-paper-deep)" }}
+          >
+            <div style={{ padding: "16px 20px", borderBottom: "1.5px solid var(--bsd-ink)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
+                  Galley proof
+                </span>
+                <span style={{ fontSize: 16, color: "var(--bsd-ink)", fontWeight: 600 }}>
+                  {active?.name ?? "Generated"} · draft
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" onClick={copyDocument} className="bsd-btn bsd-btn--ghost bsd-btn--sm cursor-pointer">
+                  <Copy weight="bold" size={11} /> Copy
+                </button>
+                <button type="button" onClick={downloadDocument} className="bsd-btn bsd-btn--sm cursor-pointer">
+                  <Download weight="bold" size={11} /> Download
+                </button>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" onClick={copyDocument} className="bsd-btn bsd-btn--ghost bsd-btn--sm cursor-pointer">
-                <Copy weight="bold" size={11} /> Copy
-              </button>
-              <button type="button" onClick={downloadDocument} className="bsd-btn bsd-btn--sm cursor-pointer">
-                <Download weight="bold" size={11} /> Download
-              </button>
-            </div>
-          </div>
-          <pre style={{ margin: 0, padding: isMobile ? "16px 16px" : "22px 24px", background: "var(--bsd-paper)", fontFamily: "Geist Mono, monospace", fontSize: isMobile ? 12.5 : 13.5, color: "var(--bsd-ink)", lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: isMobile ? 420 : 600, overflowY: "auto" }}>
-            {doc}
-          </pre>
-        </motion.section>
-      ) : null}
+            <pre style={{ margin: 0, padding: isMobile ? "16px 16px" : "22px 24px", background: "var(--bsd-paper)", fontFamily: "Geist Mono, monospace", fontSize: isMobile ? 12.5 : 13.5, color: "var(--bsd-ink)", lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: isMobile ? 420 : 600, overflowY: "auto" }}>
+              {doc}
+            </pre>
+          </motion.section>
+        ) : null}
+      </AnimatePresence>
 
-      {/* ===== Floating launcher ===== */}
+      {/* ===== Floating launcher (state-driven motion) ===== */}
       <AnimatePresence>
         {!open ? (
           <motion.button
@@ -414,7 +458,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
         ) : null}
       </AnimatePresence>
 
-      {/* ===== Chat popup ===== */}
+      {/* ===== Chat popup (the centerpiece) ===== */}
       <AnimatePresence>
         {open ? (
           <motion.div
@@ -501,7 +545,8 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
                   <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center" }}>
                     <Sparkle weight="duotone" size={34} color="var(--bsd-red)" aria-hidden />
                     <p style={{ margin: 0, color: "var(--bsd-muted)", fontSize: 13.5, maxWidth: 260, lineHeight: 1.55 }}>
-                      Ask a startup legal question. Clarifyd AI replies in plain English — not legal advice.
+                      Ask a startup legal question. Clarifyd AI answers in plain English. This is
+                      decision support, not legal advice.
                     </p>
                   </div>
                 ) : (
@@ -598,64 +643,3 @@ const SR_ONLY: React.CSSProperties = {
   whiteSpace: "nowrap",
   border: 0,
 };
-
-type EntryCardProps = {
-  index: string;
-  Icon: typeof Chat;
-  title: string;
-  blurb: string;
-  children: React.ReactNode;
-  reduce: boolean;
-  delay: number;
-  highlight?: boolean;
-  ctaLabel?: string;
-  onActivate?: () => void;
-};
-
-function EntryCard({ index, Icon, title, blurb, children, reduce, delay, highlight, ctaLabel, onActivate }: EntryCardProps) {
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: reduce ? 0 : 12 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.4, ease: EOQ, delay }}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-        padding: "26px 24px",
-        background: highlight ? "var(--bsd-paper-deep)" : "var(--bsd-paper)",
-        border: highlight ? "2px solid var(--bsd-ink)" : "1.5px solid var(--bsd-hairline)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <Icon weight="duotone" size={30} color="var(--bsd-red)" aria-hidden />
-        <span className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em" }}>
-          {index}
-        </span>
-      </div>
-      <div>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.02em" }}>
-          {title}
-        </h2>
-        <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--bsd-body)", lineHeight: 1.55 }}>
-          {blurb}
-        </p>
-      </div>
-      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-        {children}
-        {onActivate ? (
-          <button
-            type="button"
-            onClick={onActivate}
-            className="bsd-btn cursor-pointer"
-            style={{ width: "100%", justifyContent: "center", minHeight: 48 }}
-          >
-            <Chat weight="duotone" size={13} />
-            {ctaLabel ?? "Open chat"}
-          </button>
-        ) : null}
-      </div>
-    </motion.article>
-  );
-}

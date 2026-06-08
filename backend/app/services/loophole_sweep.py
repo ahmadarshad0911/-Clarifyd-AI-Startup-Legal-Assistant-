@@ -35,7 +35,22 @@ _SYSTEM = (
     "contract. A well-drafted contract may have few or zero issues — if so, "
     "return a short list or an empty list. Do NOT invent problems, pad the "
     "list, or flag standard, reasonable, market-standard clauses. Return "
-    "strict JSON only."
+    "strict JSON only.\n\n"
+    "Before finishing, EXPLICITLY CHECK whether the contract adequately covers "
+    "each protection below. For ANY that is absent, one-sided, or inadequate "
+    "for THIS contract, emit a loophole (make clear when it is missing). Do "
+    "NOT emit one for a protection that is genuinely present and reasonable — "
+    "this is a coverage check, not a reason to pad the list:\n"
+    "- Limitation / cap on liability (each party)\n"
+    "- IP ownership AND a license-back or grant to the client for deliverables\n"
+    "- Confidentiality, including a survival period after termination\n"
+    "- Termination rights (for cause and, where apt, for convenience) with notice\n"
+    "- Data return or destruction on termination\n"
+    "- Dispute resolution / arbitration and a specified governing law + venue\n"
+    "- Warranties, service levels (SLA), or acceptance criteria\n"
+    "- Indemnification scope and mutuality (not one-sided/unbounded)\n"
+    "- Payment terms and remedies for the other party's non-performance\n"
+    "- Auto-renewal terms and the notice required to prevent renewal"
 )
 
 _USER_TEMPLATE = (

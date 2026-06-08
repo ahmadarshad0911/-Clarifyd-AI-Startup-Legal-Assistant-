@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   motion,
+  AnimatePresence,
   useScroll,
   useTransform,
   useInView,
@@ -35,34 +36,51 @@ import {
   MagnifyingGlass,
   ListChecks,
   Export,
+  Sun,
+  Moon,
 } from "@phosphor-icons/react";
 
+/**
+ * Theme tokens are CSS custom properties resolved per `data-theme` on the page
+ * root (see THEME_VARS in ScopedStyles). `C` maps each token name to its
+ * `var(--np-*)` reference so component-level color literals flow through both
+ * themes without touching every call site.
+ */
 const C = {
-  ground: "oklch(0.17 0.018 312)",
-  groundDeep: "oklch(0.13 0.016 312)",
-  panel: "oklch(0.21 0.020 312)",
-  panelHi: "oklch(0.25 0.022 312)",
-  paper: "oklch(0.96 0.008 85)",
-  body: "oklch(0.82 0.012 90)",
-  muted: "oklch(0.66 0.012 95)",
-  faint: "oklch(0.48 0.012 100)",
-  hairline: "oklch(0.30 0.018 312 / 0.6)",
-  hairlineSoft: "oklch(0.30 0.018 312 / 0.32)",
-  red: "oklch(0.63 0.205 27)",
-  redHi: "oklch(0.70 0.21 30)",
-  redSoft: "oklch(0.63 0.205 27 / 0.16)",
-  amber: "oklch(0.76 0.14 75)",
-  green: "oklch(0.74 0.13 150)",
+  ground: "var(--np-ground)",
+  groundDeep: "var(--np-ground-deep)",
+  panel: "var(--np-panel)",
+  panelHi: "var(--np-panel-hi)",
+  paper: "var(--np-paper)",
+  body: "var(--np-body)",
+  muted: "var(--np-muted)",
+  faint: "var(--np-faint)",
+  hairline: "var(--np-hairline)",
+  hairlineSoft: "var(--np-hairline-soft)",
+  red: "var(--np-red)",
+  redHi: "var(--np-red-hi)",
+  redSoft: "var(--np-red-soft)",
+  amber: "var(--np-amber)",
+  green: "var(--np-green)",
+  navScrim: "var(--np-nav-scrim)",
+  lampGlow: "var(--np-lamp-glow)",
 };
+
+type Theme = "dark" | "light";
+const THEME_STORAGE_KEY = "clarifyd-landing-theme";
+
 const EOQ = [0.22, 1, 0.36, 1] as const;
 const MONO = 'var(--font-geist-mono, "Geist Mono", ui-monospace, monospace)';
 const SANS = "var(--font-geist-sans, Geist, ui-sans-serif, system-ui, sans-serif)";
 
 export default function LandingPreviewPage() {
   const reduce = useReducedMotion() ?? false;
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <div
       className="mobile-managed"
+      data-theme={theme}
       style={{
         background: C.ground,
         color: C.body,
@@ -75,7 +93,7 @@ export default function LandingPreviewPage() {
     >
       <LampGlow reduce={reduce} />
       <SkipLink />
-      <Nav />
+      <Nav theme={theme} reduce={reduce} onToggleTheme={toggleTheme} />
       <main id="main">
         <Hero reduce={reduce} />
         <Ticker reduce={reduce} />
@@ -87,6 +105,137 @@ export default function LandingPreviewPage() {
       <Footer />
       <ScopedStyles />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ theme */
+
+/**
+ * Resolves the active theme. SSR renders the default ("dark") so server and
+ * first client render agree; the stored / system preference is read in an
+ * effect and applied after mount to avoid a hydration mismatch.
+ */
+function useTheme() {
+  const reduce = useReducedMotion() ?? false;
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  useEffect(() => {
+    let initial: Theme = "dark";
+    try {
+      const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (stored === "light" || stored === "dark") {
+        initial = stored;
+      } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+        initial = "light";
+      }
+    } catch {
+      // localStorage unavailable (private mode etc.) — keep the default.
+    }
+    setTheme(initial);
+  }, []);
+
+  const toggleTheme = (origin?: { x: number; y: number }) => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    const commit = () => {
+      setTheme(next);
+      try {
+        window.localStorage.setItem(THEME_STORAGE_KEY, next);
+      } catch {
+        // ignore persistence failure
+      }
+    };
+
+    const startViewTransition = (
+      document as Document & {
+        startViewTransition?: (cb: () => void) => { finished: Promise<unknown> };
+      }
+    ).startViewTransition;
+
+    if (!reduce && origin != null && typeof startViewTransition === "function") {
+      const root = document.documentElement;
+      root.style.setProperty("--np-sweep-x", `${origin.x}px`);
+      root.style.setProperty("--np-sweep-y", `${origin.y}px`);
+      root.style.setProperty("--np-sweep-r", `${sweepRadius(origin.x, origin.y)}px`);
+      root.dataset.npSweep = "1";
+      const transition = startViewTransition.call(document, () => commit());
+      void transition.finished.finally(() => {
+        delete root.dataset.npSweep;
+      });
+    } else {
+      commit();
+    }
+  };
+
+  return { theme, toggleTheme };
+}
+
+/** Distance from (x,y) to the farthest viewport corner — the reveal radius. */
+function sweepRadius(x: number, y: number) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const dx = Math.max(x, w - x);
+  const dy = Math.max(y, h - y);
+  return Math.hypot(dx, dy);
+}
+
+/* Sun <-> moon icon that morphs with a subtle spring. Drives the page-wide
+ * theme switch from its own screen coordinates so the reveal originates here. */
+function ThemeToggle({
+  theme,
+  reduce,
+  onToggle,
+}: {
+  theme: Theme;
+  reduce: boolean;
+  onToggle: (origin?: { x: number; y: number }) => void;
+}) {
+  const isDark = theme === "dark";
+  const nextLabel = isDark ? "Switch to light theme" : "Switch to dark theme";
+
+  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    onToggle({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  }
+
+  const spring = { type: "spring", duration: 0.5, bounce: 0.2 } as const;
+  const enter = { opacity: 1, scale: 1, rotate: 0 };
+  const exit = reduce
+    ? { opacity: 0 }
+    : { opacity: 0, scale: 0.6, rotate: isDark ? 90 : -90 };
+  const from = reduce
+    ? { opacity: 0 }
+    : { opacity: 0, scale: 0.6, rotate: isDark ? -90 : 90 };
+
+  return (
+    <motion.button
+      type="button"
+      className="np-themetoggle"
+      onClick={handleClick}
+      aria-label={nextLabel}
+      aria-pressed={!isDark}
+      title={nextLabel}
+      whileTap={reduce ? undefined : { scale: 0.95 }}
+      whileHover={reduce ? undefined : { scale: 1.04 }}
+    >
+      <span className="np-themetoggle__well" aria-hidden>
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={theme}
+            className="np-themetoggle__icon"
+            initial={from}
+            animate={enter}
+            exit={exit}
+            transition={reduce ? { duration: 0.12 } : spring}
+          >
+            {isDark ? (
+              <Moon weight="fill" size={18} />
+            ) : (
+              <Sun weight="fill" size={18} />
+            )}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+    </motion.button>
   );
 }
 
@@ -120,7 +269,7 @@ function LampGlow({ reduce }: { reduce: boolean }) {
         pointerEvents: "none",
         zIndex: 0,
         background:
-          "radial-gradient(ellipse 60% 60% at 50% 0%, oklch(0.30 0.05 40 / 0.55), transparent 70%)",
+          "radial-gradient(ellipse 60% 60% at 50% 0%, var(--np-lamp-glow), transparent 70%)",
         filter: "blur(8px)",
       }}
     />
@@ -267,7 +416,15 @@ const NAV_LINKS: Array<[string, string]> = [
   ["Contact", "/contact"],
 ];
 
-function Nav() {
+function Nav({
+  theme,
+  reduce,
+  onToggleTheme,
+}: {
+  theme: Theme;
+  reduce: boolean;
+  onToggleTheme: (origin?: { x: number; y: number }) => void;
+}) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -283,7 +440,7 @@ function Nav() {
         position: "sticky",
         top: 0,
         zIndex: 50,
-        background: scrolled ? "oklch(0.15 0.016 312 / 0.86)" : "transparent",
+        background: scrolled ? C.navScrim : "transparent",
         backdropFilter: scrolled ? "blur(12px)" : "none",
         borderBottom: `1px solid ${scrolled ? C.hairline : "transparent"}`,
         transition: "background 240ms ease, border-color 240ms ease",
@@ -305,6 +462,7 @@ function Nav() {
           <Link href="/login" className="np-navlink np-navlink--plain">
             Sign in
           </Link>
+          <ThemeToggle theme={theme} reduce={reduce} onToggle={onToggleTheme} />
           <Link href="/login" className="np-cta np-cta--primary np-cta--sm">
             Start free <ArrowRight weight="bold" size={13} aria-hidden />
           </Link>
@@ -778,6 +936,125 @@ function Footer() {
 function ScopedStyles() {
   return (
     <style jsx global>{`
+      /* ---- theme tokens ---- */
+      [data-theme="dark"] {
+        --np-ground: oklch(0.17 0.018 312);
+        --np-ground-deep: oklch(0.13 0.016 312);
+        --np-panel: oklch(0.21 0.020 312);
+        --np-panel-hi: oklch(0.25 0.022 312);
+        --np-paper: oklch(0.96 0.008 85);
+        --np-body: oklch(0.82 0.012 90);
+        --np-muted: oklch(0.66 0.012 95);
+        --np-faint: oklch(0.48 0.012 100);
+        --np-hairline: oklch(0.30 0.018 312 / 0.6);
+        --np-hairline-soft: oklch(0.30 0.018 312 / 0.32);
+        --np-red: oklch(0.63 0.205 27);
+        --np-red-hi: oklch(0.70 0.21 30);
+        --np-red-soft: oklch(0.63 0.205 27 / 0.16);
+        --np-amber: oklch(0.76 0.14 75);
+        --np-green: oklch(0.74 0.13 150);
+        --np-nav-scrim: oklch(0.15 0.016 312 / 0.86);
+        --np-lamp-glow: oklch(0.30 0.05 40 / 0.55);
+        --np-ghost-hover: oklch(0.96 0.008 85 / 0.06);
+        --np-scan-shadow: 0 30px 80px -40px oklch(0.05 0.02 312 / 0.9);
+        --np-toggle-well: oklch(0.25 0.022 312 / 0.7);
+        --np-toggle-icon: oklch(0.86 0.10 80);
+      }
+      [data-theme="light"] {
+        /* Plum-tinted near-white (not cream): low-chroma neutral keyed to the
+           same hue family as the dark ground. Ink-plum text, same arterial red
+           darkened just enough to clear 4.5:1 on the light surface. */
+        --np-ground: oklch(0.975 0.004 312);
+        --np-ground-deep: oklch(0.945 0.006 312);
+        --np-panel: oklch(0.995 0.002 312);
+        --np-panel-hi: oklch(0.965 0.005 312);
+        --np-paper: oklch(0.24 0.030 312);
+        --np-body: oklch(0.36 0.026 312);
+        --np-muted: oklch(0.50 0.020 312);
+        --np-faint: oklch(0.60 0.016 312);
+        --np-hairline: oklch(0.30 0.024 312 / 0.22);
+        --np-hairline-soft: oklch(0.30 0.024 312 / 0.12);
+        --np-red: oklch(0.55 0.205 27);
+        --np-red-hi: oklch(0.49 0.205 27);
+        --np-red-soft: oklch(0.55 0.205 27 / 0.12);
+        --np-amber: oklch(0.62 0.135 66);
+        --np-green: oklch(0.52 0.13 150);
+        --np-nav-scrim: oklch(0.985 0.003 312 / 0.82);
+        --np-lamp-glow: oklch(0.74 0.085 50 / 0.30);
+        --np-ghost-hover: oklch(0.24 0.030 312 / 0.05);
+        --np-scan-shadow: 0 24px 60px -38px oklch(0.30 0.04 312 / 0.45);
+        --np-toggle-well: oklch(0.93 0.008 312 / 0.9);
+        --np-toggle-icon: oklch(0.55 0.13 66);
+      }
+      /* Root carries a short crossfade on the two themed properties only — the
+         var swap cascades everywhere else without a layout-thrashing
+         transition: all. Skipped while a View Transitions sweep is running. */
+      .mobile-managed {
+        transition: background-color 260ms ease, color 260ms ease;
+      }
+      [data-np-sweep] .mobile-managed { transition: none; }
+
+      /* ---- theme toggle ---- */
+      .np-themetoggle {
+        position: relative;
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--np-toggle-icon);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .np-themetoggle__well {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--np-toggle-well);
+        border: 1px solid ${C.hairline};
+        transition: border-color 200ms ease, background 200ms ease;
+      }
+      .np-themetoggle__icon {
+        grid-area: 1 / 1;
+        display: grid;
+        place-items: center;
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
+      }
+      .np-themetoggle:active .np-themetoggle__well { transform: scale(0.95); }
+      @media (hover: hover) and (pointer: fine) {
+        .np-themetoggle:hover .np-themetoggle__well { border-color: ${C.red}; }
+      }
+
+      /* ---- View Transitions theme sweep ---- */
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+      }
+      ::view-transition-old(root) { z-index: 1; }
+      ::view-transition-new(root) {
+        z-index: 2;
+        animation: np-sweep 460ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      @keyframes np-sweep {
+        from {
+          clip-path: circle(0 at var(--np-sweep-x, 50%) var(--np-sweep-y, 0));
+          filter: blur(6px);
+        }
+        to {
+          clip-path: circle(
+            var(--np-sweep-r, 150vmax) at var(--np-sweep-x, 50%) var(--np-sweep-y, 0)
+          );
+          filter: blur(0);
+        }
+      }
+
       .np-skip {
         position: absolute;
         left: 16px;
@@ -826,7 +1103,7 @@ function ScopedStyles() {
       .np-cta--ghost { background: transparent; color: ${C.paper}; border-color: ${C.hairline}; }
       @media (hover: hover) and (pointer: fine) {
         .np-cta--primary:hover { background: ${C.redHi}; border-color: ${C.redHi}; }
-        .np-cta--ghost:hover { border-color: ${C.paper}; background: oklch(0.96 0.008 85 / 0.06); }
+        .np-cta--ghost:hover { border-color: ${C.paper}; background: var(--np-ghost-hover); }
       }
 
       /* ---- nav ---- */
@@ -942,7 +1219,7 @@ function ScopedStyles() {
       .np-scan {
         background: ${C.panel};
         border: 1px solid ${C.hairline};
-        box-shadow: 0 30px 80px -40px oklch(0.05 0.02 312 / 0.9);
+        box-shadow: var(--np-scan-shadow);
       }
       .np-scan__bar {
         display: flex;
@@ -1320,6 +1597,9 @@ function ScopedStyles() {
         .np-ticker__track { animation: none !important; }
         .np-scan__pulse { animation: none !important; }
         * { scroll-behavior: auto !important; }
+        .mobile-managed { transition: none !important; }
+        ::view-transition-new(root),
+        ::view-transition-old(root) { animation: none !important; }
       }
     `}</style>
   );

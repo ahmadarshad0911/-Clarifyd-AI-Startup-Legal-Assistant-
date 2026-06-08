@@ -102,6 +102,11 @@ class AnalyzeContractResponse(APIContractModel):
     # Parts of the contract that are vague / undefined / open to interpretation.
     # Additive field (default []), surfaced in a dedicated Findings section.
     ambiguities: list[ContractAmbiguity] = []
+    # True while the slow enrichment (loopholes, ambiguities, deep report) is
+    # still running. The fast response returns per-clause findings immediately
+    # with this True; the client calls POST /analyze/{draft_id}/enrich to fill
+    # in the rest, after which a re-fetch returns it False. Additive default.
+    analysis_pending: bool = False
     # Full extracted contract text — used by the Findings page to splice in
     # accepted suggestions while keeping the rest of the document verbatim.
     extracted_text: str | None = None

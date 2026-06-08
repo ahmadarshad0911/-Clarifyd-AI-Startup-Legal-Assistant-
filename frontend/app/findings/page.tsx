@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -139,6 +139,38 @@ function Inner() {
   }, [params, client]);
 
   const active = useMemo(() => docs.find((d) => d.draft_id === activeId) ?? null, [docs, activeId]);
+
+  // Findings-first: the analyze response returns per-clause findings fast with
+  // analysis_pending=true; kick off the slow enrichment (loopholes, ambiguities,
+  // deep report) and fold the result in when it lands. Once per draft.
+  const [enriching, setEnriching] = useState(false);
+  const enrichTried = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!active || !active.analysis.analysis_pending) return;
+    const id = active.draft_id;
+    if (enrichTried.current.has(id)) return;
+    enrichTried.current.add(id);
+    let cancelled = false;
+    setEnriching(true);
+    client
+      .enrichAnalysis(id)
+      .then((full) => {
+        if (cancelled) return;
+        pushAnalysis(full, active.file_name);
+        setDocs((prev) =>
+          prev.map((d) => (d.draft_id === id ? { ...d, analysis: full } : d)),
+        );
+      })
+      .catch(() => {
+        enrichTried.current.delete(id); // allow a retry on next visit
+      })
+      .finally(() => {
+        if (!cancelled) setEnriching(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [active, client]);
   // Prefer the LLM-written report.loopholes — they ship with rewrites + a
   // founder-friendly summary. When the reporter was rate-limited or timed
   // out (common on Vercel cold starts), fall back to the per-clause
@@ -656,6 +688,38 @@ function Inner() {
             </div>
             <HealthGauge score={score} size={148} label="Health" />
           </motion.section>
+
+          {/* Deep-scan banner while enrichment (loopholes/ambiguities/report) runs. */}
+          {enriching || active.analysis.analysis_pending ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                margin: "0 0 18px",
+                padding: "12px 16px",
+                background: "var(--bg-elevated-2)",
+                border: "1px solid var(--brand-500)",
+                borderRadius: "var(--r-md)",
+                color: "var(--ink-secondary)",
+                fontSize: 13.5,
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "var(--brand-500)",
+                  animation: "cf-pulse 1s ease-in-out infinite",
+                  flexShrink: 0,
+                }}
+              />
+              Deep scan running — clause findings are ready; loopholes, ambiguities,
+              and the full report are loading and will appear here shortly.
+            </div>
+          ) : null}
 
           {/* ============ Clause list ============ */}
           {loopholes.length === 0 ? (

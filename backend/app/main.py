@@ -422,11 +422,15 @@ _ANALYZE_MAX_CONCURRENCY = 4
 _analyze_sem = asyncio.Semaphore(_ANALYZE_MAX_CONCURRENCY)
 
 # Max time to wait for the whole-contract loophole/ambiguity sweeps AFTER the
-# per-clause loop has finished. The sweeps run concurrently with that loop, so
+# per-clause batch has finished. The sweeps run concurrently with that work, so
 # this is only the leftover tail. Bounds cold-path latency when the provider is
 # throttled — the sweeps are supplementary, so a slow one is dropped, not waited
 # on (their own internal timeout is 120s, far too long to block a response).
-_SWEEP_AWAIT_BUDGET_S = 20.0
+# Kept small so a typical analysis returns inside the ~20s target.
+_SWEEP_AWAIT_BUDGET_S = 8.0
+# Same idea for the full-contract reporter: it overlaps the clause batch, so
+# only its tail is charged here. Dropped (rules-only response) if it overruns.
+_REPORTER_AWAIT_BUDGET_S = 10.0
 
 
 async def _analyze_slot():
@@ -966,11 +970,20 @@ async def _analyze_and_persist(
             )
         else:
             try:
-                # Reporter may already be complete (parallel kickoff), in
-                # which case this returns immediately. Otherwise we wait for
-                # the remaining LLM time minus whatever overlapped with the
-                # per-clause loop + DB writes.
-                report = await reporter_task
+                # Reporter may already be complete (parallel kickoff), in which
+                # case this returns immediately. Otherwise wait only the tail
+                # budget — keeps the response inside the ~20s target; if it
+                # overruns we serve the per-clause findings without the report.
+                report = await asyncio.wait_for(
+                    reporter_task, timeout=_REPORTER_AWAIT_BUDGET_S
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Reporter exceeded %ss await budget — rules-only response.",
+                    _REPORTER_AWAIT_BUDGET_S,
+                )
+                reporter_task.cancel()
+                report = None
             except Exception:  # pragma: no cover — never block the response
                 logger.exception("Awaiting reporter task failed.")
                 report = None

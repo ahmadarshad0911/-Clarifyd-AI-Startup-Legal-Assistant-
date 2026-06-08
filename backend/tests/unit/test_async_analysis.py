@@ -104,3 +104,38 @@ async def test_async_analyze_propagates_provider_error(session: AsyncSession) ->
     service = AsyncContractAnalysisService(provider=_AlwaysFailing())
     with pytest.raises(ProviderError):
         await service.analyze(CONTRACT, session=session)
+
+
+class _BatchSpyProvider(ReasoningProvider):
+    name = "batchspy"
+    model = "v1"
+
+    def __init__(self) -> None:
+        self.batch_sizes: list[int] = []
+
+    async def assess_clause(self, clause: ExtractedClause) -> ClauseAssessment:
+        raise AssertionError("batched path must be used, not per-clause")
+
+    async def assess_clauses(
+        self, clauses: list[ExtractedClause]
+    ) -> list[ClauseAssessment]:
+        self.batch_sizes.append(len(clauses))
+        return [
+            ClauseAssessment(
+                severity=RiskSeverity.low,
+                risk_score=2,
+                confidence=0.5,
+                rationale=f"clause {i}",
+            )
+            for i, _ in enumerate(clauses)
+        ]
+
+
+@pytest.mark.asyncio
+async def test_async_analyze_uses_batched_provider(session: AsyncSession) -> None:
+    provider = _BatchSpyProvider()
+    service = AsyncContractAnalysisService(provider=provider)
+    out = await service.analyze(CONTRACT, session=session)
+    assert provider.batch_sizes, "provider.assess_clauses was never called"
+    assert sum(provider.batch_sizes) == len(out.result.findings)
+    assert max(provider.batch_sizes) <= 6

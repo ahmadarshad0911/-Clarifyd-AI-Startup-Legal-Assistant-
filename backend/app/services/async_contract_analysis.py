@@ -56,6 +56,15 @@ def _clause_hash(text: str) -> str:
     ).hexdigest()
 
 
+# Clauses scored per LLM call. Batching collapses N round-trips into
+# ceil(uncached / _BATCH_SIZE), the main lever for cold-contract latency.
+_BATCH_SIZE = 6
+# Batch calls run concurrently; this caps the burst so we stay within the
+# provider's rate limit. _BATCH_SIZE * _BATCH_CONCURRENCY clauses can be in
+# flight at once (e.g. 36), covering most contracts in a single wave.
+_BATCH_CONCURRENCY = 6
+
+
 class AsyncContractAnalysisService:
     """Async clause-extraction + LLM-driven scoring with per-clause cache.
 
@@ -83,37 +92,54 @@ class AsyncContractAnalysisService:
             clause.clause_id: detect_injection(clause.text) for clause in clauses
         }
 
-        # Parallel per-clause LLM calls. Bounded concurrency keeps NIM happy.
-        # Each task is read-only against the DB (cache lookup) and against the
-        # provider (assess_clause). The cache *write* happens once, serially,
-        # after gather() returns — this is the fix for the pre-existing
-        # "Failed to write clause cache row" warning, which was caused by
-        # concurrent `session.add()` calls landing while the session was
-        # mid-flush (async SQLAlchemy sessions are not coroutine-safe for
-        # concurrent writes).
-        # Per-clause LLM concurrency. Higher = lower wall-clock latency on a
-        # cold contract; bounded so we don't burst past the provider's quota.
-        # The provider already retries 429 with exponential backoff, so a
-        # transient burst self-recovers instead of degrading every clause.
-        sem = asyncio.Semaphore(8)
+        # Per-clause cache reads first (cheap, indexed). Serial because async
+        # SQLAlchemy sessions are not coroutine-safe for concurrent ops.
+        provider_name = self._provider.name
+        model = self._provider.model
+        shas = [_clause_hash(c.text) for c in clauses]
+        cached: list[ClauseAssessment | None] = [
+            await self._cache_get(session, provider_name, model, sha) for sha in shas
+        ]
 
-        async def _run(
-            clause: ExtractedClause,
-        ) -> tuple[ClauseAssessment, str, bool]:
-            async with sem:
-                return await self._lookup_or_compute(clause, session=session)
+        # Only the uncached clauses hit the provider, batched so N clauses cost
+        # ceil(N / _BATCH_SIZE) round-trips instead of N. Batches run
+        # concurrently (bounded) so a typical contract finishes in one wave.
+        todo = [(i, clauses[i]) for i in range(len(clauses)) if cached[i] is None]
+        computed: dict[int, ClauseAssessment] = {}
+        if todo:
+            batches = [
+                todo[j : j + _BATCH_SIZE] for j in range(0, len(todo), _BATCH_SIZE)
+            ]
+            batch_sem = asyncio.Semaphore(_BATCH_CONCURRENCY)
 
-        results = await asyncio.gather(*[_run(c) for c in clauses])
-        assessments = [r[0] for r in results]
+            async def _run_batch(
+                batch: list[tuple[int, ExtractedClause]],
+            ) -> tuple[list[tuple[int, ExtractedClause]], list[ClauseAssessment]]:
+                async with batch_sem:
+                    items = await self._provider.assess_clauses(
+                        [c for _, c in batch]
+                    )
+                    return batch, items
+
+            for batch, items in await asyncio.gather(
+                *[_run_batch(b) for b in batches]
+            ):
+                for (idx, _clause), assessment in zip(batch, items):
+                    computed[idx] = assessment
+
+        assessments: list[ClauseAssessment] = [
+            cached[i] if cached[i] is not None else computed[i]
+            for i in range(len(clauses))
+        ]
 
         # Serial post-gather cache write. Dedupe by sha so two identical
         # clauses in the same contract don't double-insert. Each row is
         # flushed individually so a PK conflict from a concurrent request
         # writing the same clause text doesn't kill the whole batch.
         new_rows: dict[str, ClauseAssessment] = {}
-        for assessment, sha, was_cached in results:
-            if not was_cached and sha not in new_rows:
-                new_rows[sha] = assessment
+        for i in range(len(clauses)):
+            if cached[i] is None and shas[i] not in new_rows:
+                new_rows[shas[i]] = assessments[i]
         if new_rows:
             await self._write_cache_rows(session, new_rows)
 
@@ -126,14 +152,10 @@ class AsyncContractAnalysisService:
         result = ContractAnalysisResult(clauses=clauses, findings=findings, summary=summary)
         return AnalysisResultWithFlags(result=result, injection_flags=injection_flags)
 
-    async def _lookup_or_compute(
-        self, clause: ExtractedClause, *, session: AsyncSession
-    ) -> tuple[ClauseAssessment, str, bool]:
-        """Return (assessment, clause_sha, was_cached). No DB writes here."""
-        sha = _clause_hash(clause.text)
-        provider_name = self._provider.name
-        model = self._provider.model
-
+    async def _cache_get(
+        self, session: AsyncSession, provider_name: str, model: str, sha: str
+    ) -> ClauseAssessment | None:
+        """Read a cached assessment for this clause sha, or None. No writes."""
         cached = (
             await session.execute(
                 select(ClauseCache).where(
@@ -143,16 +165,15 @@ class AsyncContractAnalysisService:
                 )
             )
         ).scalar_one_or_none()
-        if cached is not None:
-            try:
-                return ClauseAssessment.model_validate_json(cached.body_json), sha, True
-            except Exception:  # pragma: no cover — corrupt cache row, fall through
-                logger.warning(
-                    "Corrupt clause cache row for %s/%s/%s", provider_name, model, sha
-                )
-
-        assessment = await self._provider.assess_clause(clause)
-        return assessment, sha, False
+        if cached is None:
+            return None
+        try:
+            return ClauseAssessment.model_validate_json(cached.body_json)
+        except Exception:  # pragma: no cover — corrupt cache row, recompute
+            logger.warning(
+                "Corrupt clause cache row for %s/%s/%s", provider_name, model, sha
+            )
+            return None
 
     async def _write_cache_rows(
         self, session: AsyncSession, new_rows: dict[str, ClauseAssessment]

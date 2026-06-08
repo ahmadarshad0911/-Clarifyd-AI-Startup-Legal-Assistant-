@@ -52,7 +52,7 @@ const TILES: Tile[] = [
   { id: "SAFE Note",             name: "SAFE Note",             Icon: FileText,       blurb: "Pre-seed / seed standard agreement, with valuation cap logic.",         footer: "9 deal terms · score 8.4",  mode: "template" },
   { id: "Employment Offer",      name: "Employment Offer",      Icon: BriefcaseMetal, blurb: "Executive letter, invention assignment, equity vesting schedules.",     footer: "18 deal terms · score 9.1", mode: "template" },
   { id: "SaaS Master Agreement", name: "SaaS Master Agreement", Icon: Receipt,        blurb: "MSA covering uptime SLAs, data privacy, and termination rights.",       footer: "25 deal terms · score 7.9", mode: "template" },
-  { id: "__custom__",            name: "Custom Template",       Icon: Sparkle,        blurb: "Describe any document. Co-Pilot designs the clauses with you, drafts it from scratch.", footer: "Built to order", mode: "custom" },
+  { id: "__custom__",            name: "Custom Template",       Icon: Sparkle,        blurb: "Describe any document. Clarifyd AI designs the clauses with you, drafts it from scratch.", footer: "Built to order", mode: "custom" },
   { id: "__chat__",              name: "Startup Q&A",           Icon: Chat,           blurb: "Open chat for legal, fundraising, hiring, IP, or compliance questions.", footer: "Ask anything",              mode: "chat" },
 ];
 
@@ -96,7 +96,7 @@ export default function CopilotPage() {
       const res = await client.copilotGuidance(name, opener, [], mode, profileContextLine());
       setMessages([{ role: "assistant", content: res.reply }]);
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Co-Pilot failed to start.", "error");
+      push(err instanceof ApiError ? err.message : "Clarifyd AI failed to start.", "error");
     } finally {
       setBusy(false);
       scrollToBottom();
@@ -146,7 +146,7 @@ export default function CopilotPage() {
         setNotice({
           kind: "rejection",
           caption: "STOP PRESS · OFF-TOPIC QUESTION",
-          headline: "Clarifyd Co-Pilot only answers legal & startup questions.",
+          headline: "Clarifyd AI only answers legal & startup questions.",
           body:
             err.message ||
             "I can help with contracts, term sheets, NDAs, fundraising, hiring, IP, equity, and compliance — not coding tasks, math problems, or general chat.",
@@ -155,7 +155,7 @@ export default function CopilotPage() {
         });
         setMessages(messages);  // drop the off-topic turn from history
       } else {
-        push(err instanceof ApiError ? err.message : "Co-Pilot request failed.", "error");
+        push(err instanceof ApiError ? err.message : "Clarifyd AI request failed.", "error");
         setMessages(next);
       }
     } finally {
@@ -238,13 +238,13 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
           <div>
             <span className="bsd-kicker" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <Compass weight="duotone" size={14} aria-hidden />
-              Legal Co-Pilot
+              Clarifyd AI
             </span>
             <h1 style={{ margin: "10px 0 0", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 700, color: "var(--bsd-ink)", letterSpacing: "-0.03em", lineHeight: 1.02 }}>
               Draft with <span style={{ color: "var(--bsd-red)", fontStyle: "italic", fontWeight: 600 }}>precision.</span>
             </h1>
             <p style={{ margin: "12px 0 0", color: "var(--bsd-body)", fontSize: 15, lineHeight: 1.6, maxWidth: 620 }}>
-              Pick a vetted template, design a custom document, or open Startup Q&amp;A. Clarifyd Assistant builds with you, clause by clause.
+              Pick a vetted template, design a custom document, or open Startup Q&amp;A. Clarifyd AI builds with you, clause by clause.
             </p>
           </div>
           <span className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10.5, letterSpacing: "0.20em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -379,7 +379,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
             <div style={{ borderBottom: "2px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--bsd-paper-deep)" }}>
               <div style={{ minWidth: 0 }}>
                 <div className="cf-mono" style={{ color: "var(--bsd-red)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 800 }}>
-                  Clarifyd Assistant
+                  Clarifyd AI
                 </div>
                 <div style={{ marginTop: 2, fontSize: 12.5, color: "var(--bsd-body)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {statusLabel}
@@ -402,7 +402,7 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
                 <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center" }}>
                   <Hammer weight="duotone" size={36} color="var(--bsd-red)" />
                   <p style={{ margin: 0, color: "var(--bsd-muted)", fontSize: 13.5, maxWidth: 260, lineHeight: 1.55 }}>
-                    Pick a column or open Startup Q&amp;A. Clarifyd Assistant takes it from there.
+                    Pick a column or open Startup Q&amp;A. Clarifyd AI takes it from there.
                   </p>
                 </div>
               ) : messages.map((m, i) => (

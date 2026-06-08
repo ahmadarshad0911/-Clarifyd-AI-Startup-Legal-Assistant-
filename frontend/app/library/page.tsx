@@ -52,7 +52,7 @@ export default function LibraryPage() {
           Startup templates. <span style={{ color: "var(--brand-500)" }}>Drop-in ready.</span>
         </h1>
         <p style={{ marginTop: 8, color: "var(--ink-secondary)", fontSize: 14.5, maxWidth: 560 }}>
-          NDAs, SAFEs, employment offers, MSAs. Co-pilot fills the placeholders from a 6-question chat.
+          NDAs, SAFEs, employment offers, MSAs. Clarifyd AI fills the placeholders from a 6-question chat.
         </p>
       </motion.header>
 

@@ -208,7 +208,7 @@ export default function FounderProfilePage() {
             <p style={{ marginTop: 18, color: "var(--bsd-body)", fontSize: 15.5, lineHeight: 1.65, maxWidth: 360 }}>
               {step === 2
                 ? "Clarifyd is built for pre-seed founders. We tune our reasoning to the clauses that bite first at the earliest stage."
-                : "These particulars are committed to your device, not our ledger. They spare you from repeating yourself to the Co-Pilot in subsequent sittings."}
+                : "These particulars are committed to your device, not our ledger. They spare you from repeating yourself to Clarifyd AI in subsequent sittings."}
             </p>
           </motion.div>
 

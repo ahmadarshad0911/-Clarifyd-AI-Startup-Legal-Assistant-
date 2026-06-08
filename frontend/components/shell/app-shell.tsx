@@ -21,7 +21,7 @@ type NavLink = { href: string; label: string; icon: string; adminOnly?: boolean 
 const PRIMARY_NAV: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/findings",  label: "Findings",  icon: "description" },
-  { href: "/copilot",   label: "Co-Pilot",  icon: "auto_awesome" },
+  { href: "/copilot",   label: "Clarifyd AI",  icon: "auto_awesome" },
   { href: "/negotiation", label: "Negotiate", icon: "handshake" },
   { href: "/exports",   label: "Audit",     icon: "history_edu" },
   { href: "/feedback",  label: "Feedback",  icon: "rate_review" },

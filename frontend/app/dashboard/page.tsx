@@ -481,7 +481,7 @@ export default function DashboardPage() {
       <div style={{ marginTop: 36, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: isMobile ? 14 : 18 }} className="grid-cols-1 sm:grid-cols-3">
         {[
           { title: "Negotiate", body: "Track contracts you're actively pushing back on.", href: "/negotiation", Icon: Handshake },
-          { title: "Co-Pilot", body: "Ask Clarifyd AI anything about a clause.", href: "/copilot", Icon: Sparkle },
+          { title: "Clarifyd AI", body: "Ask Clarifyd AI anything about a clause.", href: "/copilot", Icon: Sparkle },
           { title: "Library", body: "Every analyzed contract, ready to revisit or export.", href: "/exports", Icon: HashStraight },
         ].map((c, i) => (
           <QuickLink key={c.title} index={i} {...c} />

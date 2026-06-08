@@ -29,7 +29,7 @@ type NavItem = { href: string; label: string };
 const NAV_PRIMARY: NavItem[] = [
   { href: "/dashboard",   label: "Dashboard" },
   { href: "/findings",    label: "Findings" },
-  { href: "/copilot",     label: "Co-Pilot" },
+  { href: "/copilot",     label: "Clarifyd AI" },
   { href: "/negotiation", label: "Negotiate" },
 ];
 const NAV_TOOLS: NavItem[] = [

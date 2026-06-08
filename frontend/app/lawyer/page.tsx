@@ -229,7 +229,7 @@ export default function LawyerPage() {
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 0, marginTop: 32, borderTop: "2px solid var(--bsd-ink)", borderBottom: "2px solid var(--bsd-ink)" }} className="grid-cols-1 md:grid-cols-3">
               {[
                 { href: "/findings", n: "I",   title: "Findings", body: "The verdict on your last scan, every clause sorted by severity." },
-                { href: "/copilot",  n: "II",  title: "Co-Pilot", body: "Ask the AI a question scoped to a clause. Cited reasoning, no hallucinations." },
+                { href: "/copilot",  n: "II",  title: "Clarifyd AI", body: "Ask the AI a question scoped to a clause. Cited reasoning, no hallucinations." },
               ].map((c, i, arr) => (
                 <Link
                   key={c.href}

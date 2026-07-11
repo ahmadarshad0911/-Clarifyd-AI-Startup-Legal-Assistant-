@@ -7,7 +7,11 @@ const nextConfig = {
     proxyTimeout: 300_000,
   },
   async rewrites() {
-    const backendOrigin = process.env.BACKEND_ORIGIN || "http://localhost:8000";
+    // Next requires rewrite destinations to start with a scheme. A BACKEND_ORIGIN
+    // set without http(s):// (a common dashboard mistake) fails the whole build with
+    // "Invalid rewrite found", so normalize it here.
+    const raw = (process.env.BACKEND_ORIGIN || "http://localhost:8000").trim().replace(/\/+$/, "");
+    const backendOrigin = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     return [
       {
         source: "/api/:path*",

@@ -27,9 +27,7 @@ import {
 
 import { ApiClient } from "./api";
 import type { Me, Role } from "./contracts";
-import { clearLegacyGlobals } from "./user-storage";
-
-const USER_KEY = "clarifyd.user-key";
+import { clearUserStorage, setActiveUser } from "./user-storage";
 
 type AuthState = {
   token: string | null;
@@ -127,14 +125,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const role: Role | null = me?.role ?? null;
 
-  // Persist per-user storage key + wipe legacy globals on first sight.
+  // Scope storage by Clerk user id, never by email: Clerk never reuses an id,
+  // so an account recreated on a deleted user's email starts empty instead of
+  // inheriting the old account's data.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!me?.email) return;
-    const prev = window.localStorage.getItem(USER_KEY);
-    window.localStorage.setItem(USER_KEY, me.email);
-    if (prev !== me.email) clearLegacyGlobals();
-  }, [me?.email]);
+    if (!me?.id) return;
+    setActiveUser(me.id);
+  }, [me?.id]);
 
   const logout = useMemo(
     () => async () => {
@@ -144,8 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.replace("/login");
       }
       if (typeof window !== "undefined") {
-        window.localStorage.removeItem(USER_KEY);
-        clearLegacyGlobals();
+        clearUserStorage();
       }
     },
     [signOut, router]

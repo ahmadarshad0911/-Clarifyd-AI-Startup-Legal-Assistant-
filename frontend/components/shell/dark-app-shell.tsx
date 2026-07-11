@@ -16,6 +16,7 @@ import { useUser } from "@clerk/nextjs";
 
 import { useAuth } from "../../lib/auth";
 import { isOnboarded, isProfileComplete } from "../../lib/founder-profile";
+import { setActiveUser } from "../../lib/user-storage";
 import { useIsMobile } from "../../lib/use-is-mobile";
 import { Skeleton, SkeletonCard } from "../common/skeleton";
 
@@ -74,6 +75,12 @@ export function DarkAppShell({
     const flagged = user.unsafeMetadata?.onboarded === true;
     const createdMs = user.createdAt ? user.createdAt.getTime() : 0;
     const grandfathered = createdMs > 0 && createdMs < ONBOARDING_LAUNCH_MS;
+    // Point device storage at THIS account before reading its flags. Idempotent,
+    // and it removes an ordering trap: AuthProvider re-points storage in a parent
+    // effect that runs after this one, so reading first would see the previous
+    // account's flags — and the self-heal below would then brand this brand-new
+    // account onboarded forever.
+    setActiveUser(user.id);
     const doneLocally = isOnboarded() || isProfileComplete();
 
     if (flagged || grandfathered || doneLocally) {

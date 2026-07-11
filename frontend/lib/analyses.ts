@@ -1,7 +1,8 @@
-// Session-scoped store of analyzed documents so the Findings page can switch
+// Per-user store of analyzed documents so the Findings page can switch
 // between multiple uploaded contracts.
 
 import type { AnalyzeContractResponse } from "./contracts";
+import { readJSON, writeJSON } from "./user-storage";
 
 const KEY = "clarifyd.analyses";
 const MAX = 12;
@@ -17,24 +18,12 @@ export type StoredAnalysis = {
 };
 
 function read(): StoredAnalysis[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const v = readJSON<StoredAnalysis[]>(KEY, []);
+  return Array.isArray(v) ? v : [];
 }
 
 function write(items: StoredAnalysis[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(items.slice(0, MAX)));
-  } catch {
-    // storage full / unavailable — non-fatal
-  }
+  writeJSON(KEY, items.slice(0, MAX));
 }
 
 export function listAnalyses(): StoredAnalysis[] {

@@ -15,6 +15,8 @@ class ClauseType(str, Enum):
     dispute_resolution = "dispute_resolution"
     data_protection = "data_protection"
     assignment = "assignment"
+    force_majeure = "force_majeure"
+    entire_agreement = "entire_agreement"
     uncategorized = "uncategorized"
 
 

@@ -79,6 +79,7 @@ from app.services.reasoning import (
     KimiProvider,
     RulesBasedProvider,
 )
+from app.services.reasoning.rate_limiter import AsyncRateLimiter
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -209,12 +210,16 @@ def _build_provider_chain(client: "httpx.AsyncClient"):
     if not settings.reasoning_api_key:
         return FallbackChainProvider([rules])
 
+    # One shared limiter: primary + fallback draw on the same account budget,
+    # so a burst of gather()-ed clause calls can't collectively trip 429.
+    limiter = AsyncRateLimiter(settings.reasoning_max_rpm)
     primary = KimiProvider(
         client=client,
         api_key=settings.reasoning_api_key,
         model=settings.reasoning_model,
         base_url=settings.reasoning_base_url,
         max_retries=settings.reasoning_max_retries,
+        rate_limiter=limiter,
     )
     # Drop duplicate-model fallback when primary == fallback (same endpoint).
     chain = [primary]
@@ -226,6 +231,7 @@ def _build_provider_chain(client: "httpx.AsyncClient"):
                 model=settings.reasoning_model_fallback,
                 base_url=settings.reasoning_base_url,
                 max_retries=settings.reasoning_max_retries,
+                rate_limiter=limiter,
             )
         )
     chain.append(rules)

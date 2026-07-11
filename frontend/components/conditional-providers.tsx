@@ -10,6 +10,7 @@ import { AnalysisProvider } from "../lib/analysis-context";
 // Public marketing pages that must NOT pay the ~220KB ClerkJS cost. Anything
 // not listed here (app routes + /login) gets the real Clerk-backed stack.
 const PUBLIC_PREFIXES = [
+  "/landing-preview",
   "/faq",
   "/pricing",
   "/contact",

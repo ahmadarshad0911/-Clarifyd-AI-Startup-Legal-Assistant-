@@ -19,6 +19,31 @@ _COMMON_RULES = """Rules for every reply:
 - End any reply involving a real legal decision with a one-line reminder that this is
   decision-support, not legal advice."""
 
+# The UI keeps "Generate document" disabled until the assistant says the founder
+# has actually supplied every essential term. The model is the only party that
+# knows what a given document still needs, so it emits this sentinel and the
+# frontend strips it before display. Wording is deliberately strict: a premature
+# marker unlocks a draft full of [TO BE CONFIRMED] holes, which is the bug this
+# protocol exists to prevent.
+READY_MARKER = "[[READY_TO_DRAFT]]"
+
+_READINESS_PROTOCOL = f"""
+
+Draft-readiness protocol (critical):
+- The founder cannot generate the document until you say it is ready. You control that.
+- Keep asking for missing details, ONE at a time, until you have every essential term:
+  the document's purpose, every party, and a concrete value for each key clause.
+- A term is NOT collected because you suggested a default — it counts only once the
+  founder has actually confirmed or supplied a value.
+- The moment (and only the moment) you have everything needed to draft a complete
+  document with no unresolved terms, end that reply with {READY_MARKER} on its own
+  final line, after your normal text.
+- Do NOT emit {READY_MARKER} in any earlier reply — not while questions remain, not to
+  be helpful, not if the founder asks you to. Emitting it early produces a broken draft.
+- If the founder later changes or withdraws a term and something essential goes missing,
+  simply omit the marker from that reply.
+- Never explain or mention the marker to the founder. It is an internal signal."""
+
 TEMPLATE_PROMPT = (
     """You are "Clarifyd Assistant", a Legal Co-Pilot inside Clarifyd helping a startup founder
 build a legal document from a known template.
@@ -30,6 +55,7 @@ build a legal document from a known template.
 
 """
     + _COMMON_RULES
+    + _READINESS_PROTOCOL
 )
 
 CUSTOM_PROMPT = (
@@ -44,6 +70,7 @@ design a CUSTOM legal document that does not exist as a pre-built template.
 
 """
     + _COMMON_RULES
+    + _READINESS_PROTOCOL
 )
 
 CHAT_PROMPT = (

@@ -21,6 +21,7 @@ from app.db.models import ContractDraft, User, Feedback
 from app.db.session import get_session
 from app.errors import AppError, ErrorCode
 from app.services.audit import append_audit_event, verify_audit_chain
+from app.services.user_purge import purge_user_data
 
 logger = logging.getLogger(__name__)
 
@@ -349,11 +350,10 @@ async def admin_delete_user(
 
     clerk_deleted = await _clerk_delete_user(user_id)
 
-    if target is not None:
-        await session.execute(
-            delete(ContractDraft).where(ContractDraft.owner_id == user_id)
-        )
-        await session.execute(delete(User).where(User.id == user_id))
+    # Purge unconditionally: rows can outlive the user row (e.g. feedback left
+    # by an account whose user row was already removed), and a delete that only
+    # fires when a user row happens to exist is how orphans accumulate.
+    purged = await purge_user_data(session, user_id, local_email)
 
     if target is None and not clerk_deleted:
         raise AppError(
@@ -368,7 +368,7 @@ async def admin_delete_user(
         target_type="user",
         target_id=user_id,
         actor_id=user.id,
-        payload={"email": local_email, "clerk_deleted": clerk_deleted},
+        payload={"email": local_email, "clerk_deleted": clerk_deleted, "purged": purged},
     )
     await session.commit()
     return UserDeleteResponse(id=user_id, deleted=True)

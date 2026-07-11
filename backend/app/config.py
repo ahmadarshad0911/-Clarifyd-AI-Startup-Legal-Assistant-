@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     clerk_jwks_url: str = ""
     clerk_audience: str = ""
     clerk_secret_key: str = ""
+    # Svix signing secret (whsec_...) for the Clerk -> /webhooks/clerk receiver.
+    # Unset means the endpoint refuses every request; see clerk_webhooks.py.
+    clerk_webhook_secret: str = ""
     jwt_access_ttl_minutes: int = 60
     rate_limit_login_per_min: int = 10
     rate_limit_analyze_per_min: int = 10

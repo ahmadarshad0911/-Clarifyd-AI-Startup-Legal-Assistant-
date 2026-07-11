@@ -35,7 +35,24 @@ type SavedSession = {
   active?: Active | null;
   messages?: CopilotMessage[];
   doc?: string | null;
+  ready?: boolean;
 };
+
+// Clarifyd AI ends a reply with this sentinel once the founder has supplied every
+// essential term (see _READINESS_PROTOCOL in copilot_advisor.py). It gates the
+// "Generate document" button and is never shown to the founder. Matched loosely —
+// a small model occasionally mangles the brackets, and a missed marker would
+// strand the founder with a button that never unlocks.
+const READY_PATTERN = /\[*\s*READY_TO_DRAFT\s*\]*/gi;
+
+function isReadyReply(text: string): boolean {
+  READY_PATTERN.lastIndex = 0;
+  return READY_PATTERN.test(text);
+}
+
+function stripReadyMarker(text: string): string {
+  return text.replace(READY_PATTERN, "").trimEnd();
+}
 
 type Tile = {
   id: string;
@@ -74,12 +91,15 @@ export default function CopilotPage() {
   const [lhBusy, setLhBusy] = useState(false);
   const [customDraft, setCustomDraft] = useState("");
   const [notice, setNotice] = useState<NoticeContent | null>(null);
+  // False until Clarifyd AI signals it has every term it needs. Drafting before
+  // that produces a document full of [TO BE CONFIRMED] holes.
+  const [ready, setReady] = useState(saved.current.ready ?? false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Persist the thread on every change so a route switch never loses it.
   useEffect(() => {
-    writeJSON(SESSION_KEY, { active, messages, doc });
-  }, [active, messages, doc]);
+    writeJSON(SESSION_KEY, { active, messages, doc, ready });
+  }, [active, messages, doc, ready]);
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
@@ -92,10 +112,12 @@ export default function CopilotPage() {
     setActive({ id, name, mode });
     setMessages([]);
     setDoc(null);
+    setReady(false);
     setBusy(true);
     try {
       const res = await client.copilotGuidance(name, opener, [], mode, profileContextLine());
-      setMessages([{ role: "assistant", content: res.reply }]);
+      if (isReadyReply(res.reply)) setReady(true);
+      setMessages([{ role: "assistant", content: stripReadyMarker(res.reply) }]);
     } catch (err) {
       push(err instanceof ApiError ? err.message : "Clarifyd AI failed to start.", "error");
     } finally {
@@ -131,17 +153,23 @@ export default function CopilotPage() {
       // Stream the reply so tokens appear as they're generated (first token
       // in ~1-2s) instead of blocking ~15s on the full block.
       setMessages([...next, { role: "assistant", content: "" }]);
+      let full = "";
       await client.copilotGuidanceStream(active.name, text, next, active.mode, (chunk) => {
+        full += chunk;
+        // Strip on every frame: the marker can split across chunks, so render
+        // from the accumulated reply rather than appending raw deltas.
+        const shown = stripReadyMarker(full);
         setMessages((cur) => {
           const copy = [...cur];
           const last = copy[copy.length - 1];
           if (last && last.role === "assistant") {
-            copy[copy.length - 1] = { role: "assistant", content: last.content + chunk };
+            copy[copy.length - 1] = { role: "assistant", content: shown };
           }
           return copy;
         });
         scrollToBottom();
       }, profileContextLine());
+      if (isReadyReply(full)) setReady(true);
     } catch (err) {
       if (err instanceof ApiError && err.code === "off_topic_question") {
         setNotice({
@@ -166,7 +194,7 @@ export default function CopilotPage() {
   }
 
   async function generateDocument() {
-    if (!active || generating || active.mode === "chat") return;
+    if (!active || generating || active.mode === "chat" || !ready) return;
     setGenerating(true);
     try {
       let prompt: string;
@@ -464,16 +492,28 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
 
             <div style={{ borderTop: "1.5px solid var(--bsd-ink)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10, background: "var(--bsd-paper-deep)" }}>
               {active && active.mode !== "chat" ? (
-                <button
-                  type="button"
-                  onClick={generateDocument}
-                  disabled={generating || busy}
-                  className="bsd-btn cursor-pointer"
-                  style={{ width: "100%", justifyContent: "center" }}
-                >
-                  <FileText weight="duotone" size={12} />
-                  {generating ? "Drafting…" : "Generate document"}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={generateDocument}
+                    disabled={generating || busy || !ready}
+                    className="bsd-btn cursor-pointer"
+                    style={{ width: "100%", justifyContent: "center" }}
+                    title={ready ? undefined : "Answer Clarifyd AI's questions first — drafting unlocks once every term is in."}
+                  >
+                    <FileText weight="duotone" size={12} />
+                    {generating ? "Drafting…" : "Generate document"}
+                  </button>
+                  {!ready ? (
+                    <div
+                      className="cf-mono"
+                      role="status"
+                      style={{ fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--bsd-muted)", textAlign: "center" }}
+                    >
+                      Answer the questions to unlock drafting
+                    </div>
+                  ) : null}
+                </>
               ) : null}
               <div className="bsd-field" style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                 <input

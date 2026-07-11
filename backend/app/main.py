@@ -46,6 +46,7 @@ from app.observability import render_prometheus
 from app.routes.admin import router as admin_router
 from app.routes.analyses import router as analyses_router
 from app.routes.auth import router as auth_router
+from app.routes.clerk_webhooks import router as clerk_webhooks_router
 from app.routes.comments import router as comments_router
 from app.routes.compare import router as compare_router
 from app.routes.compliance import router as compliance_router
@@ -411,6 +412,7 @@ app.include_router(letterhead_router)
 app.include_router(contact_router)
 app.include_router(exports_router)
 app.include_router(admin_router)
+app.include_router(clerk_webhooks_router)
 app.include_router(reasoning_router)
 app.include_router(compliance_router)
 app.include_router(simplify_router)

@@ -65,9 +65,20 @@ def verify_clerk_session_token(
     try:
         client = _jwks_client(s)
         signing_key = client.get_signing_key_from_jwt(token).key
-    except (httpx.HTTPError, jwt.PyJWKClientError, ClerkAuthError) as exc:
+    except ClerkAuthError:
+        raise
+    except (httpx.HTTPError, jwt.PyJWKClientError) as exc:
         logger.warning("Clerk JWKS lookup failed: %r", exc)
         raise ClerkAuthError("Could not fetch Clerk signing keys.") from exc
+    except jwt.InvalidTokenError as exc:
+        # A malformed/non-JWT bearer makes get_signing_key_from_jwt raise
+        # DecodeError (an InvalidTokenError) — treat as an auth failure (401),
+        # not an unhandled 500.
+        logger.warning("Clerk token malformed before verification: %r", exc)
+        raise ClerkAuthError("Invalid Clerk session token.") from exc
+    except Exception as exc:  # defensive: auth must never surface as a 500
+        logger.warning("Unexpected Clerk signing-key error: %r", exc)
+        raise ClerkAuthError("Could not resolve Clerk signing key.") from exc
 
     try:
         claims = jwt.decode(

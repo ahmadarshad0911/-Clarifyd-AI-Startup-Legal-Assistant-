@@ -30,13 +30,15 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: REASONING_MODEL
-        value: moonshotai/kimi-k2.6
+        value: meta/llama-3.1-70b-instruct
       - key: REASONING_MODEL_FALLBACK
-        value: moonshotai/kimi-k2.6
+        value: nvidia/llama-3.3-nemotron-super-49b-v1.5
       - key: REASONING_BASE_URL
         value: https://integrate.api.nvidia.com/v1
       - key: REASONING_TIMEOUT_SECONDS
         value: "240"
+      - key: REASONING_MAX_RPM
+        value: "30"
       - key: REASONING_API_KEY
         scope: RUN_TIME
         type: SECRET

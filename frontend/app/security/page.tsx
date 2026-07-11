@@ -65,7 +65,7 @@ const ARTICLES: Article[] = [
   {
     n: "05", Icon: FileLock,
     title: "Local storage scoping",
-    body: ["The frontend scopes every browser localStorage key by signed-in user via `clarifyd.user-key`. On login or logout we wipe 11 known legacy unscoped keys so a fresh account never sees prior-user data."],
+    body: ["The frontend scopes every browser localStorage key by the signed-in user's account id via `clarifyd.user-key`. On logout, and whenever a different account signs in, we wipe every Clarifyd key on the device so a fresh account never sees prior-user data."],
   },
   {
     n: "06", Icon: Stack,

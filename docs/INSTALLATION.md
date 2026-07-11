@@ -1,5 +1,27 @@
 # Installation Guide
 
+> ## ⚠️ AS-BUILT NOTICE
+>
+> Sections below referencing **Elasticsearch, Redis, `gpt-4o`, or `postgres_data`/`elasticsearch_data`
+> volumes are aspirational and NOT part of the shipped stack** — ignore them. The real system needs only:
+> **Python 3.11 + FastAPI backend**, **Node 20 + Next.js 14 frontend**, and a DB (**SQLite** in dev,
+> **Postgres·Neon** in prod). No Redis, no Elasticsearch.
+>
+> **Real quick start** (see [`../README.md`](../README.md) for the authoritative version):
+> ```bash
+> # backend
+> cd backend && python -m venv .venv && .venv/Scripts/activate
+> pip install -r requirements-dev.txt
+> cp .env.example .env    # set REASONING_* (NVIDIA NIM) + Clerk keys
+> uvicorn app.main:app --reload --port 8000
+> # frontend (separate shell)
+> cd frontend && npm install && npm run dev    # :3000
+> # or both: docker compose up --build
+> ```
+> Reasoning env (NVIDIA NIM): `REASONING_BASE_URL=https://integrate.api.nvidia.com/v1`,
+> `REASONING_MODEL=meta/llama-3.1-70b-instruct`, `REASONING_MODEL_FALLBACK=nvidia/llama-3.3-nemotron-super-49b-v1.5`,
+> `REASONING_MAX_RPM=30`. Architecture of record: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
 2. [Quick Start with Docker](#quick-start-with-docker)
@@ -293,13 +315,16 @@ sudo dpkg -i elasticsearch-8.5.0-amd64.deb
 
 ### API Keys
 
-#### Reasoning API Key (OpenAI or Kimi)
-1. Create an API key from your chosen provider.
+#### Reasoning API Key (NVIDIA NIM — current)
+1. Create an API key at build.nvidia.com (NVIDIA NIM).
 2. Add provider settings to `.env`:
 ```env
-REASONING_PROVIDER=openai   # or kimi
+REASONING_PROVIDER=kimi                                        # provider class name (OpenAI-compatible)
+REASONING_BASE_URL=https://integrate.api.nvidia.com/v1
 REASONING_API_KEY=...
-REASONING_MODEL=gpt-4o      # set provider-compatible model
+REASONING_MODEL=meta/llama-3.1-70b-instruct
+REASONING_MODEL_FALLBACK=nvidia/llama-3.3-nemotron-super-49b-v1.5
+REASONING_MAX_RPM=30
 ```
 
 #### AWS S3 (Optional - for file storage)

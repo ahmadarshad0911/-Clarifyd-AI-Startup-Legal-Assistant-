@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     reasoning_model_fallback: str = "moonshot-v1-8k"
     reasoning_timeout_seconds: int = 30
     reasoning_max_retries: int = 3
+    reasoning_max_rpm: int = 30
     cors_origins: str = "http://127.0.0.1:3000,http://localhost:3000"
     database_url: str = "sqlite+aiosqlite:///./clarifyd.db"
     db_echo: bool = False

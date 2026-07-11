@@ -44,15 +44,31 @@ class CustomReasoningModel:
             "remuneration", "consideration", "billing",
         )),
         (ClauseType.dispute_resolution, (
-            "arbitration", "dispute", "mediation", "jams", "icc rules", "class action waiver",
+            "arbitration", "mediation", "jams", "icc rules", "class action waiver",
+            "dispute resolution", "dispute shall be resolved", "disputes shall be resolved",
         )),
         (ClauseType.governing_law, ("governing law", "jurisdiction", "venue", "choice of law")),
-        (ClauseType.assignment, ("assignment", "assign", "transfer rights", "successor")),
+        (ClauseType.assignment, (
+            "assignment", "may assign", "may not assign", "shall not assign", "assign this agreement",
+        )),
+        (ClauseType.entire_agreement, (
+            "entire agreement", "supersedes", "prior negotiations", "prior agreements", "merger clause",
+        )),
+    )
+
+    # Force-majeure clauses read "shall not be liable ... beyond its reasonable control",
+    # which false-matches the liability lexicon. Check these first so they classify as
+    # force_majeure instead of being mislabeled liability.
+    _FORCE_MAJEURE_SIGNALS: tuple[str, ...] = (
+        "force majeure", "beyond its reasonable control", "beyond their reasonable control",
+        "act of god", "acts of god",
     )
 
     def classify_clause(self, text: str) -> tuple[ClauseType, float]:
         """Return (category, confidence). Reusable by extractor + downstream services."""
         lower = text.lower()
+        if any(sig in lower for sig in self._FORCE_MAJEURE_SIGNALS):
+            return ClauseType.force_majeure, 0.9
         for clause_type, keywords in self._CATEGORY_LEXICON:
             if any(k in lower for k in keywords):
                 return clause_type, 0.9

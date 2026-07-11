@@ -5,6 +5,11 @@
 ### Overview
 This roadmap outlines the evolution of AI Contract Risk Analyzer from MVP to enterprise-grade SaaS platform.
 
+> **As-built note:** phases below the current point are aspirational. What actually exists today is documented
+> in [`ARCHITECTURE.md`](ARCHITECTURE.md) — a FastAPI monolith + Next.js 14 frontend with rules-based clause
+> extraction and a single-pass Llama-via-NVIDIA-NIM risk scorer. Enterprise items (Kubernetes, Elasticsearch,
+> multi-region, SSO/SAML, org multi-tenancy) are **not** implemented.
+
 ---
 
 ## Phase 1: MVP (Complete ✅)

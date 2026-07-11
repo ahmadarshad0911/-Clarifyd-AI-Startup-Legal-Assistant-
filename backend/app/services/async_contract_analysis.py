@@ -47,7 +47,7 @@ class AnalysisResultWithFlags:
 # the per-clause sha256 so the cache key implicitly carries the prompt
 # generation. Last bump: 2026-05-16 — added severity + risk_score rubrics
 # + calibration examples to CLAUSE_SYSTEM_PROMPT.
-_CLAUSE_PROMPT_VERSION = "v2-2026-05-16-rubric"
+_CLAUSE_PROMPT_VERSION = "v4-2026-07-09-merit-based"
 
 
 def _clause_hash(text: str) -> str:

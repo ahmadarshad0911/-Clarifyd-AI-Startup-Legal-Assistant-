@@ -14,13 +14,14 @@ import {
   Gavel, Check, Rocket,
   ShieldCheck, SealCheck, Cloud, Bank, FirstAid, Storefront, Cpu, Brain,
   Leaf, DotsThree, UsersThree, Gear, GraduationCap, User, Buildings,
-  Globe, CaretDown, ArrowRight, ArrowLeft,
+  Globe, CaretDown, ArrowRight, ArrowLeft, FileArrowUp, X,
   type Icon,
 } from "@phosphor-icons/react";
 
 import { useUser } from "@clerk/nextjs";
 
 import { useAuth } from "../../../lib/auth";
+import { ApiError } from "../../../lib/api";
 import { useToast } from "../../../lib/toast";
 import {
   getProfile, markOnboarded, setProfile, isProfileComplete, type FounderProfile,
@@ -65,7 +66,7 @@ function rigorLabel(v: number): string {
 
 export default function FounderProfilePage() {
   const router = useRouter();
-  const { token, loading, me } = useAuth();
+  const { token, loading, me, client } = useAuth();
   const { user } = useUser();
   const { push } = useToast();
   const reduceMotion = useReducedMotion() ?? false;
@@ -74,6 +75,10 @@ export default function FounderProfilePage() {
   const [direction, setDirection] = useState<1 | -1>(1);
   const [profile, setLocalProfile] = useState<FounderProfile>({});
   const [loaded, setLoaded] = useState(false);
+  // Optional A4 letterhead — uploaded to the backend on finish so generated
+  // documents can be composited onto it. Held here until the final submit.
+  const [letterheadFile, setLetterheadFile] = useState<File | null>(null);
+  const [lhBusy, setLhBusy] = useState(false);
 
   useEffect(() => {
     if (!loading && !token) router.replace("/login");
@@ -110,6 +115,24 @@ export default function FounderProfilePage() {
       if (!isProfileComplete(profile)) {
         push("Complete every field and accept the terms to continue.", "info");
         return;
+      }
+      // Optional letterhead: if the founder picked one, upload it now. A
+      // validation failure (not A4, wrong type) blocks finishing so they can
+      // fix it; with no file chosen we proceed — it can be added later.
+      if (letterheadFile) {
+        setLhBusy(true);
+        try {
+          await client.uploadLetterhead(letterheadFile);
+          push("Letterhead saved", "success");
+        } catch (err) {
+          setLhBusy(false);
+          push(
+            err instanceof ApiError ? err.message : "Letterhead upload failed.",
+            "error"
+          );
+          return;
+        }
+        setLhBusy(false);
       }
       update({ steps_completed: 3 });
       markOnboarded();
@@ -263,7 +286,7 @@ export default function FounderProfilePage() {
                 {step === 2 ? (
                   <VentureStep profile={profile} onChange={update} reduceMotion={reduceMotion} />
                 ) : (
-                  <WorkspaceStep profile={profile} onChange={update} reduceMotion={reduceMotion} />
+                  <WorkspaceStep profile={profile} onChange={update} reduceMotion={reduceMotion} letterheadFile={letterheadFile} onLetterheadPick={setLetterheadFile} />
                 )}
               </motion.div>
             </AnimatePresence>
@@ -427,8 +450,14 @@ function VentureStep({
 }
 
 function WorkspaceStep({
-  profile, onChange, reduceMotion,
-}: { profile: FounderProfile; onChange: (p: Partial<FounderProfile>) => void; reduceMotion: boolean }) {
+  profile, onChange, reduceMotion, letterheadFile, onLetterheadPick,
+}: {
+  profile: FounderProfile;
+  onChange: (p: Partial<FounderProfile>) => void;
+  reduceMotion: boolean;
+  letterheadFile: File | null;
+  onLetterheadPick: (f: File | null) => void;
+}) {
   const filled = [profile.full_name, profile.company_name, profile.sector, profile.jurisdiction, profile.role].filter(Boolean).length;
   const total = 5;
   return (
@@ -528,6 +557,44 @@ function WorkspaceStep({
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <div className="cf-mono" style={{ color: "var(--bsd-muted)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, marginBottom: 14, paddingBottom: 8, borderBottom: "1px solid var(--bsd-hairline)" }}>
+            Company letterhead <span style={{ color: "var(--bsd-soft)", fontWeight: 600 }}>· optional</span>
+          </div>
+          <p style={{ fontSize: 13, color: "var(--bsd-muted)", lineHeight: 1.55, marginTop: 0, marginBottom: 14 }}>
+            Upload your A4 letterhead (PDF or Word). Documents you generate with Clarifyd AI
+            will be produced on it. You can add or change this later.
+          </p>
+          {letterheadFile ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", border: "1px solid var(--bsd-ink)", maxWidth: 460 }}>
+              <FileArrowUp weight="duotone" size={18} color="var(--bsd-red)" aria-hidden />
+              <span style={{ flex: 1, fontSize: 13, color: "var(--bsd-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {letterheadFile.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => onLetterheadPick(null)}
+                className="cursor-pointer"
+                aria-label="Remove letterhead"
+                style={{ background: "transparent", border: "none", color: "var(--bsd-muted)", display: "inline-flex" }}
+              >
+                <X weight="bold" size={14} />
+              </button>
+            </div>
+          ) : (
+            <label className="bsd-chip cursor-pointer" style={{ fontSize: 13, display: "inline-flex", width: "auto" }}>
+              <FileArrowUp weight="regular" size={14} color="var(--bsd-red)" aria-hidden />
+              Choose letterhead
+              <input
+                type="file"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(e) => onLetterheadPick(e.target.files?.[0] ?? null)}
+                style={{ display: "none" }}
+              />
+            </label>
+          )}
         </div>
 
         <div>

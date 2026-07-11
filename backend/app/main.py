@@ -52,6 +52,7 @@ from app.routes.compliance import router as compliance_router
 from app.routes.contact import router as contact_router
 from app.routes.exports import router as exports_router
 from app.routes.feedback import router as feedback_router
+from app.routes.letterhead import router as letterhead_router
 from app.routes.negotiate import router as negotiate_router
 from app.routes.oauth import router as oauth_router
 from app.routes.reasoning import router as reasoning_router
@@ -406,6 +407,7 @@ app.include_router(oauth_router)
 app.include_router(reviews_router)
 app.include_router(analyses_router)
 app.include_router(feedback_router)
+app.include_router(letterhead_router)
 app.include_router(contact_router)
 app.include_router(exports_router)
 app.include_router(admin_router)

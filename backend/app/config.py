@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     reasoning_api_key: str | None = None
     reasoning_model: str = "moonshot-v1-32k"
     reasoning_model_fallback: str = "moonshot-v1-8k"
+    # The Co-Pilot chatbot is conversational guidance, not the clause-labeling
+    # engine — a small fast instruct model answers in a fraction of the 70B's
+    # time with no effect on analysis accuracy.
+    copilot_model: str = "meta/llama-3.1-8b-instruct"
     reasoning_timeout_seconds: int = 30
     reasoning_max_retries: int = 3
     reasoning_max_rpm: int = 30

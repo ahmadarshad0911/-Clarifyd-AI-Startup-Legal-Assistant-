@@ -33,6 +33,8 @@ services:
         value: meta/llama-3.1-70b-instruct
       - key: REASONING_MODEL_FALLBACK
         value: nvidia/llama-3.3-nemotron-super-49b-v1.5
+      - key: COPILOT_MODEL
+        value: meta/llama-3.1-8b-instruct
       - key: REASONING_BASE_URL
         value: https://integrate.api.nvidia.com/v1
       - key: REASONING_TIMEOUT_SECONDS

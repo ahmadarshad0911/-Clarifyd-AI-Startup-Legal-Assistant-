@@ -11,19 +11,6 @@
 
 ---
 
-> ## ⚠️ AS-BUILT NOTICE
->
-> This SLC PRD is the **build spec**; most of it shipped. Two things drifted from the text and are worth
-> noting for accuracy:
-> - **Model/provider:** the live reasoning model is **Llama (`meta/llama-3.1-70b-instruct`) via NVIDIA NIM**,
->   not Kimi K2 (Kimi was retired from the NVIDIA account). The provider class is still named `KimiProvider`
->   but is just an OpenAI-compatible client. A **token-bucket rate limiter** (`reasoning_max_rpm`) now paces calls.
-> - **Auth:** production auth is **Clerk (RS256/JWKS)**; the local email/password path is disabled in prod.
->
-> Current architecture of record: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
-
----
-
 ## 1. Product Intent
 Deliver one complete, trustworthy workflow for contract risk triage:
 1. Upload a contract.

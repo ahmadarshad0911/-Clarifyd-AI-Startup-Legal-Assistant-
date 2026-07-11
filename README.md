@@ -23,12 +23,12 @@
 
 | Layer | Tech |
 |---|---|
-| Backend | FastAPI · SQLAlchemy 2.0 async · SQLite (dev) / Postgres·Neon (prod) · Pydantic v2 · `pydantic-settings` |
-| Reasoning | **Clarifyd AI** — model + endpoint configurable through `Settings`. Live via **NVIDIA NIM** (OpenAI-compatible): primary `meta/llama-3.1-70b-instruct`, fallback `nvidia/llama-3.3-nemotron-super-49b-v1.5`, `RulesBasedProvider` as always-on floor. Shared **token-bucket rate limiter** (`reasoning_max_rpm`). Provider chain in `services/reasoning/`. |
-| Auth | **Clerk (RS256 JWT, JWKS-verified)** is the primary/prod auth. Legacy local email/password (bcrypt + HS256) exists but is **disabled in production**. OAuth 2.0 for Google + Facebook (HMAC-signed state). Per-user `clarifyd.user-key` scopes frontend local storage. |
-| Frontend | Next.js 14 (App Router) · React 18 · TypeScript · **Geist Sans + Geist Mono** (via `next/font`) · **Phosphor Icons** (duotone) · Framer Motion · Tailwind 3 (installed; tokens carry the system) · Clerk |
-| Aesthetic | **The Broadsheet (v6)** — brutalist editorial. Warm ivory paper (`#f4ede1`), coffee-black ink (`#0c0a08`), single arterial red accent (`#b8260f`). Sharp edges, no gradients, no glass, oversize display type. |
-| Storage | SQLite + local FS (dev); Postgres·Neon (prod). A parallel `backend-node/` uses Vercel Blob. |
+| Backend | FastAPI · SQLAlchemy async · SQLite / Postgres · Pydantic v2 · `pydantic-settings` |
+| Reasoning | Clarifyd AI engine (model + endpoint configurable through `Settings`) with a `RulesBasedProvider` fallback chain. Internal provider abstraction lives in `services/reasoning/`. |
+| Auth | Local email/password (bcrypt + JWT HS256) **and** OAuth 2.0 for Google + Facebook (HMAC-signed state, JWT issued by us). Per-user `clarifyd.user-key` scopes all local storage in the frontend. |
+| Frontend | Next.js 14 (App Router) · React 18 · TypeScript · **Geist Sans + Geist Mono** (via `next/font`) · **Phosphor Icons** (duotone) · Framer Motion 11 · Tailwind via CDN |
+| Aesthetic | **The Broadsheet** — brutalist editorial. Warm ivory paper (`#f4ede1`), coffee-black ink (`#0c0a08`), single arterial red accent (`#b8260f`). Sharp edges, no gradients, no glass, oversize display type. |
+| Storage | Local filesystem + SQLite for dev. Postgres + S3 are scaffolded in config. |
 
 ---
 
@@ -136,21 +136,16 @@ npm --prefix frontend run typecheck
 
 ### Reasoning
 ```ini
-REASONING_PROVIDER=kimi                                        # provider class name (historical); OpenAI-compatible
-REASONING_BASE_URL=https://integrate.api.nvidia.com/v1        # NVIDIA NIM
-REASONING_API_KEY=<nvidia nim api key>
-REASONING_MODEL=meta/llama-3.1-70b-instruct                  # primary
-REASONING_MODEL_FALLBACK=nvidia/llama-3.3-nemotron-super-49b-v1.5
-REASONING_TIMEOUT_SECONDS=30
-REASONING_MAX_RETRIES=3
-REASONING_MAX_RPM=30                                          # token-bucket pace (raise on a paid tier)
+REASONING_PROVIDER=clarifyd
+REASONING_BASE_URL=<your provider endpoint>
+REASONING_API_KEY=<api key>
+REASONING_MODEL=<configured model id>
+REASONING_MODEL_FALLBACK=<fallback model id>
+REASONING_TIMEOUT_SECONDS=60
+REASONING_MAX_RETRIES=1
 ```
 
-> The reasoning surface is exposed product-side as **Clarifyd AI**. The provider abstraction lives in
-> `app/services/reasoning/`; swap endpoints + models through `Settings` without touching call sites. The
-> `KimiProvider` class name is historical — it is just an OpenAI-compatible client; the live models are Llama
-> served through NVIDIA NIM. Only the analyze pipeline and the Co-Pilot call the LLM; simplify/negotiate/
-> compliance/reasoning-guidance are deterministic.
+> The reasoning surface is exposed product-side as **Clarifyd AI**. The provider abstraction lives in `app/services/reasoning/`; swap endpoints + models through `Settings` without touching call sites.
 
 ### OAuth — Google
 1. https://console.cloud.google.com/apis/credentials → **Create Credentials** → OAuth client ID → Web application.
@@ -215,11 +210,8 @@ Facebook flow is identical — `auth_url`, `token_url`, `userinfo_url` differ; `
 | GET  | `/auth/me` | bearer | Current user + linked OAuth identities |
 | GET  | `/auth/oauth/{provider}/authorize` | public | Redirect to Google / Facebook consent |
 | GET  | `/auth/oauth/{provider}/callback` | provider | Exchange code, mint JWT, redirect to frontend |
-| POST | `/analyze/contract` | reviewer | Upload PDF/DOCX → run pipeline → findings (rate-limited + concurrency slot) |
-| POST | `/analyze/text` | reviewer | Same pipeline on pasted text (40–400k chars) |
-| POST | `/analyze/url` | reviewer | Fetch URL (SSRF-guarded) → analyze |
-| POST | `/api/v1/copilot/guidance` (+`/stream`) | viewer | Clarifyd AI co-pilot (LLM; SSE stream variant) |
-| GET  | `/reviews` | reviewer | This user's pending review queue |
+| POST | `/analyze` | bearer | Upload contract, run analysis, return findings |
+| GET  | `/reviews/queue` | bearer | This user's pending drafts |
 | POST | `/api/v1/reasoning/evaluate` | bearer | Re-run reasoning over a draft / raw text |
 | POST | `/api/v1/reasoning/guidance` | bearer | Follow-up founder-guidance question |
 | GET  | `/api/v1/reasoning/categories` | public | Supported clause taxonomy |
@@ -264,13 +256,11 @@ Read `CLAUDE.md` before non-trivial changes. The short version:
 ## What's *not* implemented yet
 
 - OCR for scanned-image PDFs (text-layer only today)
-- Redis / Elasticsearch / S3 — not used by the live FastAPI backend (Postgres·Neon **is** the prod DB; the parallel `backend-node/` uses Vercel Blob + Upstash)
+- Postgres / S3 / Redis / Elasticsearch — config slots exist, code paths use SQLite + local FS
 - Multi-tenant org model (single-user records, no orgs yet)
 - WebSocket live updates for the review queue (poll-based for now)
-- Microsoft OAuth (config kept, not wired)
-- OTP email verification (endpoints dormant; register auto-verifies)
-
-**Recently landed:** shared token-bucket LLM rate limiter (`reasoning_max_rpm`), `force_majeure` + `entire_agreement` clause categories, tightened clause lexicon (fixed long-contract boilerplate over-match), merit-based severity rubric (v4) with escalation triggers, NVIDIA-NIM Llama models replacing retired Kimi K2.
+- Microsoft OAuth UI button (backend route still works for backward compat)
+- Production-grade rate limiting (in-memory limiter only — replace with Redis sliding window for prod)
 
 ---
 

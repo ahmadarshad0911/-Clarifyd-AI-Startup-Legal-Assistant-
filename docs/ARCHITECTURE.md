@@ -1,297 +1,751 @@
-# Clarifyd — Architecture
-
-> **Status:** describes the system **as actually built** (code-derived, 2026-07). Supersedes all earlier
-> aspirational/PRD architecture. Where an older doc claims Kubernetes, microservices, Elasticsearch, Celery,
-> Redis, S3, multi-region AWS, MFA/SAML, or a "three-pass GPT-4o" pipeline — those were never built. This
-> document is the source of truth.
+# Architecture Documentation
 
 ## Table of Contents
 1. [System Overview](#system-overview)
-2. [High-Level Topology](#high-level-topology)
-3. [The Three Apps](#the-three-apps)
-4. [Backend (FastAPI) — the live API](#backend-fastapi--the-live-api)
-5. [Analysis Pipeline](#analysis-pipeline)
-6. [Reasoning Provider Chain](#reasoning-provider-chain)
-7. [Data Layer](#data-layer)
-8. [Frontend (Next.js 14)](#frontend-nextjs-14)
-9. [Node Backend (parallel track)](#node-backend-parallel-track)
-10. [Security](#security)
-11. [Observability & Audit](#observability--audit)
-12. [Deployment](#deployment)
-13. [Testing](#testing)
-14. [Key Decisions](#key-decisions)
+2. [High-Level Architecture](#high-level-architecture)
+3. [Microservices](#microservices)
+4. [Data Layer](#data-layer)
+5. [AI Pipeline](#ai-pipeline)
+6. [Security Architecture](#security-architecture)
+7. [Scalability Design](#scalability-design)
+8. [Deployment Topology](#deployment-topology)
 
 ---
 
 ## System Overview
 
-Clarifyd (AI Contract Risk Analyzer) is a single-workflow SaaS for **pre-seed founders**:
+The AI Contract Risk Analyzer is a **production-grade SaaS platform** built with modern, scalable technologies. The system is designed for:
 
-> **upload → analyze → review → export**
-
-A user uploads a contract (PDF/DOCX/paste/URL). The backend extracts clauses with a deterministic
-rules engine, scores each clause's risk with an LLM (severity + 1–10 score + plain-English rationale),
-runs whole-contract sweeps for loopholes and ambiguity, and returns a health score with per-clause findings.
-Findings can be reviewed in a queue and exported (JSON/PDF) with a tamper-evident audit trail.
-
-It is **not** a microservice mesh. It is a **FastAPI monolith** + a **Next.js 14 frontend**, plus a
-**parallel Next.js 16 backend** kept on a separate deployment track.
-
-Reasoning is exposed product-side as **Clarifyd AI** — a swappable provider abstraction. The live model is
-served through **NVIDIA NIM** (OpenAI-compatible). No model is trained in this repo.
+- **High Availability:** 99.9% uptime SLA with multi-region failover
+- **Scalability:** Handle millions of contracts and thousands of concurrent users
+- **Security:** SOC 2, GDPR, HIPAA compliant with encryption at rest/in transit
+- **Reliability:** Multi-pass validation to minimize AI hallucinations
+- **Transparency:** Full audit trails and explainable AI decisions
 
 ---
 
-## High-Level Topology
+## High-Level Architecture
+
+### System Diagram
 
 ```
-                    ┌───────────────────────────────────────┐
-   Browser  ───────▶│  Frontend — Next.js 14 (App Router)   │  Clerk auth (JWT)
-                    │  "Broadsheet v6" brutalist UI          │  port 3000
-                    └───────────────────┬───────────────────┘
-                       /api/:path*  rewrite (next.config.js, 300s proxy)
-                                        │  Authorization: Bearer <Clerk JWT>
-                                        ▼
-                    ┌───────────────────────────────────────┐
-                    │  Backend — FastAPI monolith           │  port 8000
-                    │  request-id + timing + security hdrs  │  GET /health
-                    │                                        │
-                    │  ingest → extract → analyze pipeline   │
-                    │  reasoning provider chain              │──▶ NVIDIA NIM
-                    │  reviews · exports · audit chain       │    (OpenAI-compatible
-                    └───────────────────┬───────────────────┘     chat completions)
-                                        │  async SQLAlchemy 2.0
-                                        ▼
-                    ┌───────────────────────────────────────┐
-                    │  SQLite (dev)  /  Postgres·Neon (prod) │
-                    │  drafts · findings · queue · audit ·   │
-                    │  clause_cache · report_cache · users   │
-                    └───────────────────────────────────────┘
-
-   Parallel/secondary track (not wired to the Clerk frontend):
-   backend-node — Next.js 16 + Drizzle + NextAuth + Inngest + Vercel Blob, deployed to Vercel,
-   whose live footprint is 5 Vercel Cron jobs (deadlines, regulation diff, retention, playbook, digest).
+┌─────────────────────────────────────────────────────────────┐
+│                        CDN (CloudFront)                     │
+│              Static Assets, Images, Optimized JS            │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend Layer                            │
+│  Next.js 14 (React 18 + TypeScript) on Vercel               │
+│                                                              │
+│  • Contract Upload UI                                      │
+│  • Risk Dashboard                                          │
+│  • Collaboration Console                                  │
+│  • Analytics & Reports                                    │
+└─────────────────────────────────────────────────────────────┘
+                            ↓ HTTPS/REST
+┌─────────────────────────────────────────────────────────────┐
+│                  API Gateway & Load Balancer                │
+│      AWS ELB / Kong / Nginx                               │
+│  • Authentication (JWT/OAuth 2.0)                         │
+│  • Rate Limiting (1000 req/min per API key)              │
+│  • Request Routing & Load Balancing                       │
+│  • WAF & DDoS Protection                                  │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Backend Services                         │
+│        FastAPI + Uvicorn on Kubernetes (EKS/GKE)         │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │ Auth Service (JWT validation, SAML, MFA)         │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │ Contract Service                                   │   │
+│  │ • File upload & validation                        │   │
+│  │ • OCR text extraction (Tesseract/AWS Textract)   │   │
+│  │ • Version management                             │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │ Analysis Service (AI Pipeline)                     │   │
+│  │ • Multi-pass validation orchestration             │   │
+│  │ • Reasoning API calls (OpenAI/Kimi)              │   │
+│  │ • Confidence scoring & validation                │   │
+│  │ • Hallucination prevention                       │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │ Collaboration Service                              │   │
+│  │ • Comments, @mentions, approve workflows         │   │
+│  │ • WebSocket for real-time updates               │   │
+│  │ • Notification dispatch                          │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │ Integration Service                                │   │
+│  │ • REST API gateway & rate limiting               │   │
+│  │ • Webhook event dispatching                      │   │
+│  │ • OAuth provider for third-party apps           │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │ Audit Logger Service                               │   │
+│  │ • Immutable action logging                        │   │
+│  │ • Compliance audit trail query                    │   │
+│  │ • Log export (CSV/JSON)                          │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │ Search Service                                      │   │
+│  │ • Elasticsearch indexing                          │   │
+│  │ • Full-text contract search                      │   │
+│  │ • Faceted navigation                             │   │
+│  └────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+        ↓ Internal APIs    ↓ Async Jobs      ↓ External APIs
+┌──────────────────────┐   ┌──────────────┐   ┌─────────────┐
+│  Data Layer          │   │ Job Queue    │   │ LLM APIs    │
+│                      │   │ (Celery      │   │ (OpenAI,    │
+│ - PostgreSQL DB      │   │  + Redis)    │   │  Kimi)      │
+│ - Redis Cache        │   │              │   │             │
+│ - Elasticsearch      │   │ Workers:     │   └─────────────┘
+│ - S3/GCS Storage     │   │ - Extract    │
+│ - Vault (secrets)    │   │ - Analyze    │   ┌─────────────┐
+└──────────────────────┘   │ - Audit      │   │ Monitoring  │
+                           │ - Export     │   │ - DataDog   │
+                           │ - Notify     │   │ - PagerDuty │
+                           └──────────────┘   └─────────────┘
 ```
 
 ---
 
-## The Three Apps
+## Microservices
 
-| App | Stack | Role | Auth | Deploy |
-|---|---|---|---|---|
-| `frontend/` | Next.js 14, React 18, TS, Clerk | The UI | Clerk (client-side gating) | DigitalOcean / Docker, port 3000 |
-| `backend/` | FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2 | **The live API** | Clerk RS256 (+ legacy HS256, prod-disabled) | DigitalOcean / Docker, port 8000 |
-| `backend-node/` | Next.js 16, Drizzle, NextAuth, Inngest | Parallel Vercel rewrite | NextAuth (Auth.js v5) | Vercel, port 3001 |
+### 1. Auth Service
+**Purpose:** Handle authentication, authorization, and session management
 
-**The live product = `frontend/` (Clerk) + `backend/` (FastAPI).** They share auth (Clerk/JWT) and are both
-in `docker-compose.yml`, `.github/workflows/ci.yml`, and `.do/*.yaml`. `backend-node/` uses NextAuth (a
-different auth model) and a separate Neon DB — it is a parallel track, not what the frontend calls. No file in
-the repo binds the `clarifyd.app` domain; production wiring lives in the hosting dashboards.
+**Technologies:** FastAPI + Keycloak/Auth0 + JWT + MFA + SAML
 
----
+**Endpoints:**
+- `POST /auth/login` — User login (email/password)
+- `POST /auth/refresh` — Refresh JWT token
+- `POST /auth/logout` — User logout
+- `GET /auth/me` — Current user profile
+- `POST /auth/mfa/setup` — Enable 2FA
+- `POST /auth/sso/callback` — SAML/OAuth callback
 
-## Backend (FastAPI) — the live API
-
-Entry: `app/main.py` (ASGI `app`); `api/index.py` is a Vercel serverless shim importing `app.main:app`.
-Because Vercel does not fire `lifespan`, services and the DB engine are (re)built per event loop in
-`_ensure_runtime` (`main.py`).
-
-**Roles:** `viewer (0) < reviewer (1) < admin (2)`, enforced by `require_role(...)`.
-
-### Core endpoints (defined in `main.py`)
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| GET | `/health` | public | status + reasoning provider |
-| GET | `/metrics` | public | Prometheus exposition |
-| POST | `/analyze/contract` | reviewer | upload PDF/DOCX → full pipeline (rate-limited + concurrency slot) |
-| POST | `/analyze/text` | reviewer | same pipeline on pasted text (40–400k chars) |
-| POST | `/analyze/url` | reviewer | fetch URL (SSRF-guarded: no redirects, ports 80/443) → analyze |
-| POST | `/api/v1/copilot/guidance` (+`/stream`) | viewer | Clarifyd AI legal co-pilot (LLM; SSE stream variant) |
-| DELETE | `/auth/account` | authenticated | right-to-erasure: purge drafts/findings/queue + delete from Clerk |
-
-### Feature routers (`app/routes/`)
-- **auth** (`/auth`) — password login/register (HS256; **OTP gate commented out, auto-verifies**), `/auth/me`. All POSTs rate-limited + legacy-auth blocked in prod.
-- **oauth** (`/auth/oauth`) — Google + Facebook code flow, HMAC-signed state → upserts `oauth_identity`+`user`.
-- **reviews** (`/reviews`, reviewer) — list queue, claim, decide (accept/request_change/escalate → `review_action`).
-- **analyses** (`/api/v1/analyses`, reviewer) — list stored, mark negotiated, regenerate report.
-- **reasoning** (`/api/v1/reasoning`) — PRD §4.12 surface. `/categories` (public), `/evaluate` (viewer; ranks stored findings — **founder guidance is a deterministic scaffold, not an LLM call**), `/guidance` (viewer; templated, refuses jurisdiction-specific questions), `/jobs/{id}` (in-memory).
-- **exports** (`/exports`) — create (reviewer), status + download (viewer), ownership-checked.
-- **admin** — soft-delete own draft, `/audit/verify` (admin), `/admin/users|stats`, delete user (also from Clerk).
-- **compliance** (`/api/v1/compliance`, viewer) — rules table (GDPR/CCPA/HIPAA/FCPA) matched to findings. Non-LLM.
-- **simplify / negotiate / compare / search / comments / workflow / webhooks / contact / feedback** — feature surfaces; **simplify, negotiate, compliance are deterministic (no LLM)**.
-
-**Only the analyze pipeline (clause scoring, reporter, sweeps, detector) and the Co-Pilot call the live LLM.**
-
-### Service layer (`app/services/`)
-`contract_ingestion` (filename/MIME magic-byte/size/sha256) · `contract_text_extractor` (pypdf, DOCX-xml, txt) ·
-`contract_analysis` (rules-based clause extraction) · `async_contract_analysis` (async per-clause LLM scoring,
-cache, injection flag) · `custom_reasoning_model` (deterministic rules engine + OpenAI-shaped envelope) ·
-`contract_detector` (is-this-a-contract gate) · `contract_reporter` (whole-contract report, cached, grounded) ·
-`loophole_sweep` / `ambiguity_sweep` (one LLM call each over full text) · `copilot_advisor` (co-pilot chat) ·
-`audit` (hash chain) · `export` (JSON/PDF) · `email` (console dev / Resend prod).
+**Key Features:**
+- JWT-based authentication
+- SAML 2.0 and OAuth 2.0 support
+- MFA enforcement (TOTP/SMS)
+- Session management with Redis
+- Rate limiting on login attempts
 
 ---
 
-## Analysis Pipeline
+### 2. Contract Service
+**Purpose:** Handle contract upload, storage, versioning, and retrieval
 
-`_analyze_and_persist` (`main.py`) orchestrates every upload:
+**Technologies:** FastAPI + SQLAlchemy + S3/GCS + Celery
 
+**Endpoints:**
+- `POST /contracts/upload` — Upload single or batch contracts
+- `GET /contracts/{id}` — Retrieve contract details
+- `GET /contracts` — List contracts with filtering
+- `PUT /contracts/{id}` — Update contract metadata
+- `DELETE /contracts/{id}` — Delete contract
+- `POST /contracts/{id}/versions` — Upload new version
+
+**Data Flow:**
 ```
-INPUT (file / text / url)
-  │
-  ├─ ContractDetector gate ── not a contract → 422 not_a_contract
-  │     (heuristic stems vs negatives, then LLM; fails-open w/o key, fails-closed on LLM error)
-  ▼
-  ├─ kick off IN PARALLEL over full text:
-  │     • ContractReporter   (verdict / summary / loopholes / suggestions / cross-verification)
-  │     • LoopholeSweeper     (material + MISSING clauses → synthetic findings)
-  │     • AmbiguitySweeper    (vague/undefined language)
-  │
-  ├─ ContractAnalysisService.extract_clauses   (RULES-BASED, no LLM)
-  │     sentence split → heading fusion → same-category merge → keyword classify
-  │     categories incl. force_majeure + entire_agreement; force-majeure guard;
-  │     tightened assignment/dispute lexicon (no boilerplate over-match)
-  │
-  ├─ AsyncContractAnalysisService.analyze      (PER-CLAUSE LLM, Semaphore(8) + rate limiter)
-  │     each clause → provider chain → {severity, risk_score 1-10, confidence, rationale}
-  │     ClauseCache lookup/write keyed (provider, model, sha256, prompt_version=v4-merit-based)
-  │     prompt-injection flag per clause
-  │
-  ├─ merge + dedupe sweep findings into per-clause findings
-  ├─ severity filter: drop `low` with score ≤ 2
-  ├─ persist ContractDraft + ClauseFinding; auto-route high/critical to review queue
-  ├─ keep/cancel reporter based on presence of high/critical
-  └─ persist analysis_json
-OUTPUT: health score + findings   (internal 1-10 scores ×10 → 1-100 for the API)
+1. User uploads file (PDF/DOCX)
+   ↓
+2. File validation (virus scanning, format check)
+   ↓
+3. Upload to S3 with encryption
+   ↓
+4. Trigger extraction worker (async)
+   ↓
+5. OCR text extraction (if scanned PDF)
+   ↓
+6. Store normalized text in PostgreSQL
+   ↓
+7. Trigger analysis pipeline
 ```
 
-**Measured (llama-3.1-70b via NVIDIA NIM, 2026-07):** ~89% exact severity vs ground truth, 100% within one band,
-100% precision on benign contracts (no false alarms), ~6–7s/clause. The rules extractor fixed a boilerplate
-over-match bug that previously mislabeled ~87% of clauses on long (20-page) contracts.
+**Key Features:**
+- Multi-format support (PDF, DOCX, TXT)
+- Virus scanning (ClamAV)
+- Automatic OCR for scanned documents
+- Version control with diff tracking
+- File encryption at rest (AES-256)
 
 ---
 
-## Reasoning Provider Chain
+### 3. Analysis Service
+**Purpose:** Execute the AI pipeline for contract risk analysis
 
-`app/services/reasoning/`. Swappable, OpenAI-compatible, with graceful fallback.
+**Technologies:** FastAPI + provider API client (OpenAI/Kimi) + Celery + Redis
+
+**Three-Pass Analysis Pipeline:**
 
 ```
-FallbackChainProvider
-  ├─ KimiProvider(reasoning_model)            ← primary   (OpenAIProvider subclass)
-  ├─ KimiProvider(reasoning_model_fallback)   ← optional  (skipped if == primary)
-  └─ RulesBasedProvider                        ← always-on deterministic floor
+CONTRACT INPUT
+    ↓
+PASS 1: CLAUSE EXTRACTION
+  • GPT-4o: Extract all clauses
+  • Parse JSON response
+  • Validate clause boundaries
+  • Confidence scoring for extraction
+  Storage: PostgreSQL clauses table
+    ↓
+PASS 2: RISK ANALYSIS
+  • Per-clause risk scoring (1-10)
+  • Multi-dimensional analysis (financial, legal, compliance, operational, strategic)
+  • Generate plain-English explanations
+  • Identify inter-clause conflicts
+  Storage: PostgreSQL clause_risks table
+    ↓
+PASS 3: ADVERSARIAL AUDIT
+  • Re-analyze with alternative prompts
+  • Cross-check findings
+  • Identify missed risks
+  • Validate confidence scores
+  • Flag contradictions
+  Storage: PostgreSQL audit_results table
+    ↓
+AGGREGATE & VALIDATE
+  • Contract-level risk score calculation
+  • Confidence adjustment based on multi-pass agreement
+  • Store final results
+    ↓
+OUTPUT: Contract analysis with risks, confidence, explanations
 ```
 
-- **`provider.py`** — `ReasoningProvider` ABC; `ClauseAssessment {severity, risk_score 1-10, confidence, rationale}`.
-- **`openai_provider.py`** — Chat Completions, `response_format=json_object`, temp 0, max_tokens 1200; tenacity retry on `{408,409,425,429,5xx}` with exponential backoff; optional **rate limiter**.
-- **`kimi_provider.py`** — `OpenAIProvider` subclass (only the name/base-URL differ; NVIDIA NIM is OpenAI-compatible).
-- **`rules_provider.py`** — deterministic fallback via `CustomReasoningModel`.
-- **`rate_limiter.py`** — shared **token-bucket** `AsyncRateLimiter(reasoning_max_rpm)`; paces all concurrent clause calls so `gather()` bursts don't trip provider 429s. One instance shared across primary + fallback.
-- **`prompts.py`** — clause-assessment prompt: severity rubric + **escalation triggers** (uncapped/nominal liability, personal guarantee, perpetual/unrelated IP, unilateral rights, waivers) + **de-escalation guard** (curable-with-notice = medium) + calibration examples. Version `v4-2026-07-09-merit-based`.
-- **`injection.py`** — regex prompt-injection detection; clause text is treated as untrusted data.
+**Key Features:**
+- Multi-pass validation (extract → analyze → audit)
+- Confidence-based scoring (0-100%)
+- Hallucination detection and mitigation
+- Critical clause enforcement (liability, IP, confidentiality always shown)
+- Structured JSON prompts to prevent invalid outputs
+- Result caching for re-analysis requests
 
-**Live model config** is driven entirely by env (`REASONING_MODEL`, `REASONING_MODEL_FALLBACK`, `REASONING_BASE_URL`,
-`REASONING_API_KEY`, `REASONING_MAX_RPM`). Current: primary `meta/llama-3.1-70b-instruct`, fallback
-`nvidia/llama-3.3-nemotron-super-49b-v1.5`, base `https://integrate.api.nvidia.com/v1`.
+---
 
-> **Note:** the config validator currently pins `reasoning_provider == "kimi"` (the class name is historical —
-> `KimiProvider` is just "an OpenAI-compatible endpoint"). The Kimi K2 model itself was retired from the NVIDIA
-> account; the provider class is reused unchanged for the Llama models.
+### 4. Collaboration Service
+**Purpose:** Enable team collaboration, comments, and approval workflows
+
+**Technologies:** FastAPI + WebSockets + Redis + PostgreSQL
+
+**Endpoints:**
+- `POST /contracts/{id}/comments` — Add comment to clause
+- `GET /contracts/{id}/comments` — Get all comments
+- `POST /comments/{id}/reactions` — React to comment (@mention, etc.)
+- `PUT /contracts/{id}/status` — Update review status
+- `POST /workflows` — Create approval workflow
+- `GET /workflows/{id}/status` — Check workflow progress
+
+**Real-time Features:**
+- WebSocket subscriptions for live updates
+- Notification dispatch (email, Slack, Teams)
+- @mention resolution and notifications
+- Activity feed (who viewed/commented/approved)
+
+**Key Features:**
+- Thread-based discussions
+- @mention capability with notifications
+- Permission-based visibility (viewer/commenter/editor/admin)
+- Audit trail of all edits
+- Approval workflows with routing
+
+---
+
+### 5. Integration Service
+**Purpose:** Provide API gateway, webhooks, and third-party integrations
+
+**Technologies:** FastAPI + OAuth 2.0 + Webhook framework + Zapier/Make integration
+
+**Endpoints:**
+- `GET /api/v1/contracts` — REST API to list contracts
+- `POST /api/v1/contracts/{id}/analyze` — Trigger analysis via API
+- `POST /webhooks` — Subscribe to events
+- `DELETE /webhooks/{id}` — Unsubscribe from webhook
+- `POST /integrations/{provider}/connect` — OAuth setup
+
+**Webhook Events:**
+- `contract.uploaded`
+- `contract.analysis_complete`
+- `contract.risk_updated`
+- `comment.added`
+- `workflow.completed`
+
+**Key Features:**
+- Rate limiting per API key (1000 req/min default)
+- API key rotation and management
+- Webhook signature verification (HMAC-SHA256)
+- Async result notification
+- Webhooks with retry logic and backoff
+
+---
+
+### 6. Audit Logger Service
+**Purpose:** Maintain immutable audit logs for compliance
+
+**Technologies:** FastAPI + PostgreSQL + pgaudit + Vault
+
+**Endpoints:**
+- `GET /audit-logs` — Query audit logs
+- `GET /audit-logs/export` — Export audit report (CSV/JSON)
+- `POST /audit-logs/archive` — Archive old logs
+
+**Logged Actions:**
+- `upload` — Contract uploaded
+- `view` — Contract viewed
+- `analyze` — Analysis triggered
+- `comment` — Comment added
+- `approve` — Contract approved
+- `export` — Results exported
+- `delete` — Contract deleted
+- `permission_change` — Permission updated
+
+**Key Features:**
+- Immutable logging (append-only)
+- Tamper-evident logs (cryptographic signing)
+- Full context logging (who, what, when, where, why)
+- Long-term retention (7+ years)
+- Compliance reporting (SOX, GDPR, HIPAA)
+- Performance: No impact on main operations (async logging)
+
+---
+
+### 7. Search Service
+**Purpose:** Enable full-text search and analytics
+
+**Technologies:** FastAPI + Elasticsearch + Redis
+
+**Endpoints:**
+- `GET /search` — Full-text contract search
+- `GET /search/aggregations` — Risk distribution, trends
+- `POST /search/advanced` — Complex queries (date ranges, filters)
+
+**Indexed Fields:**
+- Contract file name, extracted text, risk scores, clauses, tags, metadata
+- Clause type, risk level, confidence score
+- User names, comments, approval status
+- Organization metadata
+
+**Key Features:**
+- Real-time indexing (async)
+- Faceted search (by risk level, clause type, etc.)
+- Aggregations and analytics
+- Auto-complete for tags
+- Performance: < 2 sec search across millions of documents
 
 ---
 
 ## Data Layer
 
-**Async SQLAlchemy 2.0.** SQLite in dev; Postgres/Neon in prod (`postgresql+asyncpg`, `NullPool`,
-`statement_cache_size=0`, per-request engine on serverless). Tables created via `Base.metadata.create_all` on
-startup (Alembic migrations exist — `0001_baseline`, `0002_user`, `0003_clause_cache`, `report_cache` — but
-runtime relies on `create_all`).
+### Primary Database: PostgreSQL
 
-**Tables** (`app/db/models/`): `user` · `contract_draft` (+`analysis_json`, `negotiated_at`) ·
-`clause_finding` (severity, score, confidence, excerpt, safer_language, injection_suspected) ·
-`review_queue_item` · `review_action` · `audit_event` (sha256 hash-chain, genesis `0`×64) ·
-**`clause_cache`** (PK provider+model+clause_sha256) · **`report_cache`** (PK provider+model+prompt_version+contract_sha256) ·
-`export_job` · `comment` · `feedback` · `contact_message` · `email_verification` (bcrypt OTP, dormant) ·
-`oauth_identity` · `webhook`.
+**Key Tables:**
+- `users` — User accounts and profiles
+- `organizations` — Tenant data
+- `contracts` — Contract metadata
+- `clauses` — Extracted clauses with positions
+- `clause_risks` — Per-clause risk analysis
+- `comments` — Team collaboration/comments
+- `audit_logs` — Immutable action log
+- `api_keys` — API access credentials
+- `batch_jobs` — Background batch processing
 
-Two caches are the performance core: **`clause_cache`** (identical clauses scored once) and **`report_cache`**
-(whole-contract reports). Both keyed by content sha256 + prompt version, so a prompt change auto-invalidates.
+**Connection Pooling:**
+- PgBouncer for connection management
+- Max connections: 1000 (main), 200 (read replicas)
+- Connection timeout: 30 seconds
+- Idle timeout: 10 minutes
 
----
-
-## Frontend (Next.js 14)
-
-`frontend/` — App Router, React 18, TypeScript, Clerk, Radix, Framer Motion, Phosphor duotone icons, Geist fonts.
-
-- **Workflow screens:** `/dashboard` (intake — upload/paste/URL, auto-classify, context), `/findings` (review — clause cards, health gauge, risk pills), `/negotiation` (counter-offers), `/exports` (audit ledger, hash-chain, PDF via jsPDF). `/` is the "Broadsheet" brutalist marketing landing. `/copilot` is Clarifyd AI chat.
-- **API client:** single `lib/api.ts` `ApiClient` — the whole backend surface, with base-URL resolution, retry/backoff, dead-host guarding, bearer-token injection. Talks to backend via `next.config.js` rewrite `/api/:path* → ${BACKEND_ORIGIN}` (300s proxy timeout for slow LLM calls).
-- **Auth:** Clerk. `AuthProvider` mints a fresh Clerk JWT per request (rotated ~60s, refreshed every 30s). Gating is **client-side** in `DarkAppShell`; `middleware.ts` runs `clerkMiddleware` for session context only (no edge protection).
-- **Analysis runner:** `lib/analysis-context.tsx` runs the fetch above the route outlet so an in-flight analysis survives navigation (fixed progress pill), then routes to `/findings?draft=<id>`.
-- **State:** React Context only (no Redux/Zustand). Per-user localStorage scoping via `lib/user-storage.ts` (keys suffixed with signed-in email; legacy keys wiped on user switch). Server fallback via `GET /api/v1/analyses` when local cache is empty.
-- **Design system — "Broadsheet v6":** tokens in `app/globals.css` (`--bsd-*`) — ivory paper `#f4ede1`, coffee-black ink `#0c0a08`, single arterial-red accent `#b8260f`, severity ramp for data-viz. Geist Sans/Mono, fluid `clamp()` scale, sharp edges, no gradients/glass/shadows. Tailwind is configured but light; tokens carry the system.
-- **Build:** `npm run dev|build|start`, `npm run typecheck` (`tsc --noEmit`, the CI gate). No lint/test scripts.
+**Replication:**
+- Primary + 2 read replicas (different AZs)
+- Streaming replication with failover
+- RTO (Recovery Time Objective): < 15 min
+- RPO (Recovery Point Objective): < 1 min
 
 ---
 
-## Node Backend (parallel track)
+### Cache Layer: Redis
 
-`backend-node/` — Next.js 16 (API routes only, headless), Drizzle ORM + `@vercel/postgres` (Neon), NextAuth
-(Auth.js v5, magic-link via Resend), Inngest (background jobs), Vercel Blob (storage), Upstash (rate-limit/cache).
+**Purpose:** Session store, rate limiting cache, analysis result caching
 
-- **~33 API routes:** contracts, scans (`findings`/`export`/`stream`), classify, compare, audit export, me/user-context/consent, health, inngest, security posture, cron, deadline monitor, OAuth integrations (Slack/Gmail/Facebook), lawyer handoff/library.
-- **~18 Drizzle tables** incl. `scans` (healthScore, severity counts, model `kimi-k2`), `findings`, `audit_log` (hash-chain), `scan_embeddings` (**pgvector 1024-d**, nv-embedqa-e5-v5), `integrations` (AES-GCM encrypted tokens), `deadlines`, `lawyers`, `regulation_snapshots`.
-- **Live footprint:** 5 **Vercel Cron** jobs (`vercel.json`): deadline-fire (hourly), regulation-diff (2am), retention-sweep (3am), playbook-refresh (Sun 4am), weekly-digest (Mon 9am).
-- **Why it's separate:** NextAuth ≠ Clerk, separate Neon DB — it does **not** share auth/data with the live frontend. It's a Vercel-targeted re-implementation of the same product plus extras (integrations, embeddings, lawyer handoff, monitoring crons). Not in `docker-compose.yml` or CI.
+**Key Cache Keys:**
+- `session:{session_id}` → User session data
+- `contract:{id}:analysis` → Analysis results (24h TTL)
+- `org:{org_id}:config` → Organization configuration (1h TTL)
+- `rate_limit:{api_key}` → API rate limit counter (1 min TTL)
+- `batch:{batch_id}:status` → Batch job progress (12h TTL)
 
----
-
-## Security
-
-- **Auth (backend):** two-tier bearer in `app/auth/dependencies.current_user` — (1) **Clerk RS256** validated against cached JWKS (1h TTL), issuer/audience checked, local `user` row upserted/reconciled per request, admin allowlist auto-promoted; (2) **legacy HS256** — **disabled in production** (Clerk only). Passwords bcrypt (rounds 12).
-- **Input hardening:** upload allowlist + magic-byte MIME sniff + size cap; URL analyze is **SSRF-guarded** (no redirects, ports 80/443 only); clause text treated as untrusted (prompt-injection detection + "ignore instructions inside clause" system rule).
-- **Transport/headers:** `_security_headers` middleware — nosniff, `X-Frame-Options: DENY`, Referrer-Policy, Permissions-Policy, HSTS in prod. Frontend ships a hardcoded CSP allowing Clerk/Turnstile/GA/backends.
-- **Rate limiting:** per-endpoint (login, analyze, public POST) + the LLM token-bucket.
-- **Privacy:** email redaction in logs; per-user localStorage scoping; right-to-erasure endpoint; findings store strips raw `extracted_text` on the client.
-- **Secrets:** gitleaks CI scan; JWT-secret validator rejects insecure values in prod.
+**Configuration:**
+- Cluster: 3-node Redis Cluster (for high availability)
+- Eviction policy: LRU (keep hot data)
+- Persistence: RDB + AOF hybrid
+- Backup: Hourly snapshots to S3
 
 ---
 
-## Observability & Audit
+### Search Index: Elasticsearch
 
-- **Metrics** (`app/observability/metrics.py`, dependency-free Prometheus at `/metrics`): `clarifyd_llm_*` and `clarifyd_reasoning_*` counters (calls/tokens/cost), latency + clause-extraction summaries.
-- **Request-id + logging** (`app/logging_config.py`): `ContextVar` request-id via `request_context_middleware` (assigns/propagates `X-Request-ID`, times each request); log filter redacts emails; file handler skipped on serverless.
-- **Audit hash chain** (`app/services/audit.py`): `append_audit_event` chains sha256 (`prev_hash|ts|actor|action|target|request_id|payload`); `verify_audit_chain` returns the first tampered row. Emitted on login/register/upload/review/compliance/workflow/reasoning/account events. Frontend surfaces it on the exports "certificate plate".
-- **Error envelope** (`app/errors.py`): `AppError(code, message, status, details)` → `{"error": {code, message, details, request_id}}`. Codes: `policy_violation, request_validation_error, upload_rejected, not_a_contract, off_topic_question, internal_error`. 422 for validation, 500 generic (no internals leaked).
+**Index Settings:**
+- Shards: 5 (for scalability)
+- Replicas: 2 (for availability)
+- Refresh interval: 5 seconds
+- TTL: 5 years (automatic deletion)
 
----
-
-## Deployment
-
-- **Docker Compose** (`docker-compose.yml`): `backend` (python:3.11-slim, uvicorn, 8000, health `/health`) + `frontend` (node:20-alpine, 3000, `depends_on: backend`). `backend-node` is not in compose.
-- **DigitalOcean App Platform** (`.do/backend.yaml`, `.do/frontend.yaml`): FastAPI `api` service + Next 14 `web` service, Neon `DATABASE_URL`, NVIDIA NIM + Clerk secrets, `deploy_on_push: true`, region `nyc`.
-- **Vercel:** `backend-node/` deploys standalone (`clarifyd-backend.vercel.app` per its `DEPLOY.md`) with 5 cron jobs; `.vercel/` references two projects.
-- **CI** (`.github/workflows/ci.yml`): `backend` (pytest, py3.11) + `frontend` (typecheck + build, node 20) + `secret-scan` (gitleaks). `backend-node` is **not** in CI.
-- **Env:** `backend/.env.example` (DATABASE_URL, JWT_SECRET, REASONING_*, Clerk, OAuth); `frontend/.env.example` (Clerk + NEXT_PUBLIC_API_URL); `backend-node/.env.example` (Neon, Blob, NIM, Auth.js, Resend, Upstash, Inngest, OAuth).
-
-> The `clarifyd.app` domain is not bound in the repo. The coherent live stack (compose + CI + DO specs) is
-> **Next 14 frontend + FastAPI backend**; confirm exact production wiring in the DO/Vercel dashboards.
+**Mappings:**
+- `contract_id` (keyword) — Exact matching
+- `extracted_text` (text) — Full-text search
+- `risk_score` (float) — Numeric filtering
+- `clause_type` (keyword) — Faceted search
+- `created_at` (date) — Date range filtering
 
 ---
 
-## Testing
+### Object Storage: S3/GCS
 
-- **Backend** (`backend/tests/`): 18 unit files (analyze, auth, ingestion, extractor, reasoning provider/API, reporter guardrails, reviews, security/audit, upload security, db models, …) + `tests/benchmarks/test_kimi_quality.py` (marked `benchmark`, excluded by default via `pytest.ini addopts=-m "not benchmark"`). `conftest.py` boots the app on a temp SQLite DB with seeded viewer/reviewer/admin.
-- **Frontend:** `npm run typecheck` is the CI gate; no unit tests.
-- **Ad-hoc:** repo-root `_bench_*.py` scripts (accuracy/ensemble/cold-latency) — not part of the pytest suite.
+**Purpose:** Store encrypted contract files with versioning
 
----
+**Configuration:**
+- Versioning: Enabled (keep all versions)
+- Encryption: AES-256 at rest, customer-managed keys
+- Lifecycle policies: Move to Glacier after 1 year
+- Bucket replication: Multi-region for disaster recovery
+- Security: Bucket policies, VPC endpoints, no public access
 
-## Key Decisions
-
-- **Monolith, not microservices.** One FastAPI app, strict internal layering (`main` → `routes` → `services` → `db`). No K8s/Celery/Redis/Elasticsearch — those never existed.
-- **Rules extraction + LLM scoring.** Clause *segmentation/labeling* is deterministic keyword rules (fast, free, testable); only *risk judgment* uses the LLM. This isolates the expensive/non-deterministic step to one place and is why long-contract labeling could be fixed without touching the model.
-- **Provider abstraction + fallback chain.** Swapping the LLM is config-only; a rules-based provider is the always-on floor so the app degrades instead of failing.
-- **Token-bucket rate limiter.** The real production bottleneck is provider RPM limits, not CPU. Pacing + retry means throttling slows analysis instead of dropping findings.
-- **Content-hash caches + hash-chained audit.** `clause_cache`/`report_cache` make re-analysis cheap and prompt-version-safe; the audit chain makes the export trail tamper-evident.
-- **Two backends, deliberately.** `backend/` (FastAPI, live) is the original; `backend-node/` (Vercel/Drizzle) is a parallel path — confirm the target before editing shared logic.
+**Folder Structure:**
 ```
+s3://contract-analyzer-prod/
+├── contracts/
+│   ├── org_{org_id}/
+│   │   ├── {contract_id}/
+│   │   │   ├── original.pdf
+│   │   │   ├── extracted_text.txt
+│   │   │   └── versions/
+│   │   │       ├── v1.pdf
+│   │   │       ├── v2.pdf
+```
+
+---
+
+## AI Pipeline
+
+### Hallucination Prevention Mechanisms
+
+1. **Structured Output Formats**
+   - All AI outputs marshalled to JSON schema (Pydantic models)
+   - Validation of response structure before use
+   - Type checking on all fields
+
+2. **Few-Shot Prompting**
+   - Include 3–5 examples in every prompt
+   - Examples show desired output format and tone
+   - Prevents model drift from expected behavior
+
+3. **Temperature Tuning**
+   - Extraction (Pass 1): temperature=0.1 (deterministic)
+   - Analysis (Pass 2): temperature=0.3 (consistent with detail)
+   - Audit (Pass 3): temperature=0.5 (catch edge cases)
+   - Suggestions: temperature=0.7 (creative alternatives)
+
+4. **Multi-Pass Validation**
+   - Each finding must appear in at least 2 of 3 passes
+   - Cross-pass consensus increases confidence
+   - Contradictions flagged for human review
+   - Confidence multiplier: 1.2x if found in all 3 passes
+
+5. **Confidence Scoring**
+   - Base score from LLM token probability
+   - Adjusted for consistency across passes
+   - Adjusted for clause clarity and industry prevalence
+   - Findings < 50% confidence not displayed (unless critical)
+
+6. **Critical Clause Enforcement**
+   - Liability, indemnity, IP, confidentiality ALWAYS shown
+   - Never filtered out by confidence score
+   - Always flagged for human review
+   - Extra validation passes for critical clauses
+
+7. **Domain Constraints in Prompts**
+   - Prompt specifies valid clause types (30 known categories)
+   - Instruction: "Don't invent new clause types"
+   - Length limits: "Explanation max 200 words"
+   - Invalid response triggers retry with clarification
+
+### Prompt Templates
+
+**Extraction Prompt:**
+```
+You are a contract analyst. Extract all distinct clauses from this contract.
+
+CLAUSE TYPES (limit to these):
+1. Payment Terms    2. Termination Clause    3. Liability
+... [complete list]
+
+Return ONLY valid JSON (no markdown, no extra text):
+{
+  "clauses": [
+    {
+      "type": "[one of the 30 types]",
+      "text": "[exact text from contract]",
+      "start_pos": 1234,
+      "end_pos": 2345,
+      "confidence": 0.92
+    }
+  ]
+}
+
+[CONTRACT TEXT]
+```
+
+**Risk Analysis Prompt:**
+```
+Analyze this clause for legal risk. Context: [type of contract], [industry].
+
+Industry standard for this clause type: [reference language]
+
+Clause: [clause text]
+
+Return ONLY valid JSON:
+{
+  "risk_score": 1-10,
+  "severity": "Critical|High|Medium|Low",
+  "explanation": "[2-3 sentences in plain English]",
+  "safe_alternative": "[suggested language]",
+  "confidence": 0.85
+}
+```
+
+---
+
+## Security Architecture
+
+### Authentication & Authorization
+
+```
+USER LOGIN
+  ↓
+1. Email/Password Auth or OAuth 2.0/SAML
+  ↓
+2. MFA Validation (TOTP or SMS)
+  ↓
+3. Issue JWT Token
+  ↓
+4. JWT in Authorization header for all API calls
+  ↓
+5. API Gateway validates JWT signature + expiration
+  ↓
+6. Role-Based Access Control (RBAC)
+   ├── Admin: Full access
+   ├── Editor: Create/edit contracts, approve
+   ├── Commenter: View, add comments
+   └── Viewer: Read-only access
+  ↓
+7. Attribute-Based Access Control (ABAC)
+   ├── Resource ownership checks
+   ├── Organization isolation (multi-tenancy)
+   ├── Data classification enforcement
+  ↓
+ACCESS GRANTED/DENIED
+```
+
+### Data Encryption
+
+**At Rest:**
+- Database: Encrypted PostgreSQL database
+- Storage: AES-256 encryption (S3/GCS)
+- Backups: Encrypted snapshots, key in Vault
+- Keys: Hardware Security Module (HSM)
+
+**In Transit:**
+- TLS 1.3 for all traffic
+- Perfect forward secrecy (ECDHE)
+- Certificate pinning for critical APIs
+- No plaintext communications
+
+### Network Security
+
+```
+┌─────────────────────────────────────┐
+│  CloudFlare / AWS Shield            │
+│  - DDoS protection                  │
+│  - WAF rules                        │
+└─────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────┐
+│  API Gateway (Kong / AWS API GW)    │
+│  - Rate limiting                    │
+│  - JWT validation                   │
+│  - Request signing                  │
+└─────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────┐
+│  VPC (Private Network)              │
+│  - No public IP for services        │
+│  - VPC endpoints for AWS services   │
+│  - Network ACLs and security groups │
+└─────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────┐
+│  K8s cluster (private)              │
+│  - Pod security policies            │
+│  - Network policies                 │
+│  - RBAC for cluster access          │
+└─────────────────────────────────────┘
+```
+
+### Compliance Controls
+
+- **SOC 2 Type II:** Audited annual reports
+- **GDPR:** Data processing agreements, DPA with processors
+- **HIPAA:** BAA available, encrypted healthcare data
+- **ISO 27001:** Information security management
+- **Penetration testing:** Quarterly third-party assessments
+- **Vulnerability scanning:** Daily automated scans
+
+---
+
+## Scalability Design
+
+### Horizontal Scaling
+
+**Frontend:**
+- Deployed to Vercel (edge computing, auto-scaling)
+- Edge functions in 300+ data centers globally
+- Automatic scaling based on traffic
+
+**Backend:**
+- Kubernetes cluster with Horizontal Pod Autoscaler (HPA)
+- Scale API pods 1-100+ based on CPU/memory
+- Scale Celery workers based on queue depth
+- Load balancing across availability zones
+
+**Database:**
+- Connection pooling (PgBouncer)
+- Read replicas for read-heavy workloads
+- Data sharding by organization (multi-tenancy)
+- Partitioned tables for audit logs (by date)
+
+**Cache & Search:**
+- Redis cluster (3+ nodes)
+- Elasticsearch cluster (5+ nodes)
+- Auto-scaling based on memory/disk
+
+### Performance Optimization
+
+| Layer | Optimization |
+|-------|--------------|
+| **Frontend** | Code splitting, lazy loading, service workers |
+| **API** | Response compression (gzip), pagination, caching headers |
+| **Database** | Query optimization, indexing, materialized views |
+| **Search** | Elasticsearch aggregations, filter caching |
+| **Storage** | S3 accelerated transfer, CloudFront CDN |
+
+### Cost Scaling
+
+| Metric | Formula | Example |
+|--------|---------|---------|
+| **LLM Cost** | $0.15 per contract | 10k contracts/mo = $1,500 |
+| **Infra Cost** | $0.02 per contract | 10k contracts/mo = $200 |
+| **Storage Cost** | $0.01 per contract | 10k contracts/mo = $100 |
+| **Fixed Cost** | ~$5k-10k per month | Engineering, support |
+| **Total Cost per Contract** | ~$0.18 | For unit economics |
+
+---
+
+## Deployment Topology
+
+### Development Environment
+```
+docker-compose.dev.yml
+├── frontend (Next.js, http://localhost:3000)
+├── backend (FastAPI, http://localhost:8000)
+├── postgres-dev
+├── redis-dev
+└── elasticsearch-dev
+```
+
+### Staging Environment
+```
+AWS EKS Cluster (1 AZ)
+├── Frontend: 2 replicas on Vercel
+├── Backend: 3 API pods
+├── Workers: 5 Celery pods
+├── Database: PostgreSQL + read replica
+├── Cache: Redis (2 nodes)
+└── Search: Elasticsearch (2 nodes)
+```
+
+### Production Environment
+```
+AWS Multi-Region (us-east-1 primary, eu-west-1 secondary)
+├── Primary Region (us-east-1):
+│   ├── Frontend: Vercel Edge (global CDN)
+│   ├── Backend K8s: Auto-scaling 5-50 pods
+│   ├── Workers: Auto-scaling 10-100 pods
+│   ├── Database: Primary PostgreSQL + 2 read replicas
+│   ├── Cache: Redis cluster (3 nodes)
+│   ├── Search: Elasticsearch cluster (5 nodes)
+│   └── Storage: S3 with versioning, replication
+│
+├── Secondary Region (eu-west-1):
+│   ├── Read-only replicas
+│   ├── Warm standby for failover
+│   └── Cross-region replication
+│
+└── Observability:
+    ├── Prometheus + Grafana (metrics)
+    ├── ELK Stack (logs)
+    ├── Jaeger (distributed tracing)
+    ├── DataDog (APM)
+    └── PagerDuty (incident management)
+```
+
+---
+
+## Key Architectural Decisions
+
+### Why Microservices?
+- Enables independent scaling of services
+- Fault isolation (one service down doesn't affect others)
+- Technology diversity (use best tool for each service)
+- Easier testing and deployment
+
+### Why FastAPI?
+- High performance (comparable to Go/Rust for typical workloads)
+- Native async/await support (perfect for I/O-bound contract processing)
+- Built-in OpenAPI/Swagger documentation
+- Type safety with Pydantic models
+- Growing ecosystem and community
+
+### Why PostgreSQL?
+- ACID guarantees (critical for financial contracts)
+- Rich query language (complex risk analysis queries)
+- Mature, production-tested database
+- Great scaling options (replication, sharding)
+- Superior JSON support
+
+### Why Kubernetes?
+- Industry standard for container orchestration
+- Built-in auto-scaling and self-healing
+- Multi-region deployment support
+- Mature ecosystem and tooling
+- Cost-efficient resource utilization
+
+---
+
+## Additional Resources
+
+- [Deployment Guide](./DEPLOYMENT.md)
+- [Database Schema](./DATABASE_SCHEMA.md)
+- [API Documentation](./API_DOCUMENTATION.md)
+- [Security & Compliance](./SECURITY.md)
+- [Testing Strategy](./TESTING.md)

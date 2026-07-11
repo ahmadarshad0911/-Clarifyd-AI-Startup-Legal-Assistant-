@@ -18,7 +18,6 @@ from app.services.reasoning.prompts import (
     JSON_SCHEMA,
     build_clause_assessment_prompt,
 )
-from app.services.reasoning.rate_limiter import AsyncRateLimiter
 from app.services.reasoning.provider import (
     ClauseAssessment,
     ProviderError,
@@ -51,14 +50,12 @@ class OpenAIProvider(ReasoningProvider):
         model: str,
         base_url: str = "https://api.openai.com/v1",
         max_retries: int = 3,
-        rate_limiter: "AsyncRateLimiter | None" = None,
     ) -> None:
         self._client = client
         self._api_key = api_key
         self.model = model
         self._base_url = base_url.rstrip("/")
         self._max_retries = max(1, max_retries)
-        self._rate_limiter = rate_limiter
 
     async def assess_clause(self, clause: ExtractedClause) -> ClauseAssessment:
         if not self._api_key:
@@ -100,8 +97,6 @@ class OpenAIProvider(ReasoningProvider):
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-        if self._rate_limiter is not None:
-            await self._rate_limiter.acquire()
         try:
             response = await self._client.post(url, json=body, headers=headers)
         except httpx.TimeoutException as exc:

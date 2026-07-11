@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Session start:** read `PROGRESS.md` (project root) FIRST — it is the living cross-session state log (open branches, current task, page-build status). Update it before ending each session.
-
 ## Project
 
 **Clarifyd / AI Contract Risk Analyzer** — SLC (Simple, Loveable, Complete) deliverable for **pre-seed founders**. One workflow: upload → analyze → review → export. Reasoning is exposed product-side as **Clarifyd AI** (provider abstraction in `app/services/reasoning/`, swappable via `Settings`). No model training in this repo.

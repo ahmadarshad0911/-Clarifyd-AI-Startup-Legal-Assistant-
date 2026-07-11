@@ -691,13 +691,19 @@ async def _analyze_and_persist(
 
     # Match existing draft only for THIS user; never reuse another owner's draft
     # for the same sha — keeps queue, findings, and ownership strictly per-account.
+    # A user can hold >1 non-deleted draft for the same sha (re-upload before a
+    # dedup existed). Take the most recent and reuse it rather than blowing up
+    # with MultipleResultsFound; the re-analyze branch below rebuilds its rows.
     existing = (
         await session.execute(
-            select(ContractDraftRow).where(
+            select(ContractDraftRow)
+            .where(
                 ContractDraftRow.sha256 == sha256,
                 ContractDraftRow.deleted_at.is_(None),
                 ContractDraftRow.owner_id == user.id,
             )
+            .order_by(ContractDraftRow.uploaded_at.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
 

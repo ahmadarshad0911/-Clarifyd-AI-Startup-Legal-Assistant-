@@ -12,6 +12,7 @@ from app.db.models.report_cache import ReportCache
 from app.db.models.review_action import ReviewAction
 from app.db.models.review_queue_item import ReviewQueueItem
 from app.db.models.user import User
+from app.db.models.user_letterhead import UserLetterhead
 from app.db.models.webhook import Webhook
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "ReviewAction",
     "ReviewQueueItem",
     "User",
+    "UserLetterhead",
     "Webhook",
 ]

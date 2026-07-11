@@ -136,6 +136,13 @@ export type CopilotGuidanceResponse = {
   disclaimer: string;
 };
 
+export type LetterheadStatus = {
+  has_letterhead: boolean;
+  file_name?: string | null;
+  kind?: "pdf" | "docx" | null;
+  uploaded_at?: string | null;
+};
+
 export type ReviewQueueState = "pending" | "in_review" | "resolved";
 
 export type ReviewQueueItem = {

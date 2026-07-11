@@ -71,6 +71,7 @@ export default function CopilotPage() {
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [doc, setDoc] = useState<string | null>(saved.current.doc ?? null);
+  const [lhBusy, setLhBusy] = useState(false);
   const [customDraft, setCustomDraft] = useState("");
   const [notice, setNotice] = useState<NoticeContent | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -213,6 +214,33 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
     a.download = `${active.name.replace(/\s+/g, "-").toLowerCase()}-draft.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  // Composite the draft onto the founder's stored letterhead (server-side) and
+  // download the finished PDF/Word. Falls back to a clear prompt if none is set.
+  async function downloadOnLetterhead() {
+    if (!doc || !active || lhBusy) return;
+    setLhBusy(true);
+    try {
+      const { blob, filename } = await client.renderDocumentOnLetterhead(active.name, doc);
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      push("Downloaded on your letterhead", "success");
+    } catch (err) {
+      const msg =
+        err instanceof ApiError && err.status === 422
+          ? "No letterhead on file. Add an A4 letterhead during onboarding to use this."
+          : err instanceof ApiError
+          ? err.message
+          : "Letterhead render failed.";
+      push(msg, "error");
+    } finally {
+      setLhBusy(false);
+    }
   }
 
   const statusLabel = active
@@ -495,8 +523,11 @@ a title, and signature blocks. Where a specific term was not provided, insert a 
               <button type="button" onClick={copyDocument} className="bsd-btn bsd-btn--ghost bsd-btn--sm cursor-pointer">
                 <Copy weight="bold" size={11} /> Copy
               </button>
-              <button type="button" onClick={downloadDocument} className="bsd-btn bsd-btn--sm cursor-pointer">
-                <Download weight="bold" size={11} /> Download
+              <button type="button" onClick={downloadDocument} className="bsd-btn bsd-btn--ghost bsd-btn--sm cursor-pointer">
+                <Download weight="bold" size={11} /> Download .txt
+              </button>
+              <button type="button" onClick={downloadOnLetterhead} disabled={lhBusy} className="bsd-btn bsd-btn--sm cursor-pointer">
+                <FileText weight="bold" size={11} /> {lhBusy ? "Rendering…" : "On letterhead"}
               </button>
             </div>
           </div>

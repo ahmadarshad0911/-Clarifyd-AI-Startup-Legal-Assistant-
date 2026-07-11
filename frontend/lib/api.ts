@@ -12,6 +12,7 @@ import type {
   ExportFormat,
   ExportReportResponse,
   ExportStatusResponse,
+  LetterheadStatus,
   LoginRequest,
   LoginResponse,
   Me,
@@ -350,6 +351,58 @@ export class ApiClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
     });
+  }
+
+  // --- letterhead ---
+
+  async getLetterheadStatus(): Promise<LetterheadStatus> {
+    return this.request<LetterheadStatus>("/api/v1/letterhead");
+  }
+
+  async uploadLetterhead(file: File): Promise<LetterheadStatus> {
+    const form = new FormData();
+    form.append("file", file);
+    return this.request<LetterheadStatus>("/api/v1/letterhead", {
+      method: "POST",
+      body: form,
+    });
+  }
+
+  async deleteLetterhead(): Promise<void> {
+    await this.request<void>("/api/v1/letterhead", { method: "DELETE" });
+  }
+
+  /**
+   * Composite generated document text onto the user's stored letterhead and
+   * return the finished file. PDF letterhead -> PDF, Word letterhead -> Word.
+   * Returns the binary as a Blob plus a suggested download filename.
+   */
+  async renderDocumentOnLetterhead(
+    title: string,
+    content: string
+  ): Promise<{ blob: Blob; filename: string }> {
+    const token = await this.getToken();
+    const res = await fetch(`${this.baseUrl}/api/v1/documents/render`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ title, content }),
+    });
+    if (!res.ok) {
+      let body: unknown = null;
+      try {
+        body = await res.json();
+      } catch {
+        // non-json error body
+      }
+      throw new ApiError(res.status, body);
+    }
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match?.[1] ?? "document";
+    return { blob: await res.blob(), filename };
   }
 
   /**

@@ -19,7 +19,7 @@
  *   - prefers-reduced-motion respected on every animation.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
@@ -38,6 +38,8 @@ import {
   UserCircle,
   Warning,
   IdentificationCard,
+  FileArrowUp,
+  FileText,
 } from "@phosphor-icons/react";
 
 import { DarkAppShell as AppShell } from "../../components/shell/dark-app-shell";
@@ -48,6 +50,7 @@ import { useToast } from "../../lib/toast";
 import { ApiError } from "../../lib/api";
 import { listAnalyses, type StoredAnalysis } from "../../lib/analyses";
 import { getProfile, setProfile, type FounderProfile } from "../../lib/founder-profile";
+import type { LetterheadStatus } from "../../lib/contracts";
 
 const EOQ = [0.23, 1, 0.32, 1] as const;
 
@@ -401,9 +404,12 @@ export default function ProfilePage() {
           />
         </Card>
 
+        {/* ========================= Letterhead ========================= */}
+        <LetterheadCard delay={0.2} reduce={reduce} isMobile={isMobile} />
+
         {/* ========================= Sign-in methods ========================= */}
-        <Card delay={0.22} reduce={reduce}>
-          <SectionHeader index="03" title="How you sign in." />
+        <Card delay={0.24} reduce={reduce}>
+          <SectionHeader index="04" title="How you sign in." />
           <div
             style={{
               display: "flex",
@@ -419,8 +425,8 @@ export default function ProfilePage() {
         </Card>
 
         {/* ========================= Quick links ========================= */}
-        <Card delay={0.28} reduce={reduce}>
-          <SectionHeader index="04" title="Jump to." />
+        <Card delay={0.3} reduce={reduce}>
+          <SectionHeader index="05" title="Jump to." />
           <div
             style={{
               display: "grid",
@@ -499,6 +505,160 @@ export default function ProfilePage() {
 /* ============================================================ */
 /*                       Sub-components                          */
 /* ============================================================ */
+
+function LetterheadCard({
+  delay,
+  reduce,
+  isMobile,
+}: {
+  delay: number;
+  reduce: boolean;
+  isMobile: boolean;
+}) {
+  const { client } = useAuth();
+  const { push } = useToast();
+  const [status, setStatus] = useState<LetterheadStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    client
+      .getLetterheadStatus()
+      .then((s) => alive && setStatus(s))
+      .catch(() => alive && setStatus({ has_letterhead: false }));
+    return () => {
+      alive = false;
+    };
+  }, [client]);
+
+  async function onPick(file: File | null) {
+    if (!file || busy) return;
+    setBusy(true);
+    try {
+      const s = await client.uploadLetterhead(file);
+      setStatus(s);
+      push("Letterhead saved", "success");
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "Upload failed.", "error");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function onRemove() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await client.deleteLetterhead();
+      setStatus({ has_letterhead: false });
+      push("Letterhead removed", "success");
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "Remove failed.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const has = status?.has_letterhead === true;
+  const uploadLabel = busy
+    ? "Working…"
+    : has
+    ? "Replace letterhead"
+    : "Add letterhead";
+
+  return (
+    <Card delay={delay} reduce={reduce}>
+      <SectionHeader
+        index="03"
+        title="Company letterhead."
+        hint="Documents you generate are produced on this. A4 PDF or Word."
+      />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "26px minmax(0, 1fr) auto",
+          gap: 16,
+          alignItems: "center",
+          padding: "16px 32px 22px",
+          borderTop: "1px solid var(--bsd-hairline)",
+        }}
+      >
+        {!isMobile ? (
+          <FileText weight="duotone" size={16} color="var(--bsd-red)" aria-hidden />
+        ) : null}
+        <div style={{ minWidth: 0 }}>
+          {status === null ? (
+            <span style={{ fontSize: 14, color: "var(--bsd-muted)", fontStyle: "italic" }}>
+              Loading…
+            </span>
+          ) : has ? (
+            <span style={{ fontSize: 14.5, color: "var(--bsd-ink)", overflowWrap: "anywhere" }}>
+              {status.file_name}{" "}
+              <span
+                className="cf-mono"
+                style={{
+                  fontFamily: "Geist Mono, monospace",
+                  fontSize: 10.5,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "var(--bsd-red)",
+                  fontWeight: 700,
+                }}
+              >
+                · {status.kind}
+              </span>
+            </span>
+          ) : (
+            <span style={{ fontSize: 14.5, color: "var(--bsd-muted)", fontStyle: "italic" }}>
+              No letterhead added yet
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: isMobile ? 12 : 0 }}>
+          <label className="bsd-chip cursor-pointer" style={{ fontSize: 12, display: "inline-flex", width: "auto", opacity: busy ? 0.6 : 1 }}>
+            <FileArrowUp weight="bold" size={13} color="var(--bsd-red)" aria-hidden />
+            {uploadLabel}
+            <input
+              ref={inputRef}
+              type="file"
+              disabled={busy}
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+              style={{ display: "none" }}
+            />
+          </label>
+          {has ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={busy}
+              className="cursor-pointer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 12px",
+                background: "transparent",
+                border: "1px solid var(--bsd-rule)",
+                color: "var(--bsd-muted)",
+                fontFamily: "Geist Mono, monospace",
+                fontSize: 11,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+                borderRadius: 2,
+              }}
+            >
+              <Trash weight="bold" size={12} /> Remove
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function Card({
   children,

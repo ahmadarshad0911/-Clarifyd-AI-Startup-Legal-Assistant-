@@ -161,7 +161,7 @@ def _ensure_runtime() -> None:
     _copilot_advisor = CopilotAdvisor(
         client=_http_client,
         api_key=settings.reasoning_api_key,
-        model=settings.reasoning_model,
+        model=settings.copilot_model,
         base_url=settings.reasoning_base_url,
         timeout=240.0,
     )
@@ -320,7 +320,7 @@ async def lifespan(app: FastAPI):
     _copilot_advisor = CopilotAdvisor(
         client=_http_client,
         api_key=settings.reasoning_api_key,
-        model=settings.reasoning_model,
+        model=settings.copilot_model,
         base_url=settings.reasoning_base_url,
         timeout=240.0,
     )

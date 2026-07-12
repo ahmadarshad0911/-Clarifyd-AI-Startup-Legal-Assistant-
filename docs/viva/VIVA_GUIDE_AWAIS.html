@@ -1,0 +1,770 @@
+<title>Clarifyd Viva Guide &mdash; Awais Khan</title>
+
+<style>
+  :root{
+    --paper:#fbf8f2; --card:#ffffff; --ink:#14110d; --body:#332d25; --muted:#6f6759;
+    --red:#b8260f; --line:#e0d8c9; --rule:#c9c1b4;
+    --ok:#2f6b3f; --warn:#a2661a; --info:#1d4e89;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+    --mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+    --accent:#1d4e89;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --paper:#131110; --card:#1c1917; --ink:#f3eee5; --body:#d6cec2; --muted:#918878;
+           --red:#e2502f; --line:#37312b; --rule:#4a443c; --ok:#6bbd82; --warn:#d9a24b; --info:#6ba3e0; }
+  }
+  :root[data-theme="dark"]{ --paper:#131110; --card:#1c1917; --ink:#f3eee5; --body:#d6cec2; --muted:#918878;
+    --red:#e2502f; --line:#37312b; --rule:#4a443c; --ok:#6bbd82; --warn:#d9a24b; --info:#6ba3e0; }
+  :root[data-theme="light"]{ --paper:#fbf8f2; --card:#ffffff; --ink:#14110d; --body:#332d25; --muted:#6f6759;
+    --red:#b8260f; --line:#e0d8c9; --rule:#c9c1b4; --ok:#2f6b3f; --warn:#a2661a; --info:#1d4e89; }
+
+  @page{ size:A4; margin:16mm 15mm; }
+  body{ background:var(--paper); color:var(--body); font-family:var(--serif);
+        font-size:11.6pt; line-height:1.62; max-width:190mm; margin:0 auto; padding:20px 18px 90px; }
+
+  .bar{ position:sticky; top:0; z-index:20; display:flex; gap:12px; align-items:center;
+        background:var(--card); border-bottom:2px solid var(--accent); padding:10px 14px;
+        margin:-20px -18px 26px; font-family:var(--sans); font-size:12px; color:var(--muted); }
+  .bar b{ color:var(--ink); } .bar .grow{ flex:1; }
+  .bar button{ font-family:var(--sans); font-size:11px; font-weight:700; padding:6px 12px;
+        border:1px solid var(--ink); background:none; color:var(--ink); cursor:pointer; }
+  .bar button:hover{ background:var(--ink); color:var(--paper); }
+  @media print{ .bar{ display:none; } body{ max-width:none; padding:0; } }
+
+  header.hero{ border:3px solid var(--ink); padding:22px 24px; margin-bottom:26px; background:var(--card); }
+  header.hero .eyebrow{ font-family:var(--mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
+        font-weight:800; color:var(--accent); }
+  header.hero h1{ font-size:30pt; margin:8px 0 2px; color:var(--ink); font-weight:700; letter-spacing:-.02em; line-height:1.05; }
+  header.hero .who{ font-family:var(--sans); font-size:13pt; color:var(--body); margin:0; }
+  header.hero .role{ display:inline-block; margin-top:12px; font-family:var(--mono); font-size:11px; font-weight:800;
+        letter-spacing:.12em; text-transform:uppercase; color:var(--accent); border:2px solid var(--accent); padding:5px 10px; }
+  header.hero .sig{ margin-top:14px; padding-top:12px; border-top:1px solid var(--line);
+        font-size:13pt; font-style:italic; color:var(--ink); }
+
+  h2{ font-family:var(--serif); font-size:19pt; color:var(--ink); font-weight:700; letter-spacing:-.015em;
+      margin:34px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--ink); page-break-after:avoid; }
+  h3{ font-family:var(--sans); font-size:13pt; color:var(--ink); font-weight:700; margin:24px 0 8px; page-break-after:avoid; }
+  h4{ font-family:var(--sans); font-size:11pt; color:var(--accent); font-weight:700; margin:16px 0 6px; page-break-after:avoid; }
+  p{ margin:0 0 11px; }
+  ul,ol{ margin:0 0 12px; padding-left:22px; } li{ margin:0 0 6px; }
+  strong{ color:var(--ink); } code{ font-family:var(--mono); font-size:.86em; background:var(--paper);
+      border:1px solid var(--line); padding:1px 5px; }
+
+  .box{ border-left:5px solid var(--muted); background:var(--card); padding:12px 15px; margin:12px 0;
+        page-break-inside:avoid; }
+  .box .h{ font-family:var(--sans); font-size:9.5pt; letter-spacing:.14em; text-transform:uppercase;
+        font-weight:800; margin-bottom:6px; }
+  .box p:last-child{ margin-bottom:0; }
+
+  .simple{ border-left-color:var(--info); }
+  .simple .h{ color:var(--info); }
+  .say{ border-left-color:var(--accent); background:var(--card); border-top:1px solid var(--line);
+        border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .say .h{ color:var(--accent); }
+  .say p{ font-size:12.4pt; font-weight:600; color:var(--ink); font-style:italic; }
+  .push{ border-left-color:var(--warn); } .push .h{ color:var(--warn); }
+  .trap{ border-left-color:var(--red); } .trap .h{ color:var(--red); }
+  .why{ border-left-color:var(--ok); } .why .h{ color:var(--ok); }
+
+  figure{ margin:16px 0; page-break-inside:avoid; }
+  figure svg{ width:100%; height:auto; display:block; }
+  .svgbox{ border:1px solid var(--rule); background:var(--card); padding:14px; }
+  figcaption{ font-family:var(--sans); font-size:9pt; color:var(--muted); padding-top:7px; }
+  svg text{ font-family:var(--sans); fill:var(--ink); }
+  svg .lbl{ font-size:11px; } svg .sm{ font-size:9.5px; fill:var(--muted); } svg .bold{ font-weight:700; }
+  svg .bx{ fill:var(--card); stroke:var(--ink); stroke-width:1.4; }
+  svg .bxa{ fill:none; stroke:var(--accent); stroke-width:2; }
+  svg .ln{ stroke:var(--ink); stroke-width:1.3; fill:none; }
+  svg .dl{ stroke:var(--muted); stroke-width:1.1; fill:none; stroke-dasharray:4 3; }
+  svg .ac{ fill:var(--accent); }
+
+  table{ width:100%; border-collapse:collapse; font-family:var(--sans); font-size:9.8pt; margin:12px 0;
+         page-break-inside:avoid; }
+  th{ text-align:left; padding:8px 10px; background:var(--card); color:var(--ink); font-size:9pt;
+      text-transform:uppercase; letter-spacing:.06em; border-top:2px solid var(--ink); border-bottom:2px solid var(--ink); }
+  td{ padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td b{ color:var(--ink); }
+
+  .qa{ border:1px solid var(--line); background:var(--card); padding:14px 16px; margin:12px 0; page-break-inside:avoid; }
+  .qa .q{ font-family:var(--sans); font-weight:700; color:var(--ink); font-size:11.4pt; margin-bottom:8px; }
+  .qa .q::before{ content:"Q"; display:inline-block; background:var(--accent); color:#fff; font-size:9pt;
+       width:19px; height:19px; line-height:19px; text-align:center; margin-right:9px; font-weight:800; }
+  .qa .a{ margin:0; }
+  .qa .a::before{ content:"A"; display:inline-block; border:1.5px solid var(--ink); color:var(--ink); font-size:9pt;
+       width:16px; height:16px; line-height:15px; text-align:center; margin-right:9px; font-weight:800;
+       font-family:var(--sans); }
+
+  .tech{ border:2px solid var(--ink); padding:0; margin:18px 0; page-break-inside:avoid; background:var(--card); }
+  .tech .head{ background:var(--ink); color:var(--paper); padding:9px 14px; font-family:var(--sans);
+       font-weight:700; font-size:11.5pt; display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .tech .head span{ font-family:var(--mono); font-size:9pt; opacity:.75; font-weight:600; }
+  .tech .body{ padding:13px 15px; }
+  .tech dt{ font-family:var(--sans); font-weight:700; color:var(--accent); font-size:9.6pt;
+       text-transform:uppercase; letter-spacing:.06em; margin-top:10px; }
+  .tech dt:first-child{ margin-top:0; }
+  .tech dd{ margin:3px 0 0; }
+
+  .checklist{ list-style:none; padding-left:0; }
+  .checklist li{ display:grid; grid-template-columns:22px 1fr; gap:9px; }
+  .checklist li::before{ content:"\25A1"; color:var(--accent); font-weight:800; }
+
+  .rescue{ border:2px dashed var(--red); padding:14px 16px; background:var(--card); }
+  .rescue p{ margin-bottom:8px; }
+
+  .pagebreak{ page-break-before:always; }
+  .note{ font-size:10.4pt; color:var(--muted); font-style:italic; }
+</style>
+
+<div class="bar">
+  <b>Clarifyd Viva Guide &mdash; Awais Khan</b>
+  <span class="grow"></span>
+  <span>Print &rarr; &ldquo;Save as PDF&rdquo; &middot; A4</span>
+  <button data-print>Print / Save as PDF</button>
+</div>
+
+<header class="hero">
+  <div class="eyebrow">Clarifyd &middot; FYP Viva Preparation &middot; Personal Guide</div>
+  <h1>Awais Khan</h1>
+  <p class="who">Frontend Developer &mdash; the User Experience &amp; Screens &nbsp;&middot;&nbsp; 2K22-BSCS-446</p>
+  <div class="role">Screens &middot; Design system &middot; Auth bridge &middot; Per-user storage &middot; The privacy bug</div>
+  <div class="sig">Your signature line: &ldquo;Everything the founder sees, and everything their browser must never leak.&rdquo;</div>
+</header>
+
+<div class="box simple">
+  <div class="h">How to use this guide</div>
+  <ol style="margin-bottom:0">
+    <li><b>Read it once, slowly.</b> Do not memorise yet &mdash; just understand.</li>
+    <li><b>Read it again, out loud.</b> Speak every <em>SAY THIS</em> box aloud. Your mouth must know the words, not only your head.</li>
+    <li><b>Third pass:</b> cover the answers in the Question Bank and answer from memory.</li>
+    <li><b>Night before:</b> do the self-test at the end with a teammate.</li>
+  </ol>
+</div>
+
+<div class="box trap">
+  <div class="h">The one rule</div>
+  <p><b>Never say &ldquo;I don't know.&rdquo;</b> There is a better sentence for every situation, and they are all on the last page of this guide. Read that page twice.</p>
+</div>
+
+<h2>Part 1 &mdash; Your 30-second introduction (memorise word for word)</h2>
+<div class="box say"><div class="h">Say this</div><p>&ldquo;I was the Frontend Developer. I built everything the user actually sees and touches. That is three things. One: the screens and the whole journey &mdash; upload, findings, the AI assistant, export. Two: the design system, so that every colour, spacing and text size is defined once and reused, which is why the product looks deliberate rather than assembled. Three &mdash; and this is the part I would most like to talk about &mdash; keeping each user's data separate inside the browser. We found a real privacy bug there, and fixing it properly taught us something worth saying out loud: an email address is not an identity.&rdquo;</p></div>
+
+
+
+<h2 class="pagebreak">Part 2 &mdash; Project basics (every member must know these)</h2>
+
+<h3>What is Clarifyd? (in one breath)</h3>
+<div class="box simple">
+  <div class="h">In simple words</div>
+  <p>A <b>contract</b> is a legal agreement &mdash; for example, the paperwork an investor gives a young company when they invest money in it. These documents are long, written in difficult language, and one bad sentence buried on page nine can cost the business owner everything they own.</p>
+  <p>Our users are <b>founders</b> &mdash; people starting a small company. They usually cannot afford a lawyer, and lawyers are slow. So founders often sign these documents without truly understanding them.</p>
+  <p>Clarifyd is a website. The founder uploads their contract. Our system reads it, finds the dangerous parts, and explains each one in normal everyday English &mdash; like a knowledgeable friend, not a lawyer.</p>
+</div>
+<div class="box say">
+  <div class="h">Say this</div>
+  <p>&ldquo;Clarifyd is an AI contract risk analyzer for pre-seed startup founders. A founder uploads a SAFE, an NDA or a term sheet. We extract the clauses, score each one for risk and confidence, sweep the document for loopholes &mdash; including protections that are <b>missing</b> &mdash; and explain every finding in plain English. It is decision-support. It is never legal advice.&rdquo;</p>
+</div>
+
+<h3>The user's journey (memorise this chain)</h3>
+<figure>
+  <div class="svgbox">
+    <svg viewBox="0 0 880 90" role="img" aria-label="User journey">
+      <rect class="bx" x="4" y="24" width="120" height="42"/><text class="lbl bold" x="64" y="50" text-anchor="middle">1. Upload</text>
+      <rect class="bx" x="148" y="24" width="120" height="42"/><text class="lbl bold" x="208" y="50" text-anchor="middle">2. Analyze</text>
+      <rect class="bx" x="292" y="24" width="120" height="42"/><text class="lbl bold" x="352" y="50" text-anchor="middle">3. Review</text>
+      <rect class="bx" x="436" y="24" width="120" height="42"/><text class="lbl bold" x="496" y="50" text-anchor="middle">4. Export</text>
+      <rect class="bxa" x="580" y="24" width="130" height="42"/><text class="lbl bold" x="645" y="50" text-anchor="middle">5. Draft (AI chat)</text>
+      <path class="ln" d="M124 45 L144 45"/><path class="ln" d="M136 40 l8 5 -8 5"/>
+      <path class="ln" d="M268 45 L288 45"/><path class="ln" d="M280 40 l8 5 -8 5"/>
+      <path class="ln" d="M412 45 L432 45"/><path class="ln" d="M424 40 l8 5 -8 5"/>
+      <path class="dl" d="M556 45 L578 45"/>
+      <text class="sm" x="760" y="49">extension, not core</text>
+    </svg>
+  </div>
+  <figcaption>Upload &rarr; Analyze &rarr; Review &rarr; Export. Drafting extends it; it does not replace it.</figcaption>
+</figure>
+
+<h3>The eight-step pipeline (know the order)</h3>
+<p><b>1.</b> Validate the file (read its real bytes) &rarr; <b>2.</b> Extract the text &rarr; <b>3.</b> Is it even a contract? &rarr; <b>4.</b> Split into clauses &rarr; <b>5.</b> Score each clause with the AI (8 at a time) &rarr; <b>6.</b> Three whole-document sweeps &rarr; <b>7.</b> Rank the findings &rarr; <b>8.</b> Save, route risky ones to a human, write an audit record.</p>
+<p class="note">Memory trick: <b>V</b>alidate, <b>E</b>xtract, <b>G</b>ate, <b>S</b>plit, <b>S</b>core, <b>S</b>weep, <b>R</b>ank, <b>R</b>ecord &mdash; &ldquo;Very Easy Girls Sing Sweet Songs, Rank Records.&rdquo;</p>
+
+<h3>The four safety controls (the heart of the project &mdash; ANY member may be asked)</h3>
+<table>
+  <thead><tr><th style="width:26%">Control</th><th>What it means in one sentence</th></tr></thead>
+  <tbody>
+    <tr><td><b>Fallback chain</b></td><td>Main AI &rarr; second AI &rarr; a plain rules engine that needs no internet. The product <b>never</b> fails completely.</td></tr>
+    <tr><td><b>Injection defence</b></td><td>The contract was written by the other side and may contain hidden instructions aimed at our AI. We treat it as hostile.</td></tr>
+    <tr><td><b>Confidence gate</b></td><td>If the AI is less than 0.7 sure, or the clause is critical, or foul play is suspected &mdash; a human must check it.</td></tr>
+    <tr><td><b>Hash-chained audit log</b></td><td>Every action is recorded so that secretly editing the past becomes <b>detectable</b>.</td></tr>
+  </tbody>
+</table>
+<p>Plus: every AI answer carries a <b>&ldquo;not legal advice&rdquo;</b> label that <b>cannot be removed</b> &mdash; strip it and the response fails validation and never reaches the user.</p>
+
+<h3>The five &ldquo;why not&rdquo; answers (any member can be asked these)</h3>
+<table>
+  <thead><tr><th style="width:30%">Question</th><th>Your answer</th></tr></thead>
+  <tbody>
+    <tr><td><b>Why not just use ChatGPT?</b></td><td>&ldquo;A plain chatbot invents facts, can be tricked by text hidden inside the contract, and will happily give legal advice that gets a founder sued. It also has no defined behaviour when it fails. We built the safety envelope that fixes all four.&rdquo;</td></tr>
+    <tr><td><b>Why didn't you train your own AI?</b></td><td>&ldquo;A deliberate decision &mdash; Decision D8. Training a competitive model needs data and compute far beyond a final-year project. We rent a model and our contribution is the safety and reliability engineering around it.&rdquo;</td></tr>
+    <tr><td><b>Why not hire a lawyer instead?</b></td><td>&ldquo;That is the correct answer for a big decision, and we say so in the product. But at pre-seed a lawyer is too slow and too expensive, so founders sign unread. We help them arrive at counsel prepared &mdash; or negotiate the small things themselves.&rdquo;</td></tr>
+    <tr><td><b>Why two backends?</b></td><td>&ldquo;The Python backend is the tested, deployed product. The second one is a broader scaffold for the next phase. It is <b>not deployed and not merged</b>, and we do not claim it.&rdquo;</td></tr>
+    <tr><td><b>Is this legal advice?</b></td><td>&ldquo;No, and the software enforces that on itself. Every AI response carries a disclaimer built into the data schema. Remove it and the response fails validation. We also refuse any question that depends on the law of a specific country.&rdquo;</td></tr>
+  </tbody>
+</table>
+
+
+<h2 class="pagebreak">Part 3 &mdash; Topic 1: What the frontend actually is</h2>
+
+<div class="box simple"><div class="h">In simple words</div><p>The <b>frontend</b> is the part of a website that runs <b>inside the user's own browser</b> &mdash; the screens, the buttons, the text. The <b>backend</b> is a program running on a server far away that does the heavy work.</p><p>They talk to each other over the internet. When a founder drops a contract onto our page, my code packages that file up and sends it to Ahmad's backend, then waits, then displays whatever comes back.</p><p>An important consequence: <b>anything in the frontend is visible to the user.</b> They can open the developer tools and read every line of my code. So the frontend can never be trusted to enforce security. Hiding a button does not protect anything &mdash; the real check must happen on the server.</p></div>
+
+
+<div class="box say"><div class="h">Say this</div><p>&ldquo;The frontend runs inside the user's browser, so the user can read every line of it. That means the frontend can never <b>enforce</b> security &mdash; it can only present it. Hiding a button stops nobody. Every real check &mdash; is this your contract, are you allowed to export this &mdash; happens on the server. I present the rules; Ahmad's backend enforces them.&rdquo;</p></div>
+
+
+<div class="box why"><div class="h">Why this matters</div><p>Examiners love this question because many students genuinely believe that hiding a button is a security measure. Saying clearly that <b>the frontend cannot be trusted</b> proves you understand the client-server boundary.</p></div>
+
+
+<h2 class="pagebreak">Part 4 &mdash; Topic 2: The design system</h2>
+
+<div class="box simple"><div class="h">In simple words</div><p>A <b>design system</b> means defining every colour, spacing size and text size <b>once</b>, in one place, and then reusing those definitions everywhere &mdash; instead of picking a colour fresh on every screen.</p><p>Without one, a website drifts: this page's grey is slightly different from that page's grey, buttons are three different heights, and the product feels amateur without anyone being able to say quite why.</p><p>Ours is called <b>Broadsheet</b> &mdash; a brutalist editorial style, like a serious newspaper. Warm ivory paper, coffee-black ink, and a single red accent used sparingly. Sharp edges, no gradients, no glassy effects. The look is deliberate: a founder is about to sign something serious, and the interface should feel trustworthy and calm, not playful.</p></div>
+
+
+<figure><div class="svgbox"><svg viewBox="0 0 860 190" role="img" aria-label="Design tokens defined once and reused">
+  <rect class="bxa" x="30" y="24" width="230" height="120"/>
+  <text class="sm bold" x="145" y="48" text-anchor="middle">DEFINED ONCE (tokens)</text>
+  <text class="sm" x="145" y="72" text-anchor="middle">paper #f4ede1</text>
+  <text class="sm" x="145" y="90" text-anchor="middle">ink #0c0a08</text>
+  <text class="sm" x="145" y="108" text-anchor="middle">accent red #b8260f</text>
+  <text class="sm" x="145" y="126" text-anchor="middle">spacing scale, type scale</text>
+
+  <rect class="bx" x="360" y="24" width="150" height="52"/><text class="sm bold" x="435" y="54" text-anchor="middle">Dashboard</text>
+  <rect class="bx" x="360" y="92" width="150" height="52"/><text class="sm bold" x="435" y="122" text-anchor="middle">Findings</text>
+  <rect class="bx" x="540" y="24" width="150" height="52"/><text class="sm bold" x="615" y="54" text-anchor="middle">Clarifyd AI</text>
+  <rect class="bx" x="540" y="92" width="150" height="52"/><text class="sm bold" x="615" y="122" text-anchor="middle">Exports</text>
+  <rect class="bx" x="715" y="58" width="120" height="52"/><text class="sm bold" x="775" y="88" text-anchor="middle">&hellip; 20 more</text>
+
+  <path class="ln" d="M260 60 L356 50"/>
+  <path class="ln" d="M260 84 L356 112"/>
+  <path class="ln" d="M260 70 L536 50"/>
+  <path class="ln" d="M260 96 L536 112"/>
+  <text class="sm" x="300" y="164">Change the token once &rarr; every screen updates. That is why it stays consistent.</text>
+</svg></div><figcaption>Tokens are defined once and consumed everywhere. These very viva slides use the same system as the product.</figcaption></figure>
+
+
+<div class="box say"><div class="h">Say this</div><p>&ldquo;Every colour and spacing value is defined once as a token and reused. Change it in one place and the whole product follows. That is why it looks consistent &mdash; and, in fact, our viva presentation uses the same design system as the product itself.&rdquo;</p></div>
+
+
+<h3>Two engineering problems I solved on the screens</h3>
+
+<div class="box simple"><div class="h">In simple words</div><p><b>Problem one: the analysis takes 20 seconds, and users navigate away.</b></p><p>A naive website would throw the work away the moment the user leaves the page and start again when they come back. I put the analysis state <b>above</b> the page, in a shared context that outlives any single screen. So the founder can wander off to another page, and the work carries on, with a progress indicator that follows them.</p><p><b>Problem two: the login library is heavy.</b></p><p>Our authentication library is around 220&nbsp;KB of code &mdash; a real download cost. But our public pages &mdash; the landing page, pricing, FAQ &mdash; do not need anyone to be logged in. So those pages render under a login-free stub and <b>never download it at all</b>. The public site is measurably faster as a result.</p></div>
+
+
+<h2 class="pagebreak">Part 5 &mdash; Topic 3: The privacy bug (your headline story)</h2>
+
+<div class="box trap"><div class="h">Trap &mdash; be careful here</div><p><b>Volunteer this. Do not wait to be asked.</b> It is the strongest story any of us has, because it is true, because we found it ourselves, and because the fix required understanding <em>why</em> we were wrong, not just what to change.</p></div>
+
+
+<div class="box simple"><div class="h">In simple words</div><p>Browsers can store small pieces of data on your own computer, so that a website remembers things between visits. This is called <b>local storage</b>. We used it to remember a founder's recent analyses, so the dashboard loads instantly.</p><p>Each stored item needs a <b>label</b> saying whose it is. We labelled them with the user's <b>email address</b>.</p><p><b>The symptom:</b> we deleted a test user, then signed up again with the same email. The &lsquo;new&rsquo; account was not new. It still had the old user's contracts, results, and even the old chat conversation.</p></div>
+
+
+<figure><div class="svgbox"><svg viewBox="0 0 860 250" role="img" aria-label="Why reusing an email leaked the old account's data">
+  <rect class="bx" x="20" y="20" width="380" height="94"/>
+  <text class="sm bold" x="210" y="44" text-anchor="middle">BEFORE &mdash; labelled by EMAIL (broken)</text>
+  <text class="sm" x="210" y="68" text-anchor="middle">clarifyd.recent-drafts : ali@mail.com</text>
+  <text class="sm" x="210" y="88" text-anchor="middle">Delete the account. Sign up again with</text>
+  <text class="sm ac" x="210" y="106" text-anchor="middle">the SAME email &rarr; the label MATCHES &rarr; old data returned</text>
+
+  <rect class="bxa" x="450" y="20" width="390" height="94"/>
+  <text class="sm bold" x="645" y="44" text-anchor="middle">AFTER &mdash; labelled by ACCOUNT ID (correct)</text>
+  <text class="sm" x="645" y="68" text-anchor="middle">clarifyd.recent-drafts : user_2xK9pQ</text>
+  <text class="sm" x="645" y="88" text-anchor="middle">A recreated account gets a BRAND-NEW id.</text>
+  <text class="sm" x="645" y="106" text-anchor="middle">Nothing matches. The new account starts empty.</text>
+
+  <rect class="bx" x="130" y="150" width="600" height="76"/>
+  <text class="sm bold" x="430" y="176" text-anchor="middle">THE PRINCIPLE</text>
+  <text class="sm" x="430" y="198" text-anchor="middle">An email address is a label a person CURRENTLY HOLDS &mdash; it can be given to someone else.</text>
+  <text class="sm" x="430" y="216" text-anchor="middle">An account ID is PERMANENT and never reused. Never key private data on anything reassignable.</text>
+</svg></div><figcaption>The whole bug, and the whole fix, in one picture.</figcaption></figure>
+
+
+<h3>The part that impresses examiners most: our first hypothesis was wrong</h3>
+<div class="box say"><div class="h">Say this</div><p>&ldquo;Our first instinct was that the <b>server</b> was leaking deleted data. That instinct was <b>wrong</b>. The truth was the opposite: nothing had ever left the browser. The old data was still sitting on that machine, and the new account's label happened to match it. If we had chased our instinct, we would have spent days fixing a defect that did not exist.&rdquo;</p></div>
+
+
+<div class="box say"><div class="h">Say this</div><p>&ldquo;An email address is not an identity. It is a label a person <b>currently holds</b>, and it can be reassigned. An account ID is permanent and never reused. We were keying private data on the reassignable thing, so we moved to the permanent thing. And on logout, or when a different account signs in, we now wipe every Clarifyd item on that device.&rdquo;</p></div>
+
+
+<div class="box trap"><div class="h">Trap &mdash; be careful here</div><p><b>State the blast radius exactly. Do not exaggerate, do not minimise.</b></p><p>It affected the <b>same physical browser only</b>. A stranger signing up with that email on their own laptop would have seen nothing, because the leftover data lived on that one machine. It was a shared-device leak, not a server-side disclosure of contracts across the internet.</p><p>Examiners respect precision far more than drama. Overstating a bug is as dishonest as hiding it.</p></div>
+
+
+<div class="box push"><div class="h">If pushed: Did you check whether the same mistake appeared anywhere else?</div><p>&ldquo;Yes, and that is the important part. We found the <b>same conceptual error in the database</b>: the one-time sign-up code table was also keyed by email address, so a recreated account could inherit the deleted user's pending codes. Same root cause, different layer. Finding a bug twice tells you it was a <b>thinking</b> mistake, not a typo &mdash; so we fixed the thinking, not just the line of code.&rdquo;</p></div>
+
+
+<h2 class="pagebreak">Part 6 &mdash; Topic 4: Clarifyd AI, and the button that refuses to work</h2>
+
+<div class="box simple"><div class="h">In simple words</div><p>Clarifyd AI is the chat assistant. It answers a founder's follow-up questions and can draft a document with them, clause by clause.</p><p>Originally, the <b>Generate document</b> button was clickable from the moment the chat opened. So a founder could ask for a contract before answering a single question &mdash; and receive a document full of blanks reading &lsquo;[TO BE CONFIRMED]&rsquo;. Impressive-looking, completely useless.</p><p>Here is the interesting engineering problem: <b>the screen has no way of knowing when enough detail has been gathered.</b> It depends entirely on <em>which document</em> you are writing. A confidentiality agreement needs completely different details from a job offer. My code cannot possibly know that.</p><p>So we let the <b>AI decide</b>. It keeps asking questions, and only when it genuinely has every essential term does it add a <b>hidden marker</b> to its reply. My screen watches for that marker, removes it so the founder never sees it, and only then unlocks the button.</p></div>
+
+
+<figure><div class="svgbox"><svg viewBox="0 0 860 200" role="img" aria-label="The readiness gate on the Generate button">
+  <rect class="bx" x="30" y="24" width="240" height="70"/>
+  <text class="sm bold" x="150" y="48" text-anchor="middle">AI still asking questions</text>
+  <text class="sm" x="150" y="68" text-anchor="middle">&ldquo;Who are the two parties?&rdquo;</text>
+  <text class="sm" x="150" y="84" text-anchor="middle">no hidden marker in the reply</text>
+
+  <rect class="bx" x="310" y="24" width="240" height="70"/>
+  <text class="sm bold ac" x="430" y="54" text-anchor="middle">GENERATE = LOCKED</text>
+  <text class="sm" x="430" y="76" text-anchor="middle">&ldquo;Answer the questions to unlock&rdquo;</text>
+
+  <rect class="bxa" x="590" y="24" width="240" height="70"/>
+  <text class="sm bold" x="710" y="48" text-anchor="middle">AI has everything</text>
+  <text class="sm" x="710" y="68" text-anchor="middle">reply contains the hidden marker</text>
+  <text class="sm" x="710" y="84" text-anchor="middle">&rarr; GENERATE UNLOCKS</text>
+
+  <path class="ln" d="M270 59 L306 59"/><path class="ln" d="M298 54 l8 5 -8 5"/>
+  <path class="ln" d="M550 59 L586 59"/><path class="ln" d="M578 54 l8 5 -8 5"/>
+
+  <text class="sm" x="430" y="140" text-anchor="middle">If the founder later withdraws a detail, the AI stops sending the marker and the button LOCKS AGAIN.</text>
+  <text class="sm" x="430" y="164" text-anchor="middle">The marker is stripped before display &mdash; the founder never sees it.</text>
+</svg></div><figcaption>The screen cannot know what a document needs. So the model signals readiness, and the interface obeys it.</figcaption></figure>
+
+
+<div class="box push"><div class="h">If pushed: How exactly do you detect that hidden marker?</div><p>&ldquo;We match it <b>loosely</b> rather than exactly &mdash; and that was a deliberate decision worth explaining. The chat runs on a small, fast model that occasionally garbles the exact punctuation of the marker. A strict, exact check would be more &lsquo;correct&rsquo; in a textbook sense &mdash; and it would trap a founder behind a button that never unlocks, with no way to understand why. We chose the user's outcome over the elegant implementation.&rdquo;</p></div>
+
+
+<div class="box why"><div class="h">Why this matters</div><p>That answer shows <b>engineering judgement</b>, which is rarer and more valuable than technical knowledge. Knowing that the strictly-correct solution is sometimes the wrong one &mdash; and being able to say why &mdash; is what separates an engineer from a coder.</p></div>
+
+
+<h2 class="pagebreak">Part 7 &mdash; The technologies you must be able to explain</h2>
+
+
+<div class="tech">
+  <div class="head">React<span>how the screen is built</span></div>
+  <div class="body">
+    <dl>
+      <dt>What it is (plain words)</dt><dd>A library for building user interfaces out of reusable <b>components</b> &mdash; small self-contained pieces like a button, a card, or a risk badge, which you assemble like Lego bricks.</dd>
+      <dt>Where it came from</dt><dd>Created at Facebook by Jordan Walke and released in 2013. Its central idea: rather than telling the browser <em>how</em> to change (&lsquo;find that box, change its text, add a red border&rsquo;), you describe <em>what the screen should look like</em> for the current data, and React works out the minimal set of changes needed. That is called <b>declarative</b> rendering.</dd>
+      <dt>Why we chose it</dt><dd>Our screens change constantly &mdash; findings arrive, progress advances, chat messages stream in word by word. Managing all that by hand is where bugs breed. React makes the interface a function of the data.</dd>
+      <dt>What we rejected, and why</dt><dd>Plain JavaScript with manual updates was rejected: it does not scale past a few screens and is exactly where inconsistency bugs come from.</dd>
+      <dt>Where it appears in Clarifyd</dt><dd>Every screen: dashboard, findings, Clarifyd AI, exports, admin.</dd>
+    </dl>
+  </div>
+</div>
+
+
+
+<div class="tech">
+  <div class="head">Next.js<span>the framework around React</span></div>
+  <div class="body">
+    <dl>
+      <dt>What it is (plain words)</dt><dd>A framework built on top of React that adds the things every real website needs: routing between pages, rendering pages on the server for speed, and image and font optimisation.</dd>
+      <dt>Where it came from</dt><dd>Created by Vercel (formerly Zeit) in 2016. Its key contribution is <b>server-side rendering</b> for React: the server sends a finished page, so the user sees content immediately instead of a blank screen while JavaScript downloads.</dd>
+      <dt>Why we chose it</dt><dd>Our public pages must load fast for a founder who has never heard of us and will leave in three seconds. Server-rendering them wins that. It also gives us a clean way to proxy our API calls, avoiding a whole class of cross-origin browser errors.</dd>
+      <dt>What we rejected, and why</dt><dd>Plain React (Create React App) was rejected: everything would be rendered in the browser, so the first paint would be slower on a poor connection.</dd>
+      <dt>Where it appears in Clarifyd</dt><dd>The entire frontend application.</dd>
+    </dl>
+  </div>
+</div>
+
+
+
+<div class="tech">
+  <div class="head">TypeScript<span>catching mistakes before the user does</span></div>
+  <div class="body">
+    <dl>
+      <dt>What it is (plain words)</dt><dd>JavaScript with <b>types</b> added. You declare that a finding has a severity which is one of four specific words, and a confidence which is a number. If you then misspell a field or pass the wrong kind of value, the error appears <b>while you are writing the code</b>, not when a founder clicks the button.</dd>
+      <dt>Where it came from</dt><dd>Created by Microsoft in 2012 (led by Anders Hejlsberg, who also designed C#). It compiles down to ordinary JavaScript, so browsers do not need to know anything about it.</dd>
+      <dt>Why we chose it</dt><dd>This is the point worth making: our backend's API contract was <b>frozen</b> early. TypeScript lets me check <em>at build time</em> that my screens still match that contract. If Ahmad's response shape and my code ever disagreed, the <b>build fails</b> &mdash; it never reaches a user. Type-checking is our frontend quality gate.</dd>
+      <dt>What we rejected, and why</dt><dd>Plain JavaScript was rejected: mistakes would only surface at runtime, in front of the person using it.</dd>
+      <dt>Where it appears in Clarifyd</dt><dd>Every frontend file. <code>tsc --noEmit</code> runs on every change and a failure blocks the merge.</dd>
+    </dl>
+  </div>
+</div>
+
+
+
+<div class="tech">
+  <div class="head">Clerk (from the frontend side)<span>the login, and the account ID that fixed our bug</span></div>
+  <div class="body">
+    <dl>
+      <dt>What it is (plain words)</dt><dd>A specialist service that handles sign-up, sign-in, Google login, sessions and password reset. We never store a password ourselves.</dd>
+      <dt>Where it came from</dt><dd>Founded in 2020. It exists because almost everyone who builds their own login gets some part of it subtly wrong, and the consequences are severe.</dd>
+      <dt>Why we chose it</dt><dd>Two reasons. First: <b>if we do not hold passwords, we cannot leak them</b> &mdash; an entire class of vulnerability removed by design. Second, and crucially for my part: Clerk gives every account a <b>permanent identifier that is never reused</b>. That identifier is what we now use to label browser storage &mdash; it is the fix for the privacy bug in Part 5.</dd>
+      <dt>What we rejected, and why</dt><dd>Building our own login was rejected: password hashing, session expiry, reset flows and social login are each easy to get wrong, and a student project getting it wrong means leaking real people's credentials.</dd>
+      <dt>Where it appears in Clarifyd</dt><dd>The login page; a fresh signed token attached to every request; the account ID used to namespace local storage.</dd>
+    </dl>
+  </div>
+</div>
+
+
+
+<div class="tech">
+  <div class="head">Browser local storage<span>where the bug lived</span></div>
+  <div class="body">
+    <dl>
+      <dt>What it is (plain words)</dt><dd>A small store of data that a website may keep <b>on your own computer</b>, so it can remember things between visits. It is per-site and per-browser: another website cannot read ours.</dd>
+      <dt>Where it came from</dt><dd>Standardised as part of HTML5 around 2009, to replace the practice of stuffing everything into cookies (which get sent to the server on every single request, making them slow and leaky).</dd>
+      <dt>Why we chose it</dt><dd>The dashboard should feel instant. Re-fetching everything from the server on every page load is slow, so we cache the results locally.</dd>
+      <dt>What we rejected, and why</dt><dd>Storing raw contract text in the browser was <b>rejected on principle</b> &mdash; we never persist the actual contract text in local storage, only the results. That is a privacy decision, taken deliberately.</dd>
+      <dt>Where it appears in Clarifyd</dt><dd>Recent analyses, the founder profile, the chat session &mdash; all now namespaced by the permanent account ID and wiped on logout.</dd>
+    </dl>
+  </div>
+</div>
+
+
+
+<div class="tech">
+  <div class="head">Framer Motion<span>the animation</span></div>
+  <div class="body">
+    <dl>
+      <dt>What it is (plain words)</dt><dd>A library for animating React components &mdash; things fade and slide in rather than snapping into place.</dd>
+      <dt>Where it came from</dt><dd>Built by the Framer design tool team. It expresses animation declaratively: you describe the start and end states, not the frames between.</dd>
+      <dt>Why we chose it</dt><dd>Motion is used sparingly and for one purpose: to show a founder that something is <b>happening</b> during a twenty-second analysis. Everything respects the operating system's <b>reduce motion</b> setting, which matters for users with vestibular disorders &mdash; that is an accessibility requirement, not a nicety.</dd>
+      <dt>What we rejected, and why</dt><dd>Animating with hand-written CSS was rejected as harder to coordinate and easy to get wrong for accessibility.</dd>
+      <dt>Where it appears in Clarifyd</dt><dd>Page entrances, the progress indicator, the streaming chat replies.</dd>
+    </dl>
+  </div>
+</div>
+
+
+<h2 class="pagebreak">Part 8 &mdash; Question bank (cover the answers and test yourself)</h2>
+
+<div class="qa"><div class="q">Walk me through the interface, as a founder would experience it.</div><p class="a">&ldquo;They sign in, land on the dashboard, and drag a contract onto it. A progress indicator appears &mdash; and it follows them if they navigate away, because the analysis lives above the page. When it finishes they see a health gauge and a ranked list of findings, worst first. Each finding explains in plain English what the clause does and why it matters <b>to a startup</b>. They can open Clarifyd AI to ask follow-ups, and export a report.&rdquo;</p></div>
+
+
+<div class="qa"><div class="q">You hide the admin button from normal users. Is that security?</div><p class="a">&ldquo;<b>No, and it is important that I say so.</b> Hiding a button hides a door; it does not lock it. Anyone can read my frontend code in their browser. The <b>real</b> check is on the server: it refuses the request regardless of what my interface shows. The frontend presents the rules; the backend enforces them.&rdquo;</p></div>
+
+
+<div class="qa"><div class="q">How do you keep one user's data away from another's in the browser?</div><p class="a">&ldquo;Every stored item is labelled with the user's <b>permanent account ID</b> &mdash; never their email, because emails can be reassigned. And on logout, or when a different account signs in, we wipe every Clarifyd item on that device. We learned that the hard way, and I would like to tell you about it.&rdquo; <i>(then tell the bug story)</i></p></div>
+
+
+<div class="qa"><div class="q">Do you store the contract text in the browser?</div><p class="a">&ldquo;<b>Never.</b> Only the results. The raw contract text is deliberately stripped before anything is cached locally. It is a privacy decision we took on purpose, not an accident of implementation.&rdquo;</p></div>
+
+
+<div class="qa"><div class="q">Why is the analysis able to survive navigation?</div><p class="a">&ldquo;Because the analysis state lives <b>above</b> any single page, in a shared context. A naive implementation ties the work to the page, so leaving it cancels the work. Ours keeps running and the progress indicator follows the user.&rdquo;</p></div>
+
+
+<div class="qa"><div class="q">Why does the Generate button start disabled?</div><p class="a">&ldquo;Because otherwise a founder gets a contract full of blanks. And the interesting part is that <b>my screen cannot know</b> when enough detail has been gathered &mdash; it depends on which document is being written. So the AI signals readiness with a hidden marker, and the interface unlocks only then.&rdquo;</p></div>
+
+
+<div class="qa"><div class="q">What is your frontend's testing story? Be honest.</div><p class="a">&ldquo;It is our weakest area and I will not dress it up. We have <b>no frontend unit tests</b>. Our only automatic gate is TypeScript type-checking, which does catch a real class of bug &mdash; if my screens stop matching the backend's frozen API contract, the build fails. But it is not a substitute for tests, and adding them is the fourth item in our future work.&rdquo;</p></div>
+
+
+<div class="qa"><div class="q">Are all your components actually used?</div><p class="a">&ldquo;No &mdash; and I would rather say it than have you find it. Several polished components exist that are not wired to a live route; the live pages reimplement equivalents inline. That is the gap between our component count and our shipped features, and it is listed in our limitations.&rdquo;</p></div>
+
+
+<div class="qa"><div class="q">Why does your design look like a newspaper?</div><p class="a">&ldquo;It is a deliberate choice. A founder is about to sign something that could cost them their company. The interface should feel serious, calm and trustworthy &mdash; like a broadsheet newspaper &mdash; not playful. Every colour, spacing and type size is a token defined once and reused, which is why it stays consistent across twenty screens.&rdquo;</p></div>
+
+
+<h2 class="pagebreak">Part 9 &mdash; Self-test the night before</h2>
+<ul class="checklist">
+  <li>Say the 30-second introduction with your eyes closed.</li>
+  <li>Explain why <b>hiding a button is not security</b>, in one sentence.</li>
+  <li>Explain what a design token is and why it prevents drift.</li>
+  <li>Tell the privacy-bug story &mdash; including that your <b>first hypothesis was wrong</b>.</li>
+  <li>Say the principle sentence: <b>&ldquo;an email is a label a person currently holds; an account ID is permanent.&rdquo;</b></li>
+  <li>State the blast radius honestly: <b>same browser only</b>.</li>
+  <li>Explain why the Generate button starts locked, and who decides when it unlocks.</li>
+  <li>Explain the loose-marker decision &mdash; user outcome over elegant implementation.</li>
+  <li>Own the frontend testing gap without apologising.</li>
+  <li>Explain what TypeScript catches, using the frozen API contract as the example.</li>
+</ul>
+
+<h2 class="pagebreak">Part W &mdash; Your work, step by step (what you did, in order)</h2>
+
+<div class="box trap">
+  <div class="h">The question this answers</div>
+  <p><b>&ldquo;What did YOU actually do, and in what order?&rdquo;</b> &mdash; and its harder follow-up,
+  <b>&ldquo;why did you do it in that order?&rdquo;</b></p>
+  <p>Most students answer this badly. They describe the <em>finished system</em> instead of their own <em>sequence of
+  work</em>, which makes it sound like the project appeared fully formed &mdash; or worse, like somebody else built it
+  and they are reciting it.</p>
+  <p><b>Tell it as a story with causes.</b> Each step must explain why it had to come <em>then</em>, what went wrong,
+  and what it unlocked. That is what a real engineer's memory of their own work sounds like.</p>
+</div>
+
+<div class="box say">
+  <div class="h">Your one-line ordering rule (say this if asked why this order)</div>
+  <p>&ldquo;I was BLOCKED from starting until the backend passed its readiness gate &mdash; and that was the right call. So I used the waiting time to design, then built the foundation (the design system and the auth bridge) before any individual screen, because every screen depends on both.&rdquo;</p>
+</div>
+<figure><div class="svgbox"><svg viewBox="0 0 860 130" role="img" aria-label="Project timeline">
+  <path class="ln" d="M30 70 L830 70"/>
+  <circle class="ac" cx="80" cy="70" r="7"/><text class="sm bold" x="80" y="50" text-anchor="middle">FREEZE</text>
+  <text class="sm" x="80" y="94" text-anchor="middle">schemas</text>
+  <text class="sm" x="80" y="108" text-anchor="middle">locked</text>
+
+  <circle class="ac" cx="250" cy="70" r="7"/><text class="sm bold" x="250" y="50" text-anchor="middle">SERVICES</text>
+  <text class="sm" x="250" y="94" text-anchor="middle">ingest, extract,</text>
+  <text class="sm" x="250" y="108" text-anchor="middle">score</text>
+
+  <circle class="ac" cx="430" cy="70" r="7"/><text class="sm bold" x="430" y="50" text-anchor="middle">API + DB</text>
+  <text class="sm" x="430" y="94" text-anchor="middle">endpoints, review</text>
+  <text class="sm" x="430" y="108" text-anchor="middle">queue, audit</text>
+
+  <circle class="ac" cx="610" cy="70" r="7"/><text class="sm bold" x="610" y="50" text-anchor="middle">GATE</text>
+  <text class="sm" x="610" y="94" text-anchor="middle">backend ready &rarr;</text>
+  <text class="sm" x="610" y="108" text-anchor="middle">frontend starts</text>
+
+  <circle class="ac" cx="790" cy="70" r="7"/><text class="sm bold" x="790" y="50" text-anchor="middle">HARDEN</text>
+  <text class="sm" x="790" y="94" text-anchor="middle">security, privacy,</text>
+  <text class="sm" x="790" y="108" text-anchor="middle">deploy</text>
+</svg></div><figcaption>I was deliberately blocked until the GATE. What I did before it, and after it, is the story below.</figcaption></figure>
+
+<h3>My eight steps, in the order I actually did them</h3>
+
+<div class="qa">
+  <div class="q">Step 1 &mdash; Waited &mdash; and used the wait to map every screen to an endpoint</div>
+  <p class="a"><b>What I did:</b> While Ahmad built the backend, I designed the screens and checked that <b>every single one</b> could be built from an endpoint that would actually exist in the frozen API contract.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> This was the team's rule: the frontend may not start until the backend passes a readiness checkpoint. It sounds restrictive, and it saved me from rebuilding my work three times.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The check caught two screens I had designed that <b>no endpoint could support</b>. Better to find that on paper than after building them.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> When the gate opened, I was not designing &mdash; I was building, against an API I already understood.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 2 &mdash; Built the design system before building any screen</div>
+  <p class="a"><b>What I did:</b> Defined every colour, spacing step, and text size <b>once</b>, as tokens. The Broadsheet style: ivory paper, coffee-black ink, a single red accent.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Because without it, each screen drifts. This grey differs slightly from that grey, buttons come in three heights, and the product feels amateur in a way nobody can point at.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The hard part was <b>restraint</b>. My instinct was to add gradients and shadows. But a founder is about to sign something that could cost them their company &mdash; the interface should feel serious and calm, not playful. I took things away rather than adding them.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Every screen after this was faster to build and automatically consistent. Even our viva presentation uses the same tokens.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 3 &mdash; Built the auth bridge to Clerk</div>
+  <p class="a"><b>What I did:</b> Connected the app to Clerk, so every request carries a fresh signed token, and the app knows who is signed in and what role they have.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Nothing behind the login can be built until the app knows <b>who the user is</b>. This is the second foundation stone, along with the design system.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Clerk's tokens expire after about a minute. My first version fetched the token once and cached it &mdash; so after sixty seconds every request started failing with an authentication error. I had to fetch a <b>fresh token per request</b>.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Every authenticated screen became possible.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 4 &mdash; Built the upload and findings screens &mdash; the core journey</div>
+  <p class="a"><b>What I did:</b> The dashboard where a contract is dropped, and the findings page: a health gauge, and a ranked list of clause cards with severity, explanation and suggested negotiation.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> This is <b>the product</b>. Everything else is secondary, so it was built first and given the most care.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The findings page was overwhelming at first &mdash; a wall of text. I had to rank ruthlessly, collapse detail behind a click, and lead with the health gauge so a founder gets the headline in one second, not one minute.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> For the first time, the whole team could see the product working end to end in a browser.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 5 &mdash; Made the analysis survive navigation</div>
+  <p class="a"><b>What I did:</b> Moved the analysis state <b>above</b> any single page, so a founder can navigate away mid-analysis and the work carries on, with the progress indicator following them.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Analysis takes about twenty seconds &mdash; long enough that people <b>will</b> click away. A naive implementation throws the work away and starts again, which is infuriating and wastes an AI call.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The bug that revealed it: navigating away and back started a <b>second</b> analysis of the same contract. Not just annoying &mdash; it cost money.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The product started to feel professional rather than fragile.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 6 &mdash; Kept the login library off the public pages</div>
+  <p class="a"><b>What I did:</b> The marketing pages render under a login-free stub, so they never download the ~220&nbsp;KB authentication library.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> A founder who has never heard of us will leave in three seconds if the landing page is slow. Every kilobyte on that path matters; on the dashboard, where they are already committed, it matters far less.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> It required a route-aware provider boundary, which is fiddly &mdash; the app must decide, per route, whether authentication even exists.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> A measurably faster public site, with no cost to the logged-in experience.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 7 &mdash; Built Clarifyd AI, and then locked its Generate button</div>
+  <p class="a"><b>What I did:</b> The chat assistant with streaming replies, and document drafting &mdash; with the Generate button <b>disabled</b> until the AI confirms it has every essential term.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> The chat came first; the lock came after we saw what happened without it.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> A founder could press Generate immediately and receive a contract full of <code>[TO BE CONFIRMED]</code> blanks. The hard realisation: <b>my screen cannot know</b> when enough detail has been gathered &mdash; it depends entirely on which document is being written. So the <b>model</b> had to signal readiness, and my interface obeys it. I match that signal <b>loosely</b>, because the small chat model sometimes garbles punctuation, and a strict check would trap a founder behind a button that never unlocks.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The assistant became genuinely useful rather than a demo that produces impressive-looking rubbish.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 8 &mdash; Found &mdash; and fixed &mdash; the privacy bug</div>
+  <p class="a"><b>What I did:</b> Discovered that a deleted user's data reappeared when a new account was created on the same email. Re-keyed all browser storage from the email address to the permanent account ID, and made logout wipe everything.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> It surfaced during ordinary testing near the end, when we were deleting and recreating test accounts.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Our first hypothesis was that the <b>server</b> was leaking deleted data. That was <b>wrong</b> &mdash; the data had never left the browser. Chasing that instinct would have wasted days fixing a defect that did not exist. The actual cause: I had labelled browser storage with the <b>email address</b>, and emails can be reassigned.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The lesson that became our best viva story: <b>an email address is a label a person currently holds, not an identity.</b> And it led Ahmad to find the same conceptual mistake in the database.</p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "which step was hardest?"</div>
+  <p>&ldquo;The privacy bug &mdash; and the hard part was not the fix, which was small. The hard part was that our
+  <b>reasoning</b> was wrong. We were certain the server was leaking. Every instinct said so. Being disciplined enough
+  to actually check, rather than start fixing what we assumed, is the thing I would most want to be judged on.&rdquo;</p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "what would you do differently?"</div>
+  <p>&ldquo;I would write frontend tests from the start. We have none &mdash; type-checking is our only automatic gate.
+  It is our biggest quality gap and I own it. Every bug I found, I found by <b>clicking</b>, which does not scale and
+  does not catch regressions.&rdquo;</p>
+</div>
+
+<h2 class="pagebreak">Part S &mdash; Scenario questions (&ldquo;now add this&hellip;&rdquo;)</h2>
+
+<div class="box trap">
+  <div class="h">Why this section exists</div>
+  <p>At some point the examiner will stop asking <em>what you built</em> and start asking <em>what you would do
+  next</em>. For example:</p>
+  <ul style="margin-bottom:0">
+    <li>&ldquo;Add a feature that lets two founders share a contract.&rdquo;</li>
+    <li>&ldquo;How would you test this differently?&rdquo;</li>
+    <li>&ldquo;What if a contract is 500 pages long?&rdquo;</li>
+    <li>&ldquo;What if I told you the AI provider is shutting down tomorrow?&rdquo;</li>
+  </ul>
+  <p style="margin-top:10px"><b>These questions are not traps &mdash; they are gifts.</b> They are testing whether you
+  understand your own system well enough to <em>extend</em> it. A student who only memorised what they built will
+  freeze. You will not, because you have a method.</p>
+</div>
+
+<h3>The four-move method (use it for EVERY scenario question)</h3>
+<figure>
+  <div class="svgbox">
+    <svg viewBox="0 0 860 190" role="img" aria-label="The four-move method for answering scenario questions">
+      <rect class="bxa" x="20" y="24" width="190" height="76"/>
+      <text class="sm bold" x="115" y="48" text-anchor="middle">MOVE 1 &mdash; CLARIFY</text>
+      <text class="sm" x="115" y="68" text-anchor="middle">Restate it. Ask ONE</text>
+      <text class="sm" x="115" y="84" text-anchor="middle">sharp question.</text>
+
+      <rect class="bx" x="230" y="24" width="190" height="76"/>
+      <text class="sm bold" x="325" y="48" text-anchor="middle">MOVE 2 &mdash; ANCHOR</text>
+      <text class="sm" x="325" y="68" text-anchor="middle">Name the EXISTING part</text>
+      <text class="sm" x="325" y="84" text-anchor="middle">of our system it plugs into.</text>
+
+      <rect class="bx" x="440" y="24" width="190" height="76"/>
+      <text class="sm bold" x="535" y="48" text-anchor="middle">MOVE 3 &mdash; DESIGN</text>
+      <text class="sm" x="535" y="68" text-anchor="middle">Data, then endpoint,</text>
+      <text class="sm" x="535" y="84" text-anchor="middle">then screen, then test.</text>
+
+      <rect class="bxa" x="650" y="24" width="190" height="76"/>
+      <text class="sm bold" x="745" y="48" text-anchor="middle">MOVE 4 &mdash; SAFETY</text>
+      <text class="sm" x="745" y="68" text-anchor="middle">What could go wrong,</text>
+      <text class="sm" x="745" y="84" text-anchor="middle">and what would I trade off?</text>
+
+      <path class="ln" d="M210 62 L226 62"/><path class="ln" d="M218 57 l8 5 -8 5"/>
+      <path class="ln" d="M420 62 L436 62"/><path class="ln" d="M428 57 l8 5 -8 5"/>
+      <path class="ln" d="M630 62 L646 62"/><path class="ln" d="M638 57 l8 5 -8 5"/>
+
+      <text class="sm bold" x="430" y="140" text-anchor="middle">Move 4 is the one that separates a good answer from an excellent one.</text>
+      <text class="sm" x="430" y="162" text-anchor="middle">Anyone can add a feature. An engineer says what it might break, and what they would give up to get it.</text>
+    </svg>
+  </div>
+  <figcaption>Use all four moves, in order, out loud. Never jump straight to code.</figcaption>
+</figure>
+
+<div class="box simple">
+  <div class="h">The four moves, spelled out</div>
+  <p><b>Move 1 &mdash; Clarify.</b> Repeat the request back in your own words, then ask <b>exactly one</b> sharp
+  question. It buys you ten seconds to think, and it makes you sound like an engineer rather than a student guessing.
+  Example: <i>&ldquo;So founders can share a contract with a co-founder. Can I check &mdash; should the second person be
+  able to <b>edit</b> the findings, or only read them? That changes the design.&rdquo;</i></p>
+
+  <p><b>Move 2 &mdash; Anchor it in what already exists.</b> Never design from a blank page. Name the part of Clarifyd
+  it attaches to. <i>&ldquo;This builds on our existing review queue, which already assigns a finding to a person and
+  checks their role.&rdquo;</i> This proves you know your own system.</p>
+
+  <p><b>Move 3 &mdash; Design in a fixed order: data &rarr; endpoint &rarr; screen &rarr; test.</b> Always that order.
+  It shows a layered mind. What table or column changes? What API endpoint appears? What does the user see? How do I
+  test it?</p>
+
+  <p><b>Move 4 &mdash; Safety and trade-off.</b> Finish by saying what could go wrong and what you would sacrifice.
+  <i>&ldquo;The risk here is that sharing weakens our ownership check, so I would enforce it on the server, not just
+  hide the button. And I would accept slower page loads rather than cache another person's findings in the
+  browser.&rdquo;</i></p>
+</div>
+
+<div class="box say">
+  <div class="h">If your mind goes blank &mdash; the universal opener</div>
+  <p>&ldquo;Let me think about that in layers &mdash; what data would need to change, what endpoint would expose it,
+  what the founder would see, and how I would test it. Starting with the data&hellip;&rdquo;</p>
+</div>
+
+<div class="box trap">
+  <div class="h">Three fatal mistakes in scenario answers</div>
+  <ul style="margin-bottom:0">
+    <li><b>Saying &ldquo;that would be easy.&rdquo;</b> Nothing is easy, and the examiner will immediately find the hard
+    part you missed. Say instead: <i>&ldquo;The straightforward part is X. The part I would be careful about is Y.&rdquo;</i></li>
+    <li><b>Inventing a technology you have never used.</b> If you say &ldquo;I'd use Kafka&rdquo; you will be asked what
+    Kafka is. Design with the tools you actually know and can defend.</li>
+    <li><b>Forgetting the safety rules you already built.</b> Any new feature must still pass the confidence gate, the
+    audit log, the ownership check, and the &ldquo;not legal advice&rdquo; rule. <b>Mention them.</b> It shows the
+    safety thinking is habitual, not decorative.</li>
+  </ul>
+</div>
+
+<h3>Worked scenarios &mdash; the interface</h3>
+
+<div class="qa">
+  <div class="q">Add a feature: a founder should be able to comment on a specific clause and mention a colleague.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;So per-clause comments with mentions. Can I check &mdash; do mentions need to send a notification, or is it enough that the colleague sees it when they open the contract? Notifications are a much bigger feature.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;We already have a <code>comment</code> table with an author and a draft, and the findings page already renders each clause as a card. So the data model mostly exists; what is missing is attaching a comment to a <b>specific finding</b> and rendering the thread.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Data:</b> the comment already has an optional <code>finding_id</code> &mdash; so I would use it. <b>Endpoint:</b> <code>POST /findings/{id}/comments</code>, owner-or-shared only. <b>Screen:</b> a comment thread in the clause card, collapsed by default so the page does not become noisy. For mentions, an autocomplete over people who <b>already have access</b> to this contract &mdash; never over all users, because that would leak the existence of other accounts. <b>Test:</b> a user without access cannot post a comment, and cannot see one.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trap is a <b>cross-site scripting</b> hole: a comment is user-written text, and if I render it as raw HTML then somebody could type a script tag and run code in a co-founder's browser. React escapes text by default, so as long as I never bypass that escaping I am safe &mdash; and I would add a test that posts a script tag and asserts it is displayed as harmless text.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Your dashboard is slow for a founder with 200 contracts. Fix it.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Can I check whether it is slow to <b>load</b>, or slow to <b>scroll</b>? They have different causes and different fixes.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Today the dashboard fetches recent analyses and renders them all. With 200 contracts we are downloading everything and asking the browser to draw 200 cards, most of which are off-screen.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Endpoint:</b> add <b>pagination</b> &mdash; return 20 at a time with a cursor. That fixes the download. <b>Screen:</b> <b>virtualise</b> the list, so the browser only creates DOM elements for the cards actually visible; the rest are placeholders. That fixes the scrolling. Also lazy-load images below the fold. <b>Test:</b> measure it &mdash; I would not claim it is faster without a number. Seed 200 contracts and compare load time before and after.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trade-off: pagination means the founder cannot instantly search across all 200 in the browser, so search moves to the server &mdash; which is where it belongs anyway, since the browser should not be holding 200 contracts' worth of findings in memory. <b>And I would not cache all 200 in local storage</b>, which brings us back to the privacy lesson: the less we keep in the browser, the less there is to leak.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">The analysis fails halfway. What does the founder see?</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Right now, honestly, an error toast &mdash; and I think that is the weakest part of my interface.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Our backend returns a consistent error shape: a code, a message, and a request ID. So I have everything I need to do better than a generic error; I simply have not used all of it.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;What I would build: distinguish the <b>kinds</b> of failure. If it is a rejected file, say <i>which rule</i> it broke &mdash; too large, not a PDF, not a contract &mdash; because those are the founder's fault and fixable by them. If the AI provider failed, the founder should not even see an error, because our <b>fallback chain</b> means they still get a rules-based analysis; what they should see is an honest banner saying the analysis is <b>degraded</b>. And I would surface the request ID, so if they contact us we can find that exact request in the logs. <b>Test:</b> force each failure type and assert the correct message appears.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The principle: <b>an error message should tell the user what went wrong and what to do next.</b> Never &lsquo;something went wrong&rsquo;, and never a stack trace &mdash; that leaks our internals to an attacker. And degrading <b>visibly</b> matters more than degrading silently: a founder must never believe they got a full analysis when they got the fallback.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Make the product accessible to a blind founder.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;A fair challenge, and I will be honest about where we stand rather than claim compliance we have not audited.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;What we already do: semantic HTML, keyboard-reachable controls, visible focus rings, and we respect the operating system's <b>reduce motion</b> setting, which matters for vestibular disorders. What we have <b>not</b> done is test with an actual screen reader, and I will not pretend otherwise.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;What I would do: our <b>risk severity is currently shown with colour</b> &mdash; red for critical &mdash; and colour alone is never sufficient, both for a blind user and for the roughly one in twelve men with colour blindness. So every severity gets a <b>text label and an icon</b>, not just a hue. The health gauge is a visual chart, so it needs a text summary a screen reader can announce: &lsquo;3 critical, 5 high, 12 low&rsquo;. When an analysis finishes, that is a dynamic change the screen reader must be <b>told</b> about, so it needs a live region. <b>Test:</b> navigate the whole upload-to-export flow using only the keyboard and a screen reader.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trade-off is time, not technology &mdash; none of this is hard, we simply scoped it out, and I would rather say that than claim a WCAG compliance level we never measured. It belongs in our future work.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Add real-time collaboration: two founders editing the same contract review at once.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Can I check the scope? Truly simultaneous editing, like a shared document, or is it enough that each sees the other's changes within a few seconds? The first is dramatically harder, and I would push back on whether it is worth it.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Our review workflow already has the key safety property: claiming a finding is <b>atomic</b> at the database level, so two people can never be assigned the same item. The conflict problem is already solved on the server &mdash; what is missing is showing it live in the browser.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;I would <b>not</b> reach for full collaborative-editing machinery &mdash; that is enormous complexity for a workflow where people accept or reject findings rather than co-write prose. Instead: a <b>lightweight live channel</b> &mdash; server-sent events, which we already use for streaming chat replies, so it is a technique the team knows. When someone accepts a finding, the server pushes an event and the other person's list updates. <b>Test:</b> two sessions, one accepts, assert the other's view updates and cannot re-accept.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trade-off I would state out loud: I am choosing <b>eventual consistency within a second</b> over true simultaneity, because the underlying action &mdash; claiming a finding &mdash; is already exclusive on the server. The database is the referee; the live channel is only a courtesy. <b>Choosing the simpler mechanism that is sufficient</b> is the engineering decision here, and I would rather defend that than build something impressive we do not need.&rdquo;</p>
+  
+</div>
+
+<h2 class="pagebreak">Last page &mdash; What to say when you are stuck</h2>
+<div class="rescue">
+  <p><b>Never say &ldquo;I don't know.&rdquo;</b> Use one of these instead. Read them twice. They are all honest.</p>
+
+  <p><b>1. It is a teammate's area:</b><br>
+  &ldquo;That is <i>[name]</i>'s area and he can give you the exact detail &mdash; what I can tell you is how it connects to my part&hellip;&rdquo; then say what you <em>do</em> know.</p>
+
+  <p><b>2. You genuinely do not know a fact:</b><br>
+  &ldquo;I don't want to guess at a number and mislead you. I know where it is in the code / report and I can show you in a moment. The principle behind it is&hellip;&rdquo;</p>
+
+  <p><b>3. They found a real weakness:</b><br>
+  &ldquo;That is a fair criticism and we listed it ourselves in our limitations. Here is why we accepted that trade-off&hellip;&rdquo;<br>
+  <span class="note">Never argue with a true criticism. Agreeing, then explaining the trade-off, is a strong answer. Defending the indefensible is a weak one.</span></p>
+
+  <p><b>4. You did not understand the question:</b><br>
+  &ldquo;Can I check I've understood &mdash; are you asking about <i>X</i> or about <i>Y</i>?&rdquo;<br>
+  <span class="note">Asking for clarification is confidence, not weakness. Answering the wrong question is far worse.</span></p>
+
+  <p><b>5. They ask for something we did not build:</b><br>
+  &ldquo;We didn't build that, and it is in our future-work section. We scoped deliberately &mdash; Simple, Loveable, Complete &mdash; to finish one workflow properly rather than half-build several.&rdquo;</p>
+
+  <p><b>6. Your mind goes blank:</b><br>
+  &ldquo;May I take a moment to structure that answer?&rdquo; &mdash; then breathe, and start with the <em>problem</em> it solves. The rest will come.</p>
+</div>
+
+<div class="box trap">
+  <div class="h">Three things never to say</div>
+  <ul style="margin-bottom:0">
+    <li><b>&ldquo;The AI does it.&rdquo;</b> &mdash; This sounds like you do not know how your own system works. Say what the AI is <em>asked</em>, and what happens to its answer afterwards.</li>
+    <li><b>&ldquo;It's 100% accurate / it's secure.&rdquo;</b> &mdash; Absolute claims invite an examiner to find the counterexample, and they will. Say what you measured, and how.</li>
+    <li><b>&ldquo;We ran out of time.&rdquo;</b> &mdash; Say instead: &ldquo;We scoped it out deliberately, and here is why.&rdquo; A decision beats an excuse every time.</li>
+  </ul>
+</div>
+
+
+<script>
+  // nothing required; kept for the print button only
+  document.querySelectorAll('[data-print]').forEach(b => b.onclick = () => window.print());
+</script>
+

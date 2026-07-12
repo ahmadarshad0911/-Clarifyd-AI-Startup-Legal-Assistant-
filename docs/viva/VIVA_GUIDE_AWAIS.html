@@ -469,6 +469,265 @@
   <li>Explain what TypeScript catches, using the frozen API contract as the example.</li>
 </ul>
 
+<h2 class="pagebreak">Part W &mdash; Your work, step by step (what you did, in order)</h2>
+
+<div class="box trap">
+  <div class="h">The question this answers</div>
+  <p><b>&ldquo;What did YOU actually do, and in what order?&rdquo;</b> &mdash; and its harder follow-up,
+  <b>&ldquo;why did you do it in that order?&rdquo;</b></p>
+  <p>Most students answer this badly. They describe the <em>finished system</em> instead of their own <em>sequence of
+  work</em>, which makes it sound like the project appeared fully formed &mdash; or worse, like somebody else built it
+  and they are reciting it.</p>
+  <p><b>Tell it as a story with causes.</b> Each step must explain why it had to come <em>then</em>, what went wrong,
+  and what it unlocked. That is what a real engineer's memory of their own work sounds like.</p>
+</div>
+
+<div class="box say">
+  <div class="h">Your one-line ordering rule (say this if asked why this order)</div>
+  <p>&ldquo;I was BLOCKED from starting until the backend passed its readiness gate &mdash; and that was the right call. So I used the waiting time to design, then built the foundation (the design system and the auth bridge) before any individual screen, because every screen depends on both.&rdquo;</p>
+</div>
+<figure><div class="svgbox"><svg viewBox="0 0 860 130" role="img" aria-label="Project timeline">
+  <path class="ln" d="M30 70 L830 70"/>
+  <circle class="ac" cx="80" cy="70" r="7"/><text class="sm bold" x="80" y="50" text-anchor="middle">FREEZE</text>
+  <text class="sm" x="80" y="94" text-anchor="middle">schemas</text>
+  <text class="sm" x="80" y="108" text-anchor="middle">locked</text>
+
+  <circle class="ac" cx="250" cy="70" r="7"/><text class="sm bold" x="250" y="50" text-anchor="middle">SERVICES</text>
+  <text class="sm" x="250" y="94" text-anchor="middle">ingest, extract,</text>
+  <text class="sm" x="250" y="108" text-anchor="middle">score</text>
+
+  <circle class="ac" cx="430" cy="70" r="7"/><text class="sm bold" x="430" y="50" text-anchor="middle">API + DB</text>
+  <text class="sm" x="430" y="94" text-anchor="middle">endpoints, review</text>
+  <text class="sm" x="430" y="108" text-anchor="middle">queue, audit</text>
+
+  <circle class="ac" cx="610" cy="70" r="7"/><text class="sm bold" x="610" y="50" text-anchor="middle">GATE</text>
+  <text class="sm" x="610" y="94" text-anchor="middle">backend ready &rarr;</text>
+  <text class="sm" x="610" y="108" text-anchor="middle">frontend starts</text>
+
+  <circle class="ac" cx="790" cy="70" r="7"/><text class="sm bold" x="790" y="50" text-anchor="middle">HARDEN</text>
+  <text class="sm" x="790" y="94" text-anchor="middle">security, privacy,</text>
+  <text class="sm" x="790" y="108" text-anchor="middle">deploy</text>
+</svg></div><figcaption>I was deliberately blocked until the GATE. What I did before it, and after it, is the story below.</figcaption></figure>
+
+<h3>My eight steps, in the order I actually did them</h3>
+
+<div class="qa">
+  <div class="q">Step 1 &mdash; Waited &mdash; and used the wait to map every screen to an endpoint</div>
+  <p class="a"><b>What I did:</b> While Ahmad built the backend, I designed the screens and checked that <b>every single one</b> could be built from an endpoint that would actually exist in the frozen API contract.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> This was the team's rule: the frontend may not start until the backend passes a readiness checkpoint. It sounds restrictive, and it saved me from rebuilding my work three times.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The check caught two screens I had designed that <b>no endpoint could support</b>. Better to find that on paper than after building them.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> When the gate opened, I was not designing &mdash; I was building, against an API I already understood.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 2 &mdash; Built the design system before building any screen</div>
+  <p class="a"><b>What I did:</b> Defined every colour, spacing step, and text size <b>once</b>, as tokens. The Broadsheet style: ivory paper, coffee-black ink, a single red accent.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Because without it, each screen drifts. This grey differs slightly from that grey, buttons come in three heights, and the product feels amateur in a way nobody can point at.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The hard part was <b>restraint</b>. My instinct was to add gradients and shadows. But a founder is about to sign something that could cost them their company &mdash; the interface should feel serious and calm, not playful. I took things away rather than adding them.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Every screen after this was faster to build and automatically consistent. Even our viva presentation uses the same tokens.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 3 &mdash; Built the auth bridge to Clerk</div>
+  <p class="a"><b>What I did:</b> Connected the app to Clerk, so every request carries a fresh signed token, and the app knows who is signed in and what role they have.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Nothing behind the login can be built until the app knows <b>who the user is</b>. This is the second foundation stone, along with the design system.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Clerk's tokens expire after about a minute. My first version fetched the token once and cached it &mdash; so after sixty seconds every request started failing with an authentication error. I had to fetch a <b>fresh token per request</b>.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Every authenticated screen became possible.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 4 &mdash; Built the upload and findings screens &mdash; the core journey</div>
+  <p class="a"><b>What I did:</b> The dashboard where a contract is dropped, and the findings page: a health gauge, and a ranked list of clause cards with severity, explanation and suggested negotiation.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> This is <b>the product</b>. Everything else is secondary, so it was built first and given the most care.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The findings page was overwhelming at first &mdash; a wall of text. I had to rank ruthlessly, collapse detail behind a click, and lead with the health gauge so a founder gets the headline in one second, not one minute.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> For the first time, the whole team could see the product working end to end in a browser.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 5 &mdash; Made the analysis survive navigation</div>
+  <p class="a"><b>What I did:</b> Moved the analysis state <b>above</b> any single page, so a founder can navigate away mid-analysis and the work carries on, with the progress indicator following them.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Analysis takes about twenty seconds &mdash; long enough that people <b>will</b> click away. A naive implementation throws the work away and starts again, which is infuriating and wastes an AI call.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The bug that revealed it: navigating away and back started a <b>second</b> analysis of the same contract. Not just annoying &mdash; it cost money.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The product started to feel professional rather than fragile.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 6 &mdash; Kept the login library off the public pages</div>
+  <p class="a"><b>What I did:</b> The marketing pages render under a login-free stub, so they never download the ~220&nbsp;KB authentication library.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> A founder who has never heard of us will leave in three seconds if the landing page is slow. Every kilobyte on that path matters; on the dashboard, where they are already committed, it matters far less.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> It required a route-aware provider boundary, which is fiddly &mdash; the app must decide, per route, whether authentication even exists.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> A measurably faster public site, with no cost to the logged-in experience.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 7 &mdash; Built Clarifyd AI, and then locked its Generate button</div>
+  <p class="a"><b>What I did:</b> The chat assistant with streaming replies, and document drafting &mdash; with the Generate button <b>disabled</b> until the AI confirms it has every essential term.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> The chat came first; the lock came after we saw what happened without it.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> A founder could press Generate immediately and receive a contract full of <code>[TO BE CONFIRMED]</code> blanks. The hard realisation: <b>my screen cannot know</b> when enough detail has been gathered &mdash; it depends entirely on which document is being written. So the <b>model</b> had to signal readiness, and my interface obeys it. I match that signal <b>loosely</b>, because the small chat model sometimes garbles punctuation, and a strict check would trap a founder behind a button that never unlocks.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The assistant became genuinely useful rather than a demo that produces impressive-looking rubbish.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 8 &mdash; Found &mdash; and fixed &mdash; the privacy bug</div>
+  <p class="a"><b>What I did:</b> Discovered that a deleted user's data reappeared when a new account was created on the same email. Re-keyed all browser storage from the email address to the permanent account ID, and made logout wipe everything.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> It surfaced during ordinary testing near the end, when we were deleting and recreating test accounts.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Our first hypothesis was that the <b>server</b> was leaking deleted data. That was <b>wrong</b> &mdash; the data had never left the browser. Chasing that instinct would have wasted days fixing a defect that did not exist. The actual cause: I had labelled browser storage with the <b>email address</b>, and emails can be reassigned.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The lesson that became our best viva story: <b>an email address is a label a person currently holds, not an identity.</b> And it led Ahmad to find the same conceptual mistake in the database.</p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "which step was hardest?"</div>
+  <p>&ldquo;The privacy bug &mdash; and the hard part was not the fix, which was small. The hard part was that our
+  <b>reasoning</b> was wrong. We were certain the server was leaking. Every instinct said so. Being disciplined enough
+  to actually check, rather than start fixing what we assumed, is the thing I would most want to be judged on.&rdquo;</p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "what would you do differently?"</div>
+  <p>&ldquo;I would write frontend tests from the start. We have none &mdash; type-checking is our only automatic gate.
+  It is our biggest quality gap and I own it. Every bug I found, I found by <b>clicking</b>, which does not scale and
+  does not catch regressions.&rdquo;</p>
+</div>
+
+<h2 class="pagebreak">Part S &mdash; Scenario questions (&ldquo;now add this&hellip;&rdquo;)</h2>
+
+<div class="box trap">
+  <div class="h">Why this section exists</div>
+  <p>At some point the examiner will stop asking <em>what you built</em> and start asking <em>what you would do
+  next</em>. For example:</p>
+  <ul style="margin-bottom:0">
+    <li>&ldquo;Add a feature that lets two founders share a contract.&rdquo;</li>
+    <li>&ldquo;How would you test this differently?&rdquo;</li>
+    <li>&ldquo;What if a contract is 500 pages long?&rdquo;</li>
+    <li>&ldquo;What if I told you the AI provider is shutting down tomorrow?&rdquo;</li>
+  </ul>
+  <p style="margin-top:10px"><b>These questions are not traps &mdash; they are gifts.</b> They are testing whether you
+  understand your own system well enough to <em>extend</em> it. A student who only memorised what they built will
+  freeze. You will not, because you have a method.</p>
+</div>
+
+<h3>The four-move method (use it for EVERY scenario question)</h3>
+<figure>
+  <div class="svgbox">
+    <svg viewBox="0 0 860 190" role="img" aria-label="The four-move method for answering scenario questions">
+      <rect class="bxa" x="20" y="24" width="190" height="76"/>
+      <text class="sm bold" x="115" y="48" text-anchor="middle">MOVE 1 &mdash; CLARIFY</text>
+      <text class="sm" x="115" y="68" text-anchor="middle">Restate it. Ask ONE</text>
+      <text class="sm" x="115" y="84" text-anchor="middle">sharp question.</text>
+
+      <rect class="bx" x="230" y="24" width="190" height="76"/>
+      <text class="sm bold" x="325" y="48" text-anchor="middle">MOVE 2 &mdash; ANCHOR</text>
+      <text class="sm" x="325" y="68" text-anchor="middle">Name the EXISTING part</text>
+      <text class="sm" x="325" y="84" text-anchor="middle">of our system it plugs into.</text>
+
+      <rect class="bx" x="440" y="24" width="190" height="76"/>
+      <text class="sm bold" x="535" y="48" text-anchor="middle">MOVE 3 &mdash; DESIGN</text>
+      <text class="sm" x="535" y="68" text-anchor="middle">Data, then endpoint,</text>
+      <text class="sm" x="535" y="84" text-anchor="middle">then screen, then test.</text>
+
+      <rect class="bxa" x="650" y="24" width="190" height="76"/>
+      <text class="sm bold" x="745" y="48" text-anchor="middle">MOVE 4 &mdash; SAFETY</text>
+      <text class="sm" x="745" y="68" text-anchor="middle">What could go wrong,</text>
+      <text class="sm" x="745" y="84" text-anchor="middle">and what would I trade off?</text>
+
+      <path class="ln" d="M210 62 L226 62"/><path class="ln" d="M218 57 l8 5 -8 5"/>
+      <path class="ln" d="M420 62 L436 62"/><path class="ln" d="M428 57 l8 5 -8 5"/>
+      <path class="ln" d="M630 62 L646 62"/><path class="ln" d="M638 57 l8 5 -8 5"/>
+
+      <text class="sm bold" x="430" y="140" text-anchor="middle">Move 4 is the one that separates a good answer from an excellent one.</text>
+      <text class="sm" x="430" y="162" text-anchor="middle">Anyone can add a feature. An engineer says what it might break, and what they would give up to get it.</text>
+    </svg>
+  </div>
+  <figcaption>Use all four moves, in order, out loud. Never jump straight to code.</figcaption>
+</figure>
+
+<div class="box simple">
+  <div class="h">The four moves, spelled out</div>
+  <p><b>Move 1 &mdash; Clarify.</b> Repeat the request back in your own words, then ask <b>exactly one</b> sharp
+  question. It buys you ten seconds to think, and it makes you sound like an engineer rather than a student guessing.
+  Example: <i>&ldquo;So founders can share a contract with a co-founder. Can I check &mdash; should the second person be
+  able to <b>edit</b> the findings, or only read them? That changes the design.&rdquo;</i></p>
+
+  <p><b>Move 2 &mdash; Anchor it in what already exists.</b> Never design from a blank page. Name the part of Clarifyd
+  it attaches to. <i>&ldquo;This builds on our existing review queue, which already assigns a finding to a person and
+  checks their role.&rdquo;</i> This proves you know your own system.</p>
+
+  <p><b>Move 3 &mdash; Design in a fixed order: data &rarr; endpoint &rarr; screen &rarr; test.</b> Always that order.
+  It shows a layered mind. What table or column changes? What API endpoint appears? What does the user see? How do I
+  test it?</p>
+
+  <p><b>Move 4 &mdash; Safety and trade-off.</b> Finish by saying what could go wrong and what you would sacrifice.
+  <i>&ldquo;The risk here is that sharing weakens our ownership check, so I would enforce it on the server, not just
+  hide the button. And I would accept slower page loads rather than cache another person's findings in the
+  browser.&rdquo;</i></p>
+</div>
+
+<div class="box say">
+  <div class="h">If your mind goes blank &mdash; the universal opener</div>
+  <p>&ldquo;Let me think about that in layers &mdash; what data would need to change, what endpoint would expose it,
+  what the founder would see, and how I would test it. Starting with the data&hellip;&rdquo;</p>
+</div>
+
+<div class="box trap">
+  <div class="h">Three fatal mistakes in scenario answers</div>
+  <ul style="margin-bottom:0">
+    <li><b>Saying &ldquo;that would be easy.&rdquo;</b> Nothing is easy, and the examiner will immediately find the hard
+    part you missed. Say instead: <i>&ldquo;The straightforward part is X. The part I would be careful about is Y.&rdquo;</i></li>
+    <li><b>Inventing a technology you have never used.</b> If you say &ldquo;I'd use Kafka&rdquo; you will be asked what
+    Kafka is. Design with the tools you actually know and can defend.</li>
+    <li><b>Forgetting the safety rules you already built.</b> Any new feature must still pass the confidence gate, the
+    audit log, the ownership check, and the &ldquo;not legal advice&rdquo; rule. <b>Mention them.</b> It shows the
+    safety thinking is habitual, not decorative.</li>
+  </ul>
+</div>
+
+<h3>Worked scenarios &mdash; the interface</h3>
+
+<div class="qa">
+  <div class="q">Add a feature: a founder should be able to comment on a specific clause and mention a colleague.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;So per-clause comments with mentions. Can I check &mdash; do mentions need to send a notification, or is it enough that the colleague sees it when they open the contract? Notifications are a much bigger feature.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;We already have a <code>comment</code> table with an author and a draft, and the findings page already renders each clause as a card. So the data model mostly exists; what is missing is attaching a comment to a <b>specific finding</b> and rendering the thread.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Data:</b> the comment already has an optional <code>finding_id</code> &mdash; so I would use it. <b>Endpoint:</b> <code>POST /findings/{id}/comments</code>, owner-or-shared only. <b>Screen:</b> a comment thread in the clause card, collapsed by default so the page does not become noisy. For mentions, an autocomplete over people who <b>already have access</b> to this contract &mdash; never over all users, because that would leak the existence of other accounts. <b>Test:</b> a user without access cannot post a comment, and cannot see one.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trap is a <b>cross-site scripting</b> hole: a comment is user-written text, and if I render it as raw HTML then somebody could type a script tag and run code in a co-founder's browser. React escapes text by default, so as long as I never bypass that escaping I am safe &mdash; and I would add a test that posts a script tag and asserts it is displayed as harmless text.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Your dashboard is slow for a founder with 200 contracts. Fix it.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Can I check whether it is slow to <b>load</b>, or slow to <b>scroll</b>? They have different causes and different fixes.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Today the dashboard fetches recent analyses and renders them all. With 200 contracts we are downloading everything and asking the browser to draw 200 cards, most of which are off-screen.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Endpoint:</b> add <b>pagination</b> &mdash; return 20 at a time with a cursor. That fixes the download. <b>Screen:</b> <b>virtualise</b> the list, so the browser only creates DOM elements for the cards actually visible; the rest are placeholders. That fixes the scrolling. Also lazy-load images below the fold. <b>Test:</b> measure it &mdash; I would not claim it is faster without a number. Seed 200 contracts and compare load time before and after.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trade-off: pagination means the founder cannot instantly search across all 200 in the browser, so search moves to the server &mdash; which is where it belongs anyway, since the browser should not be holding 200 contracts' worth of findings in memory. <b>And I would not cache all 200 in local storage</b>, which brings us back to the privacy lesson: the less we keep in the browser, the less there is to leak.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">The analysis fails halfway. What does the founder see?</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Right now, honestly, an error toast &mdash; and I think that is the weakest part of my interface.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Our backend returns a consistent error shape: a code, a message, and a request ID. So I have everything I need to do better than a generic error; I simply have not used all of it.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;What I would build: distinguish the <b>kinds</b> of failure. If it is a rejected file, say <i>which rule</i> it broke &mdash; too large, not a PDF, not a contract &mdash; because those are the founder's fault and fixable by them. If the AI provider failed, the founder should not even see an error, because our <b>fallback chain</b> means they still get a rules-based analysis; what they should see is an honest banner saying the analysis is <b>degraded</b>. And I would surface the request ID, so if they contact us we can find that exact request in the logs. <b>Test:</b> force each failure type and assert the correct message appears.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The principle: <b>an error message should tell the user what went wrong and what to do next.</b> Never &lsquo;something went wrong&rsquo;, and never a stack trace &mdash; that leaks our internals to an attacker. And degrading <b>visibly</b> matters more than degrading silently: a founder must never believe they got a full analysis when they got the fallback.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Make the product accessible to a blind founder.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;A fair challenge, and I will be honest about where we stand rather than claim compliance we have not audited.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;What we already do: semantic HTML, keyboard-reachable controls, visible focus rings, and we respect the operating system's <b>reduce motion</b> setting, which matters for vestibular disorders. What we have <b>not</b> done is test with an actual screen reader, and I will not pretend otherwise.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;What I would do: our <b>risk severity is currently shown with colour</b> &mdash; red for critical &mdash; and colour alone is never sufficient, both for a blind user and for the roughly one in twelve men with colour blindness. So every severity gets a <b>text label and an icon</b>, not just a hue. The health gauge is a visual chart, so it needs a text summary a screen reader can announce: &lsquo;3 critical, 5 high, 12 low&rsquo;. When an analysis finishes, that is a dynamic change the screen reader must be <b>told</b> about, so it needs a live region. <b>Test:</b> navigate the whole upload-to-export flow using only the keyboard and a screen reader.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trade-off is time, not technology &mdash; none of this is hard, we simply scoped it out, and I would rather say that than claim a WCAG compliance level we never measured. It belongs in our future work.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Add real-time collaboration: two founders editing the same contract review at once.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Can I check the scope? Truly simultaneous editing, like a shared document, or is it enough that each sees the other's changes within a few seconds? The first is dramatically harder, and I would push back on whether it is worth it.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Our review workflow already has the key safety property: claiming a finding is <b>atomic</b> at the database level, so two people can never be assigned the same item. The conflict problem is already solved on the server &mdash; what is missing is showing it live in the browser.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;I would <b>not</b> reach for full collaborative-editing machinery &mdash; that is enormous complexity for a workflow where people accept or reject findings rather than co-write prose. Instead: a <b>lightweight live channel</b> &mdash; server-sent events, which we already use for streaming chat replies, so it is a technique the team knows. When someone accepts a finding, the server pushes an event and the other person's list updates. <b>Test:</b> two sessions, one accepts, assert the other's view updates and cannot re-accept.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trade-off I would state out loud: I am choosing <b>eventual consistency within a second</b> over true simultaneity, because the underlying action &mdash; claiming a finding &mdash; is already exclusive on the server. The database is the referee; the live channel is only a courtesy. <b>Choosing the simpler mechanism that is sufficient</b> is the engineering decision here, and I would rather defend that than build something impressive we do not need.&rdquo;</p>
+  
+</div>
+
 <h2 class="pagebreak">Last page &mdash; What to say when you are stuck</h2>
 <div class="rescue">
   <p><b>Never say &ldquo;I don't know.&rdquo;</b> Use one of these instead. Read them twice. They are all honest.</p>

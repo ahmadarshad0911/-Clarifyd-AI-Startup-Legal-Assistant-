@@ -324,9 +324,16 @@ def build():
         (Q, "VIVA_GUIDE_WASIF.html"),
     ]
 
+    from content_scenarios import SCENARIOS
+    from content_journey import JOURNEYS
+
     for mod, fname in members:
         title = f"Clarifyd Viva Guide &mdash; {mod.NAME}"
-        body = hero(mod.NAME, mod.ROLL, mod.ROLE, mod.TOPICS, mod.SIG, mod.ACCENT) + mod.BODY + RESCUE
+        body = (hero(mod.NAME, mod.ROLL, mod.ROLE, mod.TOPICS, mod.SIG, mod.ACCENT)
+                + mod.BODY
+                + JOURNEYS[mod.NAME]
+                + SCENARIOS[mod.NAME]
+                + RESCUE)
         html = page(title, mod.ACCENT, body)
         # ASCII-only: entity-encode anything else so no viewer can mis-decode it
         ent = {'—': '&mdash;', '–': '&ndash;', '·': '&middot;',

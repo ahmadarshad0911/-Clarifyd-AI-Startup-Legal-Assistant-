@@ -448,6 +448,259 @@
   <li>Explain the difference between black-box and white-box testing, with one example of each from our project.</li>
 </ul>
 
+<h2 class="pagebreak">Part W &mdash; Your work, step by step (what you did, in order)</h2>
+
+<div class="box trap">
+  <div class="h">The question this answers</div>
+  <p><b>&ldquo;What did YOU actually do, and in what order?&rdquo;</b> &mdash; and its harder follow-up,
+  <b>&ldquo;why did you do it in that order?&rdquo;</b></p>
+  <p>Most students answer this badly. They describe the <em>finished system</em> instead of their own <em>sequence of
+  work</em>, which makes it sound like the project appeared fully formed &mdash; or worse, like somebody else built it
+  and they are reciting it.</p>
+  <p><b>Tell it as a story with causes.</b> Each step must explain why it had to come <em>then</em>, what went wrong,
+  and what it unlocked. That is what a real engineer's memory of their own work sounds like.</p>
+</div>
+
+<div class="box say">
+  <div class="h">Your one-line ordering rule (say this if asked why this order)</div>
+  <p>&ldquo;I tested from the outside in, and in order of DANGER: first the inputs an attacker controls, then the failures nobody would notice, then the ordinary features. I deliberately wrote the security tests before the happy-path tests, because a broken happy path is loud and a security hole is silent.&rdquo;</p>
+</div>
+<figure><div class="svgbox"><svg viewBox="0 0 860 130" role="img" aria-label="Project timeline">
+  <path class="ln" d="M30 70 L830 70"/>
+  <circle class="ac" cx="80" cy="70" r="7"/><text class="sm bold" x="80" y="50" text-anchor="middle">FREEZE</text>
+  <text class="sm" x="80" y="94" text-anchor="middle">schemas</text>
+  <text class="sm" x="80" y="108" text-anchor="middle">locked</text>
+
+  <circle class="ac" cx="250" cy="70" r="7"/><text class="sm bold" x="250" y="50" text-anchor="middle">SERVICES</text>
+  <text class="sm" x="250" y="94" text-anchor="middle">ingest, extract,</text>
+  <text class="sm" x="250" y="108" text-anchor="middle">score</text>
+
+  <circle class="ac" cx="430" cy="70" r="7"/><text class="sm bold" x="430" y="50" text-anchor="middle">API + DB</text>
+  <text class="sm" x="430" y="94" text-anchor="middle">endpoints, review</text>
+  <text class="sm" x="430" y="108" text-anchor="middle">queue, audit</text>
+
+  <circle class="ac" cx="610" cy="70" r="7"/><text class="sm bold" x="610" y="50" text-anchor="middle">GATE</text>
+  <text class="sm" x="610" y="94" text-anchor="middle">backend ready &rarr;</text>
+  <text class="sm" x="610" y="108" text-anchor="middle">frontend starts</text>
+
+  <circle class="ac" cx="790" cy="70" r="7"/><text class="sm bold" x="790" y="50" text-anchor="middle">HARDEN</text>
+  <text class="sm" x="790" y="94" text-anchor="middle">security, privacy,</text>
+  <text class="sm" x="790" y="108" text-anchor="middle">deploy</text>
+</svg></div><figcaption>Testing ran alongside every phase &mdash; but the ORDER I wrote them in was driven by danger, not by convenience.</figcaption></figure>
+
+<h3>My seven steps, in the order I actually did them</h3>
+
+<div class="qa">
+  <div class="q">Step 1 &mdash; Set up the quality gate before writing a single test</div>
+  <p class="a"><b>What I did:</b> Wired continuous integration so that on <b>every</b> change, the test suite runs, the frontend type-check runs, and a secret scanner looks for committed passwords or API keys. A failure <b>blocks the merge</b>.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Because a test that only runs when somebody <b>remembers</b> to run it does not exist. Under deadline pressure, nobody remembers. The gate had to be a mechanism, not a habit.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Getting it to run reliably took longer than expected &mdash; a test suite that fails randomly is worse than no suite at all, because the team learns to ignore it.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> From that day on, no broken change could reach the main branch. Everything I wrote afterwards had teeth.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 2 &mdash; Attacked the upload endpoint first (14 tests)</div>
+  <p class="a"><b>What I did:</b> Disguised files, oversized payloads, filenames with traversal sequences, and empty or corrupt documents.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> The upload is the <b>only</b> place an attacker can hand us arbitrary bytes. It is the front door, so it is where I started &mdash; before any feature testing.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> I broke it immediately. Ahmad's first version trusted the <b>file extension</b>, so I renamed a non-PDF to <code>.pdf</code> and it sailed through. That is exactly what the magic-byte check now prevents.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The front door became genuinely defended, and Ahmad had a concrete demonstration of why filenames cannot be trusted.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 3 &mdash; Tested the failure paths &mdash; using a fake AI</div>
+  <p class="a"><b>What I did:</b> Replaced the real AI with a stub I control, then ordered it to fail, to time out, and to return malformed nonsense &mdash; asserting each time that we retry, then fall back to the second model, then fall back to the rules engine.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> These are the <b>most important paths in the system</b> and they are <b>unreachable</b> in a test without a fake. I cannot make the real AI go down on demand, and I would not want a test suite that costs money and needs the internet.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The subtle case was a <b>schema-invalid</b> reply &mdash; the AI answering successfully but in the wrong shape. I asserted that we treat that as a <b>failure</b>, not as an answer. A confidently malformed reply is more dangerous than an error.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> We could honestly claim graceful degradation, because it is <b>tested</b>, not hoped for.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 4 &mdash; Wrote the tamper test &mdash; the one I am proudest of</div>
+  <p class="a"><b>What I did:</b> A test that deliberately reaches into the database, <b>corrupts a record in the middle of the audit chain</b>, and then asserts that our verification endpoint reports the break.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Because the audit chain is our central security claim, and a claim without a demonstration is just a sentence in a report.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> It felt strange to write a test whose job is to <b>attack our own system</b>. That is precisely why it is worth more than ten tests that flatter it.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The security claim in our thesis is <b>demonstrated</b>, not asserted &mdash; and I can run it in front of an examiner.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 5 &mdash; Tested authorisation: IDOR and SSRF</div>
+  <p class="a"><b>What I did:</b> User A attempting to read user B's contract by guessing its ID. And the URL analyser being pointed at an internal address to make our own server attack itself.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> These are the two authorisation failures that a functional test would <b>never</b> catch, because from the attacker's point of view nothing looks broken &mdash; it just quietly works when it should not.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> I found a real IDOR hole: the ownership check existed in the <b>interface</b> but was not enforced on the <b>server</b>. Hiding a button hides a door; it does not lock it.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Both are now enforced server-side, with tests that attempt the attack and assert refusal.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 6 &mdash; Built the live benchmark &mdash; separately from the test suite</div>
+  <p class="a"><b>What I did:</b> A harness that runs the <b>real</b> model against contracts where <b>we</b> decided the correct severity by hand, and reports how often it agrees.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Because the AI's <b>quality</b> cannot be tested the way behaviour is tested. It is statistical, slow, costs money and gives different answers each run &mdash; so it must live <b>outside</b> the merge gate. A gate that is slow and flaky is a gate people learn to bypass.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Deciding the ground truth was genuinely hard: <b>we</b> had to agree what severity a clause deserved, and we did not always agree with each other. That disagreement is itself a finding worth admitting.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> We got a defensible number &mdash; roughly 89% exact-band agreement, always within one band &mdash; and, more importantly, Taha got a way to tell whether a rubric change made things <b>better or worse</b>.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 7 &mdash; Wrote the regression test for the privacy bug</div>
+  <p class="a"><b>What I did:</b> Delete an account, re-register with the same email, and assert the new account inherits <b>nothing</b>. Plus: after deletion, no row in any user-owned table still references that account.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> The moment a real bug is found, a test must be written that <b>reproduces</b> it &mdash; before the fix, not after.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The failing test was the proof we understood the bug at all. Until I could make it fail on demand, we were guessing at the cause &mdash; and our first guess had already been wrong.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> That class of bug can never silently return. <b>A bug without a regression test is a bug that comes back.</b></p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "which step was hardest?"</div>
+  <p>&ldquo;Deciding what &lsquo;correct&rsquo; even means for the AI benchmark. For every other test there is a right
+  answer: the file is rejected, or it is not. For the benchmark, <b>we</b> had to be the ground truth &mdash; and the
+  three of us did not always agree on whether a clause was critical or merely high. Admitting that disagreement, rather
+  than pretending our labels are objective, is the honest position.&rdquo;</p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "what would you do differently?"</div>
+  <p>&ldquo;Two things. I would add browser-level end-to-end tests &mdash; all 124 of my tests could pass while the
+  product is completely broken, because a single wrong API URL in the frontend would not fail any of them. And I would
+  run <b>mutation testing</b>: deliberately introduce bugs and check whether my tests actually catch them. It is the
+  only honest way to test the tests.&rdquo;</p>
+</div>
+
+<h2 class="pagebreak">Part S &mdash; Scenario questions (&ldquo;now add this&hellip;&rdquo;)</h2>
+
+<div class="box trap">
+  <div class="h">Why this section exists</div>
+  <p>At some point the examiner will stop asking <em>what you built</em> and start asking <em>what you would do
+  next</em>. For example:</p>
+  <ul style="margin-bottom:0">
+    <li>&ldquo;Add a feature that lets two founders share a contract.&rdquo;</li>
+    <li>&ldquo;How would you test this differently?&rdquo;</li>
+    <li>&ldquo;What if a contract is 500 pages long?&rdquo;</li>
+    <li>&ldquo;What if I told you the AI provider is shutting down tomorrow?&rdquo;</li>
+  </ul>
+  <p style="margin-top:10px"><b>These questions are not traps &mdash; they are gifts.</b> They are testing whether you
+  understand your own system well enough to <em>extend</em> it. A student who only memorised what they built will
+  freeze. You will not, because you have a method.</p>
+</div>
+
+<h3>The four-move method (use it for EVERY scenario question)</h3>
+<figure>
+  <div class="svgbox">
+    <svg viewBox="0 0 860 190" role="img" aria-label="The four-move method for answering scenario questions">
+      <rect class="bxa" x="20" y="24" width="190" height="76"/>
+      <text class="sm bold" x="115" y="48" text-anchor="middle">MOVE 1 &mdash; CLARIFY</text>
+      <text class="sm" x="115" y="68" text-anchor="middle">Restate it. Ask ONE</text>
+      <text class="sm" x="115" y="84" text-anchor="middle">sharp question.</text>
+
+      <rect class="bx" x="230" y="24" width="190" height="76"/>
+      <text class="sm bold" x="325" y="48" text-anchor="middle">MOVE 2 &mdash; ANCHOR</text>
+      <text class="sm" x="325" y="68" text-anchor="middle">Name the EXISTING part</text>
+      <text class="sm" x="325" y="84" text-anchor="middle">of our system it plugs into.</text>
+
+      <rect class="bx" x="440" y="24" width="190" height="76"/>
+      <text class="sm bold" x="535" y="48" text-anchor="middle">MOVE 3 &mdash; DESIGN</text>
+      <text class="sm" x="535" y="68" text-anchor="middle">Data, then endpoint,</text>
+      <text class="sm" x="535" y="84" text-anchor="middle">then screen, then test.</text>
+
+      <rect class="bxa" x="650" y="24" width="190" height="76"/>
+      <text class="sm bold" x="745" y="48" text-anchor="middle">MOVE 4 &mdash; SAFETY</text>
+      <text class="sm" x="745" y="68" text-anchor="middle">What could go wrong,</text>
+      <text class="sm" x="745" y="84" text-anchor="middle">and what would I trade off?</text>
+
+      <path class="ln" d="M210 62 L226 62"/><path class="ln" d="M218 57 l8 5 -8 5"/>
+      <path class="ln" d="M420 62 L436 62"/><path class="ln" d="M428 57 l8 5 -8 5"/>
+      <path class="ln" d="M630 62 L646 62"/><path class="ln" d="M638 57 l8 5 -8 5"/>
+
+      <text class="sm bold" x="430" y="140" text-anchor="middle">Move 4 is the one that separates a good answer from an excellent one.</text>
+      <text class="sm" x="430" y="162" text-anchor="middle">Anyone can add a feature. An engineer says what it might break, and what they would give up to get it.</text>
+    </svg>
+  </div>
+  <figcaption>Use all four moves, in order, out loud. Never jump straight to code.</figcaption>
+</figure>
+
+<div class="box simple">
+  <div class="h">The four moves, spelled out</div>
+  <p><b>Move 1 &mdash; Clarify.</b> Repeat the request back in your own words, then ask <b>exactly one</b> sharp
+  question. It buys you ten seconds to think, and it makes you sound like an engineer rather than a student guessing.
+  Example: <i>&ldquo;So founders can share a contract with a co-founder. Can I check &mdash; should the second person be
+  able to <b>edit</b> the findings, or only read them? That changes the design.&rdquo;</i></p>
+
+  <p><b>Move 2 &mdash; Anchor it in what already exists.</b> Never design from a blank page. Name the part of Clarifyd
+  it attaches to. <i>&ldquo;This builds on our existing review queue, which already assigns a finding to a person and
+  checks their role.&rdquo;</i> This proves you know your own system.</p>
+
+  <p><b>Move 3 &mdash; Design in a fixed order: data &rarr; endpoint &rarr; screen &rarr; test.</b> Always that order.
+  It shows a layered mind. What table or column changes? What API endpoint appears? What does the user see? How do I
+  test it?</p>
+
+  <p><b>Move 4 &mdash; Safety and trade-off.</b> Finish by saying what could go wrong and what you would sacrifice.
+  <i>&ldquo;The risk here is that sharing weakens our ownership check, so I would enforce it on the server, not just
+  hide the button. And I would accept slower page loads rather than cache another person's findings in the
+  browser.&rdquo;</i></p>
+</div>
+
+<div class="box say">
+  <div class="h">If your mind goes blank &mdash; the universal opener</div>
+  <p>&ldquo;Let me think about that in layers &mdash; what data would need to change, what endpoint would expose it,
+  what the founder would see, and how I would test it. Starting with the data&hellip;&rdquo;</p>
+</div>
+
+<div class="box trap">
+  <div class="h">Three fatal mistakes in scenario answers</div>
+  <ul style="margin-bottom:0">
+    <li><b>Saying &ldquo;that would be easy.&rdquo;</b> Nothing is easy, and the examiner will immediately find the hard
+    part you missed. Say instead: <i>&ldquo;The straightforward part is X. The part I would be careful about is Y.&rdquo;</i></li>
+    <li><b>Inventing a technology you have never used.</b> If you say &ldquo;I'd use Kafka&rdquo; you will be asked what
+    Kafka is. Design with the tools you actually know and can defend.</li>
+    <li><b>Forgetting the safety rules you already built.</b> Any new feature must still pass the confidence gate, the
+    audit log, the ownership check, and the &ldquo;not legal advice&rdquo; rule. <b>Mention them.</b> It shows the
+    safety thinking is habitual, not decorative.</li>
+  </ul>
+</div>
+
+<h3>Worked scenarios &mdash; testing and quality</h3>
+
+<div class="qa">
+  <div class="q">Forget your test suite. How would you test this system a completely different way?</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Happily &mdash; because our current suite has a real gap and this question walks straight into it.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Today we test at the <b>unit and API level</b>: 124 automated tests plus a live-model benchmark. What we do <b>not</b> have is browser-level end-to-end testing, and I own that as our biggest gap.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;Four other ways I would test it. <b>One &mdash; end-to-end:</b> drive a real browser through the whole journey (sign in, upload, wait, read findings, export) and assert the founder actually gets a report. That catches integration failures no unit test can. <b>Two &mdash; property-based testing:</b> instead of picking example inputs myself, generate thousands of random ones and assert an <b>invariant</b> always holds &mdash; for instance, <i>the findings are always sorted by severity</i>, no matter what document goes in. That finds edge cases a human would never think to write. <b>Three &mdash; fuzzing the upload endpoint:</b> throw malformed, truncated and hostile files at it and assert it never crashes and never leaks a stack trace. <b>Four &mdash; load testing:</b> fifty concurrent analyses and see what breaks first.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;If I could only add <b>one</b>, it would be end-to-end, because it tests the thing the founder actually experiences. My unit tests could all pass while the product is completely broken &mdash; a single wrong API URL in the frontend would do it, and not one of my 124 tests would notice.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">How would you test that the AI is not biased?</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;A sharp question, and I want to be careful because it is easy to give a glib answer here.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;First, what would bias even <b>mean</b> in our system? The most plausible form: the model rates the <b>same clause</b> as more or less risky depending on <b>irrelevant surface details</b> &mdash; the names of the parties, the jurisdiction named, the formatting.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;That is testable, and the method is a controlled experiment. Take one clause. Generate variants that differ <b>only</b> in an irrelevant attribute &mdash; the company name, a person's name, the country. Score all the variants. <b>The severity should be identical.</b> If it is not, we have measured bias, and we can quantify it. That is a proper experiment: one variable changed, everything else held constant.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;I have to be honest that <b>we have not run this</b>. It is a gap and I would rather name it than invent a result. I also would not claim that passing such a test means the model is unbiased &mdash; it means it is not biased <b>along the axes I tested</b>. Bias I did not think to look for would go unnoticed, and I will not overclaim.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">You have 124 tests. Prove they are actually worth anything. Couldn't they all be trivial?</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;A fair challenge &mdash; test <b>count</b> is a vanity number, and I would not defend it on its own.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;The right question is not how many, but <b>what would slip through if they were deleted</b>. So let me answer with the tests that would hurt most to lose.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;The <b>tamper test</b> deliberately corrupts our audit chain and asserts we detect it &mdash; without it, our central security claim is just a claim. The <b>fallback tests</b> force the AI to fail and assert we degrade to the rules engine &mdash; without them, we would not discover the product was dead until the provider went down. The <b>injection test</b> feeds in a malicious contract. The <b>recreated-account test</b> is a regression test for a real privacy bug we shipped and fixed. Every one of those tests <b>attacks</b> the system rather than confirming it.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;And the honest way to measure their worth: <b>mutation testing</b>. Deliberately introduce a bug &mdash; flip a comparison, delete a check &mdash; and see whether any test fails. If none does, the tests are decorative. We have not run a full mutation-testing pass, and I would put it high in our future work, because it is the only way to test the tests themselves.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">A user reports a bug you cannot reproduce. Walk me through what you do.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;This is the everyday reality of QA, and our system was built to make it answerable.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Every API response carries a <b>request ID</b>, and every log line carries that same ID. Every consequential action is in the audit chain with an actor and a timestamp.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Step one:</b> get the request ID from the user &mdash; our error messages surface it, which is exactly why. <b>Step two:</b> pull every log line with that ID and reconstruct precisely what happened. <b>Step three:</b> check the audit chain for what that user actually did, rather than what they remember doing. <b>Step four &mdash; and this is the important one:</b> once I understand it, I write a <b>failing test that reproduces it</b>, and only <b>then</b> do I fix it. A bug without a regression test is a bug that comes back.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;If I genuinely cannot reproduce it, I do not close it as &lsquo;works on my machine&rsquo;. I add <b>more logging</b> around the suspect path and wait for it to happen again. The privacy bug we found was exactly this shape &mdash; it only appeared with a specific sequence of actions in one browser, and our first theory about the cause was <b>wrong</b>.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Add a feature and tell me how you would test it: an email alert when a contract has a critical finding.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Can I check &mdash; immediately on analysis, or a daily digest? That changes what can go wrong, and therefore what I test.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;The trigger already exists. Our confidence gate already identifies critical findings and routes them to the review queue, so the decision point is built &mdash; I am adding an action to an event we already detect.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Testing it has three layers. One &mdash; the trigger logic:</b> given a critical finding, is an email <b>requested</b>? I test that with a fake email sender, asserting it was called with the right recipient and content. I do <b>not</b> send real email in tests. <b>Two &mdash; the content:</b> does the email contain the finding, and &mdash; crucially &mdash; the &lsquo;not legal advice&rsquo; disclaimer? Our schema enforces that everywhere else, and an email must not become the one place it leaks out without it. <b>Three &mdash; idempotency:</b> if the analysis is retried, does the founder get <b>two</b> emails? That is the bug this feature will actually have, so I would test it specifically.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The subtle danger is <b>privacy</b>. An email is not a private channel &mdash; it sits on servers we do not control. So I would put <b>no contract content in it whatsoever</b> &mdash; just &lsquo;your contract has a critical finding, sign in to view it&rsquo;. And it must respect deletion: if the account is deleted, any pending email must not go out. That is exactly the class of leftover our purge bug taught us to look for.&rdquo;</p>
+  <p style="margin-top:9px"><b>If pushed further:</b> &ldquo;If they ask what could go wrong at scale: &lsquo;Email sending is slow and can fail, so it must not block the analysis response. I would queue it, retry it, and make sure a failed email never fails the analysis.&rsquo;&rdquo;</p>
+</div>
+
 <h2 class="pagebreak">Last page &mdash; What to say when you are stuck</h2>
 <div class="rescue">
   <p><b>Never say &ldquo;I don't know.&rdquo;</b> Use one of these instead. Read them twice. They are all honest.</p>

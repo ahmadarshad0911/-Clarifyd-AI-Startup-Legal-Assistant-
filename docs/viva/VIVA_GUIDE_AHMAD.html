@@ -556,6 +556,292 @@
   <li>Say aloud one limitation of the project without apologising for it.</li>
 </ul>
 
+<h2 class="pagebreak">Part W &mdash; Your work, step by step (what you did, in order)</h2>
+
+<div class="box trap">
+  <div class="h">The question this answers</div>
+  <p><b>&ldquo;What did YOU actually do, and in what order?&rdquo;</b> &mdash; and its harder follow-up,
+  <b>&ldquo;why did you do it in that order?&rdquo;</b></p>
+  <p>Most students answer this badly. They describe the <em>finished system</em> instead of their own <em>sequence of
+  work</em>, which makes it sound like the project appeared fully formed &mdash; or worse, like somebody else built it
+  and they are reciting it.</p>
+  <p><b>Tell it as a story with causes.</b> Each step must explain why it had to come <em>then</em>, what went wrong,
+  and what it unlocked. That is what a real engineer's memory of their own work sounds like.</p>
+</div>
+
+<div class="box say">
+  <div class="h">Your one-line ordering rule (say this if asked why this order)</div>
+  <p>&ldquo;I worked backend-first and bottom-up: nothing above a layer could be built until the layer beneath it was stable. The API contract was frozen first precisely so that Awais could build screens against something that would not move under him.&rdquo;</p>
+</div>
+<figure><div class="svgbox"><svg viewBox="0 0 860 130" role="img" aria-label="Project timeline">
+  <path class="ln" d="M30 70 L830 70"/>
+  <circle class="ac" cx="80" cy="70" r="7"/><text class="sm bold" x="80" y="50" text-anchor="middle">FREEZE</text>
+  <text class="sm" x="80" y="94" text-anchor="middle">schemas</text>
+  <text class="sm" x="80" y="108" text-anchor="middle">locked</text>
+
+  <circle class="ac" cx="250" cy="70" r="7"/><text class="sm bold" x="250" y="50" text-anchor="middle">SERVICES</text>
+  <text class="sm" x="250" y="94" text-anchor="middle">ingest, extract,</text>
+  <text class="sm" x="250" y="108" text-anchor="middle">score</text>
+
+  <circle class="ac" cx="430" cy="70" r="7"/><text class="sm bold" x="430" y="50" text-anchor="middle">API + DB</text>
+  <text class="sm" x="430" y="94" text-anchor="middle">endpoints, review</text>
+  <text class="sm" x="430" y="108" text-anchor="middle">queue, audit</text>
+
+  <circle class="ac" cx="610" cy="70" r="7"/><text class="sm bold" x="610" y="50" text-anchor="middle">GATE</text>
+  <text class="sm" x="610" y="94" text-anchor="middle">backend ready &rarr;</text>
+  <text class="sm" x="610" y="108" text-anchor="middle">frontend starts</text>
+
+  <circle class="ac" cx="790" cy="70" r="7"/><text class="sm bold" x="790" y="50" text-anchor="middle">HARDEN</text>
+  <text class="sm" x="790" y="94" text-anchor="middle">security, privacy,</text>
+  <text class="sm" x="790" y="108" text-anchor="middle">deploy</text>
+</svg></div><figcaption>The project timeline. My work is the first four markers; the frontend was deliberately blocked until the gate.</figcaption></figure>
+
+<h3>My ten steps, in the order I actually did them</h3>
+
+<div class="qa">
+  <div class="q">Step 1 &mdash; Froze the API contract before writing a single feature</div>
+  <p class="a"><b>What I did:</b> I defined the exact shape of every request and response &mdash; what a Finding looks like, what an error looks like &mdash; and locked it. It is recorded in the code as a frozen contract version.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Because Awais had to build screens against my API. If I let its shape keep changing, he would rebuild his work every week. Freezing it early cost me some flexibility and bought the team a frontend that never had to be rewritten.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Twice I later wanted to change a response shape. I could not, so I had to add fields <b>additively</b> instead. That was mildly annoying and absolutely the right constraint.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Awais could start designing against a stable contract, and Wasif could write tests against a specification rather than against my current mood.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 2 &mdash; Built the error envelope and request IDs</div>
+  <p class="a"><b>What I did:</b> Every error the API returns has one shape: a code, a message, details, and a request ID that also appears in every log line for that request.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> This is unglamorous plumbing and it had to come <b>before</b> the features, not after. Retrofitting consistent error handling into forty endpoints is far harder than starting with it.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Nothing dramatic &mdash; but it is the reason we can debug a user's problem later. Without the request ID, investigating a report of &lsquo;it broke&rsquo; is guesswork.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Every later feature got error handling for free, and Wasif could assert on error <b>codes</b> instead of matching error text.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 3 &mdash; Designed the database schema and wrote the migrations</div>
+  <p class="a"><b>What I did:</b> Fifteen tables: the User &rarr; ContractDraft &rarr; ClauseFinding spine, plus the review workflow, the audit chain, and the caches.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> The data model constrains everything above it. Getting it wrong means rewriting the services later, so it came before the services, not alongside them.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> I initially had no separate ClauseFinding table &mdash; I was going to store the findings as a blob of JSON inside the contract row. That would have made it impossible to query &lsquo;show me every critical finding across all contracts&rsquo;, which the review queue needs. I split it out.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The review queue, the audit chain, and the admin statistics all became possible &mdash; each of them needs to query findings independently of their contract.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 4 &mdash; Built the upload and validation path</div>
+  <p class="a"><b>What I did:</b> File-size caps, extension allowlist, <b>magic-byte inspection</b> (reading the file's real first bytes rather than trusting its name), filename-traversal guards, and a SHA-256 content hash.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> It is the front door. Everything downstream assumes it is handling a real, safe document, and that assumption has to be <b>made true</b> at the boundary.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> My first version trusted the file extension. Wasif immediately broke it by renaming a file to <code>.pdf</code>. That is exactly what he is for, and it is why the magic-byte check exists.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> Taha's analysis code could assume it was always given a genuine, readable document, so he never had to defend against garbage input.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 5 &mdash; Wired up persistence, and the analysis endpoint</div>
+  <p class="a"><b>What I did:</b> The endpoint that ties it together: accept the upload, call Taha's analysis services, store the draft and its findings, and return them.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> This is the first point at which the product <b>does something</b>. It needed steps 1 to 4 to exist first.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The response was slow &mdash; the founder stared at a spinner for twenty seconds. We later changed it to return the clause findings <b>first</b> and enrich with the sweeps asynchronously.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> There was now a real, working product to build screens on top of. The backend-readiness gate could open.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 6 &mdash; Built the review queue with an atomic claim</div>
+  <p class="a"><b>What I did:</b> The queue of findings that the system refuses to auto-approve, and the mechanism by which a reviewer claims one.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> It is the enforcement point for our central safety promise: risky findings must reach a human. Without it, the confidence gate is a suggestion rather than a rule.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> My first attempt was <b>check-then-update</b> &mdash; look to see if it is unclaimed, then claim it. That is a <b>race condition</b>: two reviewers can both pass the check in the same instant. I replaced it with a conditional update, so the database itself guarantees only one wins.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The human-in-the-loop guarantee became real, and Wasif could write a concurrency test that proves it.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 7 &mdash; Built the SHA-256 hash-chained audit log</div>
+  <p class="a"><b>What I did:</b> Every consequential action writes a record containing a fingerprint of the record before it, so the records form a chain.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> It had to come before the export and admin features, because those are exactly the actions that must be accountable.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The subtle part was the first record &mdash; a chain needs a starting point, a <b>genesis</b> record with no predecessor. Getting that boundary case right took a while.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> We can now <b>detect</b> tampering, and Wasif could write the test I am proudest of: corrupt a record in the middle and assert we catch it.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 8 &mdash; Deployed it, and fought the serverless event loop</div>
+  <p class="a"><b>What I did:</b> Docker, a managed Postgres database, automatic deployment from the main branch.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> A product that only runs on my laptop is not a product. Deploying early meant we found the deployment problems early, when there was still time.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The hardest bug of the project. On the serverless platform, application startup hooks did not fire the way they do on a normal server, and our HTTP client ended up attached to an event loop that had already closed. It failed <b>intermittently</b>, which is the worst kind. The fix was to build the client lazily per request and detect a fresh event loop instead of assuming one-time startup.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> A live URL that the team, and an examiner, can actually visit.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 9 &mdash; Hardened the security, after an audit of my own work</div>
+  <p class="a"><b>What I did:</b> Ownership checks on every object (IDOR), an SSRF guard on the URL analyser, secret scanning in CI, and rotated every credential.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> Deliberately late. You cannot meaningfully audit a system that does not exist yet &mdash; and auditing it while it was still changing shape would have meant auditing it twice.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> The audit found a real IDOR hole: an ownership check I had put in the interface but not enforced on the server. That is precisely the mistake I now warn about in my viva answers, and I found it in <b>my own code</b>.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> The security claims in our report became things we had <b>tested</b>, rather than things we had assumed.</p>
+</div>
+
+<div class="qa">
+  <div class="q">Step 10 &mdash; Fixed the deletion purge and built the Clerk webhook</div>
+  <p class="a"><b>What I did:</b> Made account deletion actually erase everything, from <b>both</b> deletion paths, sharing one purge routine.</p>
+  <p style="margin:8px 0 0 25px"><b>Why it had to come now:</b> The very last thing, because it was triggered by a bug Awais and I found together &mdash; a deleted user coming back when the same email was reused.</p>
+  <p style="margin:8px 0 0 25px"><b>What went wrong:</b> Two problems, not one. Deletion was leaving rows behind in six tables. And deleting from Clerk's own dashboard purged <b>nothing</b> in our database, because no webhook existed. I also had to make the webhook <b>fail closed</b>: if the signing secret is missing, it refuses everything &mdash; otherwise the URL is a remote account-deletion button for anyone who finds it.</p>
+  <p style="margin:8px 0 0 25px"><b>What it unlocked:</b> &lsquo;Deleted&rsquo; finally means deleted, and the story became one of the strongest things we can tell an examiner.</p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "which step was hardest?"</div>
+  <p>&ldquo;The serverless event-loop bug, without question. It failed <b>intermittently</b>, which means you cannot
+  trust any single test run to tell you whether you have fixed it. And the cause was not in my code at all &mdash; it
+  was in my <b>assumption</b> about how the platform starts an application. Fixing it meant reasoning about somebody
+  else's execution model rather than reading my own lines.&rdquo;</p>
+</div>
+
+<div class="box say">
+  <div class="h">If asked: "what would you do differently?"</div>
+  <p>&ldquo;I would key private data on the account ID from day one, rather than discovering the problem through a bug.
+  And I would write the deletion purge <b>at the same time</b> as each feature that stores data &mdash; because every
+  table we added was another place we later had to remember to erase. Deletion should have been a checklist item on
+  every new table, not a cleanup task at the end.&rdquo;</p>
+</div>
+
+<h2 class="pagebreak">Part S &mdash; Scenario questions (&ldquo;now add this&hellip;&rdquo;)</h2>
+
+<div class="box trap">
+  <div class="h">Why this section exists</div>
+  <p>At some point the examiner will stop asking <em>what you built</em> and start asking <em>what you would do
+  next</em>. For example:</p>
+  <ul style="margin-bottom:0">
+    <li>&ldquo;Add a feature that lets two founders share a contract.&rdquo;</li>
+    <li>&ldquo;How would you test this differently?&rdquo;</li>
+    <li>&ldquo;What if a contract is 500 pages long?&rdquo;</li>
+    <li>&ldquo;What if I told you the AI provider is shutting down tomorrow?&rdquo;</li>
+  </ul>
+  <p style="margin-top:10px"><b>These questions are not traps &mdash; they are gifts.</b> They are testing whether you
+  understand your own system well enough to <em>extend</em> it. A student who only memorised what they built will
+  freeze. You will not, because you have a method.</p>
+</div>
+
+<h3>The four-move method (use it for EVERY scenario question)</h3>
+<figure>
+  <div class="svgbox">
+    <svg viewBox="0 0 860 190" role="img" aria-label="The four-move method for answering scenario questions">
+      <rect class="bxa" x="20" y="24" width="190" height="76"/>
+      <text class="sm bold" x="115" y="48" text-anchor="middle">MOVE 1 &mdash; CLARIFY</text>
+      <text class="sm" x="115" y="68" text-anchor="middle">Restate it. Ask ONE</text>
+      <text class="sm" x="115" y="84" text-anchor="middle">sharp question.</text>
+
+      <rect class="bx" x="230" y="24" width="190" height="76"/>
+      <text class="sm bold" x="325" y="48" text-anchor="middle">MOVE 2 &mdash; ANCHOR</text>
+      <text class="sm" x="325" y="68" text-anchor="middle">Name the EXISTING part</text>
+      <text class="sm" x="325" y="84" text-anchor="middle">of our system it plugs into.</text>
+
+      <rect class="bx" x="440" y="24" width="190" height="76"/>
+      <text class="sm bold" x="535" y="48" text-anchor="middle">MOVE 3 &mdash; DESIGN</text>
+      <text class="sm" x="535" y="68" text-anchor="middle">Data, then endpoint,</text>
+      <text class="sm" x="535" y="84" text-anchor="middle">then screen, then test.</text>
+
+      <rect class="bxa" x="650" y="24" width="190" height="76"/>
+      <text class="sm bold" x="745" y="48" text-anchor="middle">MOVE 4 &mdash; SAFETY</text>
+      <text class="sm" x="745" y="68" text-anchor="middle">What could go wrong,</text>
+      <text class="sm" x="745" y="84" text-anchor="middle">and what would I trade off?</text>
+
+      <path class="ln" d="M210 62 L226 62"/><path class="ln" d="M218 57 l8 5 -8 5"/>
+      <path class="ln" d="M420 62 L436 62"/><path class="ln" d="M428 57 l8 5 -8 5"/>
+      <path class="ln" d="M630 62 L646 62"/><path class="ln" d="M638 57 l8 5 -8 5"/>
+
+      <text class="sm bold" x="430" y="140" text-anchor="middle">Move 4 is the one that separates a good answer from an excellent one.</text>
+      <text class="sm" x="430" y="162" text-anchor="middle">Anyone can add a feature. An engineer says what it might break, and what they would give up to get it.</text>
+    </svg>
+  </div>
+  <figcaption>Use all four moves, in order, out loud. Never jump straight to code.</figcaption>
+</figure>
+
+<div class="box simple">
+  <div class="h">The four moves, spelled out</div>
+  <p><b>Move 1 &mdash; Clarify.</b> Repeat the request back in your own words, then ask <b>exactly one</b> sharp
+  question. It buys you ten seconds to think, and it makes you sound like an engineer rather than a student guessing.
+  Example: <i>&ldquo;So founders can share a contract with a co-founder. Can I check &mdash; should the second person be
+  able to <b>edit</b> the findings, or only read them? That changes the design.&rdquo;</i></p>
+
+  <p><b>Move 2 &mdash; Anchor it in what already exists.</b> Never design from a blank page. Name the part of Clarifyd
+  it attaches to. <i>&ldquo;This builds on our existing review queue, which already assigns a finding to a person and
+  checks their role.&rdquo;</i> This proves you know your own system.</p>
+
+  <p><b>Move 3 &mdash; Design in a fixed order: data &rarr; endpoint &rarr; screen &rarr; test.</b> Always that order.
+  It shows a layered mind. What table or column changes? What API endpoint appears? What does the user see? How do I
+  test it?</p>
+
+  <p><b>Move 4 &mdash; Safety and trade-off.</b> Finish by saying what could go wrong and what you would sacrifice.
+  <i>&ldquo;The risk here is that sharing weakens our ownership check, so I would enforce it on the server, not just
+  hide the button. And I would accept slower page loads rather than cache another person's findings in the
+  browser.&rdquo;</i></p>
+</div>
+
+<div class="box say">
+  <div class="h">If your mind goes blank &mdash; the universal opener</div>
+  <p>&ldquo;Let me think about that in layers &mdash; what data would need to change, what endpoint would expose it,
+  what the founder would see, and how I would test it. Starting with the data&hellip;&rdquo;</p>
+</div>
+
+<div class="box trap">
+  <div class="h">Three fatal mistakes in scenario answers</div>
+  <ul style="margin-bottom:0">
+    <li><b>Saying &ldquo;that would be easy.&rdquo;</b> Nothing is easy, and the examiner will immediately find the hard
+    part you missed. Say instead: <i>&ldquo;The straightforward part is X. The part I would be careful about is Y.&rdquo;</i></li>
+    <li><b>Inventing a technology you have never used.</b> If you say &ldquo;I'd use Kafka&rdquo; you will be asked what
+    Kafka is. Design with the tools you actually know and can defend.</li>
+    <li><b>Forgetting the safety rules you already built.</b> Any new feature must still pass the confidence gate, the
+    audit log, the ownership check, and the &ldquo;not legal advice&rdquo; rule. <b>Mention them.</b> It shows the
+    safety thinking is habitual, not decorative.</li>
+  </ul>
+</div>
+
+<h3>Worked scenarios &mdash; backend, data and security</h3>
+
+<div class="qa">
+  <div class="q">Add a feature: a founder should be able to share one contract with their co-founder, read-only.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;So a second person gets read access to one specific contract. Can I check &mdash; read-only, or should they also be able to accept findings? That changes whether I touch the review workflow at all.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;This builds on what we already have: every contract has an <code>owner_id</code>, and every endpoint already performs a server-side ownership check. Right now that check asks &lsquo;are you the owner?&rsquo;. Sharing means it must ask &lsquo;are you the owner <b>or</b> have you been granted access?&rsquo;&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Data:</b> a new table <code>contract_share</code> &mdash; draft_id, grantee_user_id, permission (read/write), granted_by, granted_at. I would <b>not</b> put a list of user IDs in a column on the contract; a join table is correct here because the relationship is many-to-many and I want to record who granted it and when. <b>Endpoint:</b> <code>POST /drafts/{id}/share</code> and <code>DELETE /drafts/{id}/share/{user}</code>, both owner-only. Then I change the single authorisation helper that every route already calls, so sharing is enforced in <b>one</b> place rather than scattered across twenty endpoints. <b>Screen:</b> a Share button on the findings page. <b>Test:</b> user B cannot read the contract; owner shares it; user B can now read but a write attempt is still refused; owner revokes; user B is refused again.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The danger is that sharing weakens our IDOR protection &mdash; the check that stops you reading contract 42 by guessing. So the permission check stays <b>on the server</b>, in the one shared helper, and never in the interface. I would also append an audit event for every grant and revoke, because &lsquo;who gave whom access to this contract, and when&rsquo; is exactly the kind of question our audit chain exists to answer. The trade-off: one extra database lookup on every request. I would accept that; correctness beats a millisecond.&rdquo;</p>
+  <p style="margin-top:9px"><b>If pushed further:</b> &ldquo;If they ask about revocation timing: our access tokens are short-lived, about a minute, and the permission is checked from the database on every request &mdash; so a revoke takes effect immediately, not when the token expires.&rdquo;</p>
+</div>
+
+<div class="qa">
+  <div class="q">What if a founder uploads a 500-page contract? Your system scores 8 clauses at a time.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;So the concern is a document far larger than we designed for. Can I check whether you mean it would be <b>slow</b>, or that it would <b>fail</b>? Both are real, and they have different fixes.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Today we cap uploads at 25&nbsp;MB, and we score eight clauses concurrently, paced by a rate limiter. A 500-page contract might be 2,000 clauses. At eight at a time, with the provider's rate limit, that is not a crash &mdash; it is a very long wait, and the browser request would time out first.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Data:</b> the draft already has a status field, so I would add <code>queued</code> and <code>processing</code>. <b>Endpoint:</b> change analysis from synchronous to a <b>job</b> &mdash; <code>POST /analyze</code> returns a job ID immediately, and <code>GET /jobs/{id}</code> reports progress. <b>Screen:</b> the founder sees a progress bar and can leave the page; our frontend already keeps analysis alive across navigation, so this fits. <b>Test:</b> submit a synthetic 2,000-clause document and assert every clause is scored, none silently dropped.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The real danger is the failure we <b>already had once</b>: under rate-limiting, findings were being silently discarded. A long contract makes that far more likely. So the job must be <b>resumable</b> and must count clauses in and out, and a mismatch must be an error, not a shrug. I would also warn the founder that a 500-page master agreement genuinely needs a lawyer &mdash; and I would rather say that than take their money for a twenty-minute analysis they should not rely on.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Your database goes down at 2am. What actually happens, and what would you change?</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;Honestly? The product goes down. I am not going to pretend we have a hot standby that we do not have.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;The database is a genuine single point of failure. We reduced the risk by using a <b>managed</b> Postgres service with automated backups and failover, rather than running our own on a box &mdash; but that is the provider's failover, not ours.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;If I had to harden it: <b>read replicas</b> so that viewing existing findings survives a primary failure, even if uploading new ones does not &mdash; degrade to read-only rather than to nothing. Then a health check that returns a clear &lsquo;temporarily unavailable&rsquo; page instead of a stack trace. <b>Test:</b> kill the database in a staging environment and assert the app returns a clean 503, not a leak of internal errors.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The honest trade-off is cost. Multi-region redundancy was explicitly out of scope for a student project, and it is listed in our limitations. What I would <b>not</b> accept is failing <b>ugly</b> &mdash; leaking stack traces or hanging forever. Failing cleanly and visibly is affordable; failing invisibly is not.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Add role-based permissions: a founder, a lawyer, and an accountant should see different things.</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;So different views of the same contract by role. Can I check whether this is about <b>hiding</b> data from some roles, or about <b>who may act</b> &mdash; who can accept a finding?&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;We already have roles: viewer, reviewer, admin, enforced by a <code>require_role</code> check on the endpoints. So the machinery exists. What is being asked is a richer role model, not a new concept.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;<b>Data:</b> today the role lives on the user. For per-contract roles I would move it onto the sharing table from the earlier scenario &mdash; a person's role is <b>relative to a contract</b>, not global. <b>Endpoint:</b> the existing role check gains a contract-scoped variant. <b>Screen:</b> the accountant sees only payment and liability clauses. <b>Test:</b> assert the accountant's API response <b>does not contain</b> the other clauses at all.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;The trap here is hiding clauses <b>in the interface</b> while the API still returns them. That is not security &mdash; anyone can open the browser tools and read the response. The filtering must happen <b>server-side</b>, and the test must assert that the data is absent from the response, not merely invisible on the page.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">Someone steals a user's access token. What can they do, and for how long?</div>
+  <p class="a"><b>1. Clarify:</b> &ldquo;A serious question, and I will answer it precisely rather than reassuringly.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Our tokens come from Clerk and are <b>short-lived &mdash; roughly one minute</b>. They are sent over HTTPS only. The backend verifies the signature on every request using Clerk's public key.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;With a stolen token an attacker can act as that user <b>until it expires</b> &mdash; read their contracts, export a report. They cannot escalate to admin, because the role is checked server-side on every request. They cannot forge a <b>new</b> token, because they do not have Clerk's private key. Every action they take is written into our audit chain with their user ID and a timestamp, so the damage is at least <b>attributable</b>.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;What I would add: token revocation on demand, so an admin can kill a session immediately rather than waiting a minute; and rate-limiting per user to blunt bulk exfiltration. The honest limit is that a stolen valid token, within its lifetime, is indistinguishable from the real user &mdash; which is exactly why the lifetime is one minute and not one month.&rdquo;</p>
+  
+</div>
+
+<div class="qa">
+  <div class="q">The examiner opens your code and points at one function. "Explain this to me."</div>
+  <p class="a"><b>1. Clarify:</b> Do not panic, and <b>do not pretend</b>.</p>
+  <p style="margin:8px 0 0 25px"><b>2. Anchor:</b> &ldquo;Read the function name and the signature aloud, slowly. That alone usually tells you what it does &mdash; we named things carefully for exactly this reason.&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>3. Design (data &rarr; endpoint &rarr; screen &rarr; test):</b> &ldquo;Then explain it in the order: <b>what goes in, what comes out, what it protects against.</b> For example: &lsquo;This takes the raw uploaded bytes and the claimed filename. It returns a validated file or raises an error. It exists because the filename is attacker-controlled, so it checks the actual leading bytes instead.&rsquo;&rdquo;</p>
+  <p style="margin:8px 0 0 25px"><b>4. Safety &amp; trade-off:</b> &ldquo;If it is genuinely a teammate's code: <b>&lsquo;That is Taha's module &mdash; what I can tell you is what it guarantees to my layer: it always returns a validated finding, or it raises. My code never sees unvalidated model output.&rsquo;</b> Knowing the <b>contract</b> between your module and theirs is exactly what a backend engineer is supposed to know, and saying it that way is a strong answer, not an evasion.&rdquo;</p>
+  
+</div>
+
 <h2 class="pagebreak">Last page &mdash; What to say when you are stuck</h2>
 <div class="rescue">
   <p><b>Never say &ldquo;I don't know.&rdquo;</b> Use one of these instead. Read them twice. They are all honest.</p>

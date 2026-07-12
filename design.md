@@ -7,7 +7,7 @@
 - **Frontend:** Next.js 14 (App Router), React 18, TypeScript. Aesthetic = **The Broadsheet** (brutalist editorial — warm ivory paper `#f4ede1`, coffee-black ink `#0c0a08`, single arterial red accent `#b8260f`, Geist + Geist Mono, Phosphor duotone icons, sharp edges, no gradients/glass/shadows). Framer Motion 11 for entries with `cubic-bezier(0.23, 1, 0.32, 1)` ease-out-quart, transforms + opacity only.
 - **Backend:** FastAPI (Python 3.11+), strict layering (`routes → services → contracts → models`), Pydantic schemas, SQLite (dev) via Alembic.
 - **Deployment:** `docker-compose` two-service scaffold (`frontend`, `backend`).
-- **Per-user storage:** the frontend scopes every `localStorage` key by signed-in user via `lib/user-storage.ts`. Account-switch wipes 11 known legacy globals so no data bleeds across users.
+- **Per-user storage:** the frontend scopes every `localStorage` key by the signed-in user's **Clerk user id** via `lib/user-storage.ts` (never the email — emails are reusable, Clerk ids are not). Logout and account-switch sweep every `clarifyd.*` key so no data bleeds across users; only device-level keys (cookie consent, sidebar state) survive.
 
 The canonical workflow is: **Upload → Analyze → Review → Export**.
 

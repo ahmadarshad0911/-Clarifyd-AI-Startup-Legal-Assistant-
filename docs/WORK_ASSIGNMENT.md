@@ -84,12 +84,12 @@ This is the project's headline contribution and the toughest engineering: making
 **Why it's the hardest:** it spans distributed-systems failure handling (retry/fallback), adversarial security (injection), schema/validation engineering, and serverless runtime quirks — the four things most likely to break and most impressive to defend. Every claim here is covered by `test_reasoning_provider.py` (11 tests).
 
 ### Heavy AI content services (`backend/app/services/`)
-Beyond the reliability engine, Ahmad also owns the compute-heavy AI logic: `async_contract_analysis.py` (parallel per-clause orchestration, concurrency 8, `ClauseCache`), `contract_reporter.py` (grounded full report — seed-lock, citation grounding, suggestion validation, byte-stable cache), `loophole_sweep.py` (present + **missing**-clause sweep), `ambiguity_sweep.py` (vague-term detection), `copilot_advisor.py` (streaming chat), and the prompt/rubric in `reasoning/prompts.py`. (The *simple, deterministic* feature endpoints are Taha's; see §3 / §5.)
+Beyond the reliability engine, Ahmad also owns the compute-heavy AI logic: `async_contract_analysis.py` (parallel per-clause orchestration, concurrency 8, `ClauseCache`), `contract_reporter.py` (grounded full report — seed-lock, citation grounding, suggestion validation, byte-stable cache), `loophole_sweep.py` (present + **missing**-clause sweep), `ambiguity_sweep.py` (vague-term detection), `copilot_advisor.py` (streaming chat + the `READY_TO_DRAFT` readiness protocol that gates the Generate-document button until every term is collected), and the prompt/rubric in `reasoning/prompts.py`. (The *simple, deterministic* feature endpoints are Taha's; see §3 / §5.)
 
 ### Server & Data Platform
 
-### Python API — routes (`backend/app/routes/` — 18)
-`admin`, `analyses`, `auth`, `comments`, `compare`, `compliance`, `contact`, `exports`, `feedback`, `negotiate`, `oauth`, `reasoning`, `reviews`, `search`, `simplify`, `webhooks`, `workflow`, `__init__`.
+### Python API — routes (`backend/app/routes/` — 20)
+`admin`, `analyses`, `auth`, `clerk_webhooks`, `comments`, `compare`, `compliance`, `contact`, `exports`, `feedback`, `letterhead`, `negotiate`, `oauth`, `reasoning`, `reviews`, `search`, `simplify`, `webhooks`, `workflow`, `__init__`.
 
 ### Python app core (`backend/app/`)
 `main.py` (app bootstrap, middleware, exception handlers, CORS, security headers, analysis semaphore), `config.py` (cached `Settings`, provider validation, Neon URL rewriting), `errors.py` (`AppError`/`ErrorCode`), `rate_limit.py` (sliding-window limiter), `logging_config.py` (request-id logging), `cli.py` (admin/user management).
@@ -99,7 +99,7 @@ Beyond the reliability engine, Ahmad also owns the compute-heavy AI logic: `asyn
 Alembic: `20260510_0001_phase1_baseline`, `..0002_user_table`, `..0003_clause_cache`, `20260517_0001_report_cache`, `alembic/env.py`.
 
 ### Contracts & platform services
-`contracts/api.py` (frozen `API_CONTRACT_VERSION="2026-05-week1-freeze"`), `contracts/analysis.py`, `contracts/ingestion.py`; `services/audit.py` (SHA-256 hash chain), `services/export.py` (JSON/PDF export jobs), `services/contract_ingestion.py` (upload validation, magic-byte sniff), `services/contract_text_extractor.py` (PDF/DOCX/TXT), `services/email.py`; `observability/metrics.py` (Prometheus registry).
+`contracts/api.py` (frozen `API_CONTRACT_VERSION="2026-05-week1-freeze"`), `contracts/analysis.py`, `contracts/ingestion.py`; `services/audit.py` (SHA-256 hash chain), `services/export.py` (JSON/PDF export jobs), `services/contract_ingestion.py` (upload validation, magic-byte sniff), `services/contract_text_extractor.py` (PDF/DOCX/TXT), `services/email.py`, `services/user_purge.py` (`purge_user_data()` — the single delete path shared by `DELETE /admin/users/{id}` and the Clerk `user.deleted` webhook); `observability/metrics.py` (Prometheus registry).
 
 ### Node backend — server/data plumbing (`backend-node/`)
 API routes (33): contracts, scans (+id/findings/stream/export), clauses, audit, auth (NextAuth), me, consent, health, integrations (connect/callback/disconnect/webhook), monitor/deadlines, lawyers, lawyer-handoff, admin/lawyers, security/posture, user/context, cron, dev/session, inngest.

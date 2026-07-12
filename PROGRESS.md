@@ -2,7 +2,41 @@
 
 > Living state file. Read this FIRST at the start of every new session, then update it before ending.
 > Purpose: avoid re-pasting long context prompts. This is the single source of truth for "where things stand."
-> Last updated: 2026-07-11
+> Last updated: 2026-07-12
+
+---
+
+## Session 2026-07-12 — recreated-account data leak + full deletion purge
+
+Reported symptom: delete a user from the admin console, sign up again on the same email, and the "new" account
+resumed exactly where the old one left off — old drafts, old analyses, the saved co-pilot thread, onboarding
+already done.
+
+- **Root cause (PR #20, merged + deployed):** browser `localStorage` was namespaced by **email**, and emails are
+  reusable. Nothing was resurrected server-side; the data had never left the browser. Now namespaced by **Clerk
+  user id** (never reused). `clearUserStorage()` sweeps every `clarifyd.*` key on logout/account switch,
+  replacing a hardcoded 11-key list that never covered the scoped keys holding the actual data. `analyses.ts`
+  had been writing a **raw, unscoped** key — every account on a browser shared one analysis cache.
+- **The gate made it permanent:** `dark-app-shell.tsx` skipped onboarding when device storage said "onboarded",
+  then stamped `onboarded: true` onto the *Clerk account* — promoting a stale browser flag into a permanent
+  account-level one. It also read storage before `AuthProvider` re-pointed it (child effects run before parent
+  effects). Both fixed.
+- **Deletion did not mean deletion (PR #22, merged + deployed):** `admin_delete_user` removed the user row and
+  drafts only — letterhead, comments, feedback, contact messages, webhooks, OAuth identities and OTP rows all
+  survived. New `services/user_purge.py` covers every table; `audit_event` deliberately retained (hash chain).
+- **Clerk-dashboard deletes were silently lost:** no webhook existed. New `POST /webhooks/clerk` (Svix HMAC,
+  5-min replay window, fails closed without `CLERK_WEBHOOK_SECRET`). **Live and verified** — unsigned/forged
+  requests return 401.
+- **Co-Pilot Generate button (PR #22):** was enabled from the first render, so a founder could draft before
+  answering anything. Now gated on a `READY_TO_DRAFT` sentinel the backend prompts emit only once every term is
+  collected.
+
+**Still open:**
+- Accounts recreated *before* the fix carry `unsafeMetadata.onboarded = true` in Clerk (written by the old gate);
+  deploying does not undo it, so they still skip onboarding. Test with a fresh email, or clear the flag.
+- Rows orphaned by deletions performed *before* the purge shipped are not cleaned up retroactively.
+- `chore/do-spec-webhook-secret` — declares `CLERK_WEBHOOK_SECRET` in `.do/backend.yaml` (dashboard was the only
+  record). Pushed, not merged.
 
 ---
 
@@ -111,7 +145,7 @@ _(none built to new DESIGN.md spec yet)_
 
 ## Open branches (pushed, NOT merged — need review/merge/deploy)
 
-- `design/clarifyd-ai-preview` → `/copilot/preview` — chat-first command-bar redesign of Clarifyd AI (popup chat, Ask/Draft toggle, readiness-gated Generate).
+- `design/clarifyd-ai-preview` → `/copilot/preview` — chat-first command-bar redesign of Clarifyd AI (popup chat, Ask/Draft toggle). Its readiness-gated Generate idea has since **shipped to the real `/copilot`** (PR #22): the backend prompts emit a `READY_TO_DRAFT` sentinel and the button stays disabled until every term is collected. Only the chat-first *layout* is still unmerged here.
 - `design/landing-preview` → `/landing-preview` — dark "Night Desk" landing + animated dark/light theme toggle (View Transitions sweep). Edited `components/conditional-providers.tsx` (added `/landing-preview` to PUBLIC_PREFIXES). **← currently checked out.**
 - `feat/ambiguity-suggestions` — ambiguity fix suggestions + "add to doc".
 - `feat/findings-first-enrichment` — fast findings response + `/analyze/{id}/enrich` endpoint + loophole must-have checklist.

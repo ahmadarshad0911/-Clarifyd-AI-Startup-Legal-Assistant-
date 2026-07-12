@@ -25,7 +25,7 @@
 |---|---|
 | Backend | FastAPI · SQLAlchemy 2.0 async · SQLite (dev) / Postgres·Neon (prod) · Pydantic v2 · `pydantic-settings` |
 | Reasoning | **Clarifyd AI** — model + endpoint configurable through `Settings`. Live via **NVIDIA NIM** (OpenAI-compatible): primary `meta/llama-3.1-70b-instruct`, fallback `nvidia/llama-3.3-nemotron-super-49b-v1.5`, `RulesBasedProvider` as always-on floor. Shared **token-bucket rate limiter** (`reasoning_max_rpm`). Provider chain in `services/reasoning/`. |
-| Auth | **Clerk (RS256 JWT, JWKS-verified)** is the primary/prod auth. Legacy local email/password (bcrypt + HS256) exists but is **disabled in production**. OAuth 2.0 for Google + Facebook (HMAC-signed state). Per-user `clarifyd.user-key` scopes frontend local storage. |
+| Auth | **Clerk (RS256 JWT, JWKS-verified)** is the primary/prod auth. Legacy local email/password (bcrypt + HS256) exists but is **disabled in production**. OAuth 2.0 for Google + Facebook (HMAC-signed state). Frontend local storage is scoped per user by **Clerk user id** (`clarifyd.user-key`). |
 | Frontend | Next.js 14 (App Router) · React 18 · TypeScript · **Geist Sans + Geist Mono** (via `next/font`) · **Phosphor Icons** (duotone) · Framer Motion · Tailwind 3 (installed; tokens carry the system) · Clerk |
 | Aesthetic | **The Broadsheet (v6)** — brutalist editorial. Warm ivory paper (`#f4ede1`), coffee-black ink (`#0c0a08`), single arterial red accent (`#b8260f`). Sharp edges, no gradients, no glass, oversize display type. |
 | Storage | SQLite + local FS (dev); Postgres·Neon (prod). A parallel `backend-node/` uses Vercel Blob. |
@@ -84,8 +84,8 @@ ai-contract-risk-analyzer/
 │   │   ├── shell/dark-app-shell.tsx # Workspace shell (top nav + tools dropdown + acct popover)
 │   │   └── …                        # health-gauge / risk-pill / clause-card / etc.
 │   └── lib/
-│       ├── user-storage.ts          # Per-user localStorage helper (scopes by clarifyd.user-key)
-│       ├── auth.tsx                 # AuthProvider — writes user-key on /auth/me, wipes legacy
+│       ├── user-storage.ts          # Per-user localStorage helper — setActiveUser(id) / clearUserStorage()
+│       ├── auth.tsx                 # AuthProvider — points storage at the Clerk user id; purges on user switch
 │       ├── recent.ts  founder-profile.ts  startup-templates.ts
 │       └── api.ts                   # Typed ApiClient
 ├── docs/slc/                       # Canonical SLC PRD + work-division + assumptions
@@ -151,6 +151,20 @@ REASONING_MAX_RPM=30                                          # token-bucket pac
 > `KimiProvider` class name is historical — it is just an OpenAI-compatible client; the live models are Llama
 > served through NVIDIA NIM. Only the analyze pipeline and the Co-Pilot call the LLM; simplify/negotiate/
 > compliance/reasoning-guidance are deterministic.
+
+### Clerk
+```ini
+CLERK_ISSUER=https://clerk.<your-domain>            # e.g. https://clerk.clarifyd.app
+CLERK_JWKS_URL=https://clerk.<your-domain>/.well-known/jwks.json
+CLERK_SECRET_KEY=sk_live_...                       # Backend API (user lookup, admin delete)
+CLERK_WEBHOOK_SECRET=whsec_...                     # Svix signing secret for POST /webhooks/clerk
+```
+
+`CLERK_WEBHOOK_SECRET` comes from **Clerk dashboard → Webhooks → your endpoint → Signing Secret**. Point the
+endpoint at `<backend>/webhooks/clerk` and subscribe it to `user.deleted`. The receiver **fails closed**: with
+no secret it rejects every request with 503, so a user deleted from the Clerk dashboard would stay in the
+database. On DigitalOcean the variable must be scoped `RUN_TIME` — a build-time-only scope is invisible to the
+running process and looks exactly like a missing secret.
 
 ### OAuth — Google
 1. https://console.cloud.google.com/apis/credentials → **Create Credentials** → OAuth client ID → Web application.
@@ -223,10 +237,37 @@ Facebook flow is identical — `auth_url`, `token_url`, `userinfo_url` differ; `
 | POST | `/api/v1/reasoning/evaluate` | bearer | Re-run reasoning over a draft / raw text |
 | POST | `/api/v1/reasoning/guidance` | bearer | Follow-up founder-guidance question |
 | GET  | `/api/v1/reasoning/categories` | public | Supported clause taxonomy |
+| DELETE | `/admin/users/{user_id}` | admin | Delete from Clerk **and** purge every local row the user owns (see *Account deletion*) |
+| POST | `/webhooks/clerk` | Svix signature | Clerk `user.deleted` → same purge. Fails closed: 503 when `CLERK_WEBHOOK_SECRET` is unset, 401 on a bad signature |
 
 Full OpenAPI: `http://localhost:8000/openapi.json` · interactive docs: `http://localhost:8000/docs`.
 
 Every reasoning response carries the mandatory disclaimer (`not_legal_advice: true` + canonical string — see PRD §4.12 / A3).
+
+---
+
+## Account deletion
+
+Deletion has two entry points and both converge on `purge_user_data()` (`app/services/user_purge.py`), so a
+deleted account leaves nothing behind:
+
+- `DELETE /admin/users/{user_id}` — the admin console. Removes the user from Clerk (source of truth) **and**
+  purges locally.
+- `POST /webhooks/clerk` — fires when a user is deleted from the **Clerk dashboard** instead. Without this,
+  the account would vanish from Clerk while every local row survived, orphaned and unreachable.
+
+The purge covers `contract_draft` (which cascades to clause findings, review actions, queue items and export
+jobs), `user_letterhead`, `comment`, `webhook`, `feedback`, `contact_message`, `oauth_identity`,
+`email_verification` and finally `user`.
+
+Two details worth knowing:
+
+- **`email_verification` is matched by email, not user id.** OTP rows are keyed by address, so skipping them
+  would let an account recreated on that address inherit the deleted account's pending verification codes.
+- **`audit_event` is deliberately retained.** It is a tamper-evident hash chain — deleting links would break
+  `/audit/verify`. It stores an actor id and an action, never document content.
+
+Rows orphaned by deletions performed *before* this purge shipped are not cleaned up retroactively.
 
 ---
 
@@ -241,7 +282,7 @@ Every reasoning response carries the mandatory disclaimer (`not_legal_advice: tr
 - **Type.** Geist Sans (display + body) + Geist Mono (kickers, captions, ledger numbers). Loaded via `next/font`.
 - **Icons.** Phosphor Icons (duotone weight).
 - **Motion.** Framer Motion 11. All entries `cubic-bezier(0.23, 1, 0.32, 1)` (ease-out-quart), 220–360ms, transform + opacity only. Hover gated `@media (hover: hover) and (pointer: fine)`. `prefers-reduced-motion` strips transforms via global override.
-- **Per-user state.** Local data is scoped through `lib/user-storage.ts` — every read/write suffixes the key with `clarifyd.user-key` (written by `AuthProvider` from `/auth/me.email`). On login or logout the helper wipes the 11 known legacy unscoped keys so a fresh account never sees prior-user data.
+- **Per-user state.** Local data is scoped through `lib/user-storage.ts` — every read/write suffixes the key with the value of `clarifyd.user-key`, which `AuthProvider` sets to the **Clerk user id** via `setActiveUser(id)`. Never the email: emails are reusable, so an account recreated on a deleted user's email would land in the deleted user's bucket and inherit its drafts, analyses and co-pilot thread. Clerk ids are never reused. On logout, and whenever a different account signs in, `clearUserStorage()` sweeps **every** `clarifyd.*` key by prefix — the two device-level keys (`clarifyd.cookie-consent`, `clarifyd.rail.collapsed`) survive, since they describe the browser rather than the person.
 - **Form chrome killed.** `.bsd-input` (transparent + 2px ink underline, 3px red on focus), `.bsd-range` (custom slider with red thumb + ring), `.bsd-search-input` (search-decoration suppressed), `<select>` styled inline. No browser blue rings anywhere.
 
 ---

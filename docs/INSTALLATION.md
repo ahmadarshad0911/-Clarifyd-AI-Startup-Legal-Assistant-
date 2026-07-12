@@ -74,7 +74,23 @@ REASONING_PROVIDER=openai  # openai or kimi
 REASONING_API_KEY=...      # Your provider API key
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/contract_analyzer
 REDIS_URL=redis://localhost:6379/0
+
+# Clerk (primary auth in prod)
+CLERK_ISSUER=https://clerk.<your-domain>
+CLERK_JWKS_URL=https://clerk.<your-domain>/.well-known/jwks.json
+CLERK_SECRET_KEY=sk_live_...     # Backend API: user lookup + admin delete
+CLERK_WEBHOOK_SECRET=whsec_...   # Svix signing secret for POST /webhooks/clerk
 ```
+
+**`CLERK_WEBHOOK_SECRET`** — from *Clerk dashboard → Webhooks → your endpoint → Signing Secret*. Point the
+endpoint at `<backend>/webhooks/clerk` and subscribe it to `user.deleted`.
+
+The receiver **fails closed**: with no secret it rejects every request with `503`, and a user deleted from the
+Clerk dashboard will stay in your database. Deletion from the in-app admin console works regardless.
+
+> On DigitalOcean this variable must be scoped **`RUN_TIME`**. A build-time-only scope is invisible to the
+> running process and is indistinguishable from a missing secret. Verify by POSTing an unsigned request to
+> `/webhooks/clerk`: `401` = secret loaded and verification active; `503` = the app cannot see it.
 
 ### 4. Start Services
 ```bash

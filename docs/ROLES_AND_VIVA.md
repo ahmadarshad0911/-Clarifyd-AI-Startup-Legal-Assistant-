@@ -55,6 +55,20 @@ The safety and reliability we built around the AI: a backup plan so it never ful
 **Q0.8 — What is Clarifyd NOT allowed to do (limits)?**
 It doesn't replace a lawyer, doesn't give country-specific legal opinions, and we did not train our own AI model — we use a ready-made one with our own safety rules on top.
 
+**Q0.9 — Tell me about a real bug you found and fixed. (Volunteer this — it's a strength.)**
+We found a **privacy bug in our own product and fixed it properly**, and the story shows engineering maturity.
+
+Symptom: delete a user, sign up again with the same email, and the "new" account resumed exactly where the old one left off — old contracts, old results, even the old chat conversation.
+
+Cause: we were filing each person's saved data under their **email address**. Emails can be *reused*; the deleted person's data was still sitting in that browser, and the new account's label matched it, so the app handed it over. Nothing was resurrected from the server — the data had never left the browser.
+
+Fix: file everything under the **account ID** instead, which is permanent and never reused. While fixing it we found the same mistake in the backend (the sign-up code table is keyed by email) and a related problem: deleting an account wasn't erasing everything it owned. All fixed.
+
+Three things to say about it:
+- **We diagnosed it honestly rather than guessing.** The instinct was "the server is resurrecting data"; the truth was the opposite.
+- **We stated the real blast radius.** It only affected the *same physical browser* — a stranger on their own laptop saw nothing. We didn't over- or under-claim.
+- **The lesson generalizes:** an email address is a label a person *currently holds*, not an identity. Never key private data on something that can be reassigned.
+
 ---
 
 ## 1. AHMAD ARSHAD — The Engine & Safety Core (hardest role) · 2k22-BSCS-404
@@ -104,9 +118,32 @@ The "claim this item" action only succeeds if the item is still unclaimed — ch
 Automatically, when a finding is high/critical risk, OR the AI's confidence is below 0.7 (not sure enough), OR we suspect a trick-instruction. Risky or uncertain results always get a human.
 
 **Q14. What security did you build?**
-We check every uploaded file is really a PDF or Word file and not too big or a disguised harmful file; we block attempts to make the server fetch dangerous internal addresses; we make sure a user can only see their own contracts; we limit how often someone can hit the server (to stop abuse); and we add standard web security protections.
+We check every uploaded file is really a PDF or Word file and not too big or a disguised harmful file; we block attempts to make the server fetch dangerous internal addresses; we make sure a user can only see their own contracts; we limit how often someone can hit the server (to stop abuse); we add standard web security protections; and when an account is deleted, we erase **everything** it owned (see next question).
 
-**Q15. Why are there two backends?**
+**Q15. What happens when you delete a user? ("Does deleted mean deleted?")**
+Yes — and getting this right took real work.
+
+There are two ways an account can be deleted, and both must erase the same things:
+- An admin deletes them **in our app**.
+- Someone deletes them **in the Clerk dashboard** (the login service's own admin panel).
+
+At first only the first path existed, and even it was incomplete: it removed the user record and their contracts, but left behind their uploaded letterhead image, comments, feedback, contact messages, and pending sign-up codes. The second path was worse — the account vanished from Clerk while **all** their data stayed in our database, with nothing left to link it to.
+
+Now both paths call the **same single erase function**, so they can't drift apart. For the Clerk path we added a **webhook** — a message Clerk sends our server the moment a user is deleted. Because that message tells our server to delete someone's data, we verify it is genuinely from Clerk using a **cryptographic signature** (a maths-based proof the message wasn't forged or altered). If the signature is missing, wrong, or the message is old (a "replay"), we refuse it. And if the signing key isn't configured at all, the endpoint **refuses everything** rather than trusting anyone — otherwise, anyone who found the web address could delete our users.
+
+**Q16. But you keep the audit log after deletion — isn't that a contradiction?**
+Good catch, and it's deliberate. The audit log is the **tamper-proof history** (Q11): each entry is mathematically linked to the one before it. Deleting an entry from the middle would break the chain and destroy our ability to prove nothing was altered.
+
+The resolution is that the audit log holds an **actor ID and an action** ("user X exported a report at 14:03") — it never holds contract content or personal details. So we erase the person's *content and personal data*, and keep an *integrity ledger*. That's the standard position: right-to-erasure covers personal data, not the existence of a tamper-evident record that something happened.
+
+**Q17. Why can't a user press "Generate document" straight away in the AI drafting tool?**
+Because they'd get a document full of blanks. The button used to be clickable the moment you opened the tool, so you could ask for a contract before answering a single question, and the AI would produce a draft littered with "[TO BE CONFIRMED]" gaps.
+
+The tricky part is that *the screen has no way of knowing* when enough detail has been gathered — that depends entirely on which document you're making. An NDA needs different things from an employment offer. So we let the **AI itself** decide: its instructions say to keep asking one question at a time, and only once it has every essential term (the purpose, all parties, and a real value for each key clause) does it add a hidden marker to its reply. The screen watches for that marker, hides it from the user, and only then unlocks the button. If the founder later withdraws a detail, the AI drops the marker and the button locks again.
+
+One honest engineering detail worth volunteering: we match that marker *loosely*, because the chat runs on a small fast AI model that sometimes garbles the exact punctuation. A missed marker would trap the founder behind a button that never unlocks — a strict check would have been more "correct" and much worse for the user.
+
+**Q18. Why are there two backends?**
 The main one (built with FastAPI) is finished, tested, and live. The second one (a newer design) has more features but is **not finished or launched yet** — it's a plan for the future. The live product is the first one.
 
 ---
@@ -140,18 +177,29 @@ It's called "Broadsheet" — a warm, newspaper-like editorial style: cream paper
 The app understands the backend's standard error format and turns it into a friendly message (e.g. "this doesn't look like a contract") instead of a scary technical error, and it automatically retries if the internet blips.
 
 **Q8. How do you protect privacy in the browser?**
-The actual contract text is **never saved in the browser** — only the results are kept, and even those are stored separately per user, so on a shared computer one person can't see another's contracts.
+The actual contract text is **never saved in the browser** — only the results are kept, and even those are filed separately per user, so on a shared computer one person can't see another's results. Each stored item is labelled with the user's **account ID** (the permanent ID Clerk gives them), and when someone logs out or a different account signs in, we wipe every Clarifyd item on that device.
 
-**Q9. Does it work on phones?**
+**Q9. (Hard — volunteer this one.) You had a privacy bug here. What was it?**
+Yes, and it's worth explaining because the fix is the interesting part.
+
+We used to label each stored item with the user's **email address** instead of their account ID. Emails can be *reused* — delete an account, sign up again with the same email, and the app happily handed the new account the old one's saved results, because the label matched. It looked like the server was resurrecting deleted data. It wasn't: the data had never left that browser.
+
+Two lessons we can defend:
+1. **An email is not an identity.** It's a *label a person currently holds* and can be reassigned. An account ID is permanent and never reused, so it's the only safe thing to key private data on.
+2. **The blast radius was one browser.** Nothing travelled across the internet — a stranger signing up on that email on their own laptop saw nothing. It was a shared-device leak, and we say that precisely rather than overstating it.
+
+We also found the same mistake hiding in the backend: the one-time-passcode table is keyed by email, so a recreated account could inherit the deleted account's pending codes. Same root cause, different layer. Both are fixed.
+
+**Q10. Does it work on phones?**
 Yes — there's a safety net that automatically stacks columns into one, wraps long lines, and prevents anything from overflowing the screen on small devices.
 
-**Q10 (be honest). Are all your screen-parts actually used?**
+**Q11 (be honest). Are all your screen-parts actually used?**
 No — some parts were built as spare building blocks and the live pages use their own versions instead. I'd tidy those up in cleanup. (Say this openly; it's normal.)
 
-**Q11. Which pages are live vs experiments?**
+**Q12. Which pages are live vs experiments?**
 Live: dashboard, findings, chat, negotiation, reports, profile, admin, and the public pages. A few "-preview" pages are design experiments, clearly marked, not the real product. The "lawyer" page is a placeholder marked "coming soon."
 
-**Q12. Why did you build the design as reusable style rules?**
+**Q13. Why did you build the design as reusable style rules?**
 So every screen looks consistent and a change (like a colour) updates everywhere at once, instead of editing every page by hand.
 
 ---
@@ -238,6 +286,6 @@ The 124 tests cover each layer, the smoke scripts check the live flow, and our p
 - **Wasif with everyone:** Wasif can name the exact test that proves each teammate's part works.
 
 ## §6. Numbers to remember (everyone)
-149 saved code changes · 124 automatic tests · up to 8 clauses checked at once · results the AI is less than 70% sure about go to a human · tamper-proof history log · AI service is Llama via NVIDIA (originally Kimi; swapped config-only) · backup plan: main AI (Llama-70B) → second AI (nemotron-49b) → fixed rules · **no AI model was trained by us** · it's decision-support, **not legal advice**.
+149 saved code changes · 124 automatic tests · up to 8 clauses checked at once · results the AI is less than 70% sure about go to a human · tamper-proof history log · AI service is Llama via NVIDIA (originally Kimi; swapped config-only) · backup plan: main AI (Llama-70B) → second AI (nemotron-49b) → fixed rules · **no AI model was trained by us** · private data is filed by permanent **account ID**, never by email · deleting an account erases **every** table it owns, keeping only the tamper-proof log · it's decision-support, **not legal advice**.
 
-*Written 2026-07-09. Every claim is based on the actual code; honest gaps are stated so nothing surprises you in the viva.*
+*Written 2026-07-09; updated 2026-07-12 (per-user data scoping, full account-deletion erase, signed Clerk deletion webhook, AI drafting readiness gate). Every claim is based on the actual code; honest gaps are stated so nothing surprises you in the viva.*

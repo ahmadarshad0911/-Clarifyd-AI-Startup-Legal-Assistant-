@@ -108,6 +108,8 @@ Because Vercel does not fire `lifespan`, services and the DB engine are (re)buil
 | POST | `/analyze/url` | reviewer | fetch URL (SSRF-guarded: no redirects, ports 80/443) → analyze |
 | POST | `/api/v1/copilot/guidance` (+`/stream`) | viewer | Clarifyd AI legal co-pilot (LLM; SSE stream variant) |
 | DELETE | `/auth/account` | authenticated | right-to-erasure: purge drafts/findings/queue + delete from Clerk |
+| DELETE | `/admin/users/{user_id}` | admin | delete from Clerk **and** `purge_user_data()` over every local table |
+| POST | `/webhooks/clerk` | Svix signature | Clerk `user.deleted` → same purge. Fails closed: 503 without `CLERK_WEBHOOK_SECRET`, 401 on bad signature |
 
 ### Feature routers (`app/routes/`)
 - **auth** (`/auth`) — password login/register (HS256; **OTP gate commented out, auto-verifies**), `/auth/me`. All POSTs rate-limited + legacy-auth blocked in prod.
@@ -116,7 +118,8 @@ Because Vercel does not fire `lifespan`, services and the DB engine are (re)buil
 - **analyses** (`/api/v1/analyses`, reviewer) — list stored, mark negotiated, regenerate report.
 - **reasoning** (`/api/v1/reasoning`) — PRD §4.12 surface. `/categories` (public), `/evaluate` (viewer; ranks stored findings — **founder guidance is a deterministic scaffold, not an LLM call**), `/guidance` (viewer; templated, refuses jurisdiction-specific questions), `/jobs/{id}` (in-memory).
 - **exports** (`/exports`) — create (reviewer), status + download (viewer), ownership-checked.
-- **admin** — soft-delete own draft, `/audit/verify` (admin), `/admin/users|stats`, delete user (also from Clerk).
+- **admin** — soft-delete own draft, `/audit/verify` (admin), `/admin/users|stats`, delete user (from Clerk **and** a full local purge — see *Account deletion* below).
+- **clerk_webhooks** (`/webhooks/clerk`) — Svix-signed receiver for Clerk `user.deleted`; purges the account when it is deleted from the Clerk dashboard rather than the admin console. Signature verified with stdlib HMAC (no `svix` dependency), 5-minute replay window, fails closed when `CLERK_WEBHOOK_SECRET` is unset.
 - **compliance** (`/api/v1/compliance`, viewer) — rules table (GDPR/CCPA/HIPAA/FCPA) matched to findings. Non-LLM.
 - **simplify / negotiate / compare / search / comments / workflow / webhooks / contact / feedback** — feature surfaces; **simplify, negotiate, compliance are deterministic (no LLM)**.
 
@@ -127,8 +130,38 @@ Because Vercel does not fire `lifespan`, services and the DB engine are (re)buil
 `contract_analysis` (rules-based clause extraction) · `async_contract_analysis` (async per-clause LLM scoring,
 cache, injection flag) · `custom_reasoning_model` (deterministic rules engine + OpenAI-shaped envelope) ·
 `contract_detector` (is-this-a-contract gate) · `contract_reporter` (whole-contract report, cached, grounded) ·
-`loophole_sweep` / `ambiguity_sweep` (one LLM call each over full text) · `copilot_advisor` (co-pilot chat) ·
-`audit` (hash chain) · `export` (JSON/PDF) · `email` (console dev / Resend prod).
+`loophole_sweep` / `ambiguity_sweep` (one LLM call each over full text) · `copilot_advisor` (co-pilot chat +
+the draft-readiness protocol below) · `audit` (hash chain) · `export` (JSON/PDF) · `user_purge`
+(`purge_user_data()` — the single delete path shared by the admin console and the Clerk webhook) ·
+`email` (console dev / Resend prod).
+
+### Account deletion
+
+`purge_user_data()` (`services/user_purge.py`) is the one function both delete paths call, so deletion means
+deletion. It removes `contract_draft` (cascading to clause findings, review actions, queue items, export jobs),
+`user_letterhead`, `comment`, `webhook`, `feedback`, `contact_message`, `oauth_identity`, `email_verification`
+and `user`.
+
+- `email_verification` is matched **by email**, not user id — OTP rows are keyed by address, so leaving them
+  would let an account recreated on that address inherit the deleted account's pending codes.
+- `audit_event` is deliberately **kept**: it is a tamper-evident hash chain, and removing links would break
+  `/audit/verify`. It records an actor id and an action, never document content.
+- Rows where the user merely *acted* on someone else's draft (e.g. `review_action.reviewer_id`) are left alone —
+  they are not this user's data, and nulling them would corrupt another founder's review history.
+
+### Co-Pilot draft-readiness protocol
+
+`copilot_advisor.py` appends `_READINESS_PROTOCOL` to `TEMPLATE_PROMPT` and `CUSTOM_PROMPT` (never
+`CHAT_PROMPT` — chat drafts nothing). It instructs the model to end a reply with the `READY_MARKER`
+(`[[READY_TO_DRAFT]]`) sentinel **only** once the founder has supplied every essential term — purpose, parties,
+and a concrete value per key clause; a default the model merely *suggested* does not count until confirmed.
+
+The frontend (`app/copilot/page.tsx`) strips the marker from what the founder sees and keeps **Generate
+document** disabled until it arrives. Without this the button was live from the first render, so a founder
+could draft before answering a single question and get a document full of `[TO BE CONFIRMED]` holes. The
+sentinel is matched loosely (`/\[*\s*READY_TO_DRAFT\s*\]*/i`) because the co-pilot runs on a small fast model
+that occasionally mangles the brackets — and a missed marker would strand the founder behind a button that
+never unlocks.
 
 ---
 
@@ -227,7 +260,7 @@ Two caches are the performance core: **`clause_cache`** (identical clauses score
 - **API client:** single `lib/api.ts` `ApiClient` — the whole backend surface, with base-URL resolution, retry/backoff, dead-host guarding, bearer-token injection. Talks to backend via `next.config.js` rewrite `/api/:path* → ${BACKEND_ORIGIN}` (300s proxy timeout for slow LLM calls).
 - **Auth:** Clerk. `AuthProvider` mints a fresh Clerk JWT per request (rotated ~60s, refreshed every 30s). Gating is **client-side** in `DarkAppShell`; `middleware.ts` runs `clerkMiddleware` for session context only (no edge protection).
 - **Analysis runner:** `lib/analysis-context.tsx` runs the fetch above the route outlet so an in-flight analysis survives navigation (fixed progress pill), then routes to `/findings?draft=<id>`.
-- **State:** React Context only (no Redux/Zustand). Per-user localStorage scoping via `lib/user-storage.ts` (keys suffixed with signed-in email; legacy keys wiped on user switch). Server fallback via `GET /api/v1/analyses` when local cache is empty.
+- **State:** React Context only (no Redux/Zustand). Per-user localStorage scoping via `lib/user-storage.ts`: keys are suffixed with the signed-in user's **Clerk user id** (`setActiveUser(id)`), and `clearUserStorage()` sweeps every `clarifyd.*` key on logout or account switch, sparing only device-level keys (cookie consent, sidebar state). Scoping by **email** was a data leak — emails are reusable, so an account recreated on a deleted user's address inherited its drafts, analyses and co-pilot thread; Clerk ids are never reused. All local stores (`recent.ts`, `analyses.ts`, `founder-profile.ts`, the co-pilot session) go through these helpers — none touch `localStorage` directly. Server fallback via `GET /api/v1/analyses` when local cache is empty.
 - **Design system — "Broadsheet v6":** tokens in `app/globals.css` (`--bsd-*`) — ivory paper `#f4ede1`, coffee-black ink `#0c0a08`, single arterial-red accent `#b8260f`, severity ramp for data-viz. Geist Sans/Mono, fluid `clamp()` scale, sharp edges, no gradients/glass/shadows. Tailwind is configured but light; tokens carry the system.
 - **Build:** `npm run dev|build|start`, `npm run typecheck` (`tsc --noEmit`, the CI gate). No lint/test scripts.
 
@@ -271,7 +304,8 @@ Two caches are the performance core: **`clause_cache`** (identical clauses score
 - **DigitalOcean App Platform** (`.do/backend.yaml`, `.do/frontend.yaml`): FastAPI `api` service + Next 14 `web` service, Neon `DATABASE_URL`, NVIDIA NIM + Clerk secrets, `deploy_on_push: true`, region `nyc`.
 - **Vercel:** `backend-node/` deploys standalone (`clarifyd-backend.vercel.app` per its `DEPLOY.md`) with 5 cron jobs; `.vercel/` references two projects.
 - **CI** (`.github/workflows/ci.yml`): `backend` (pytest, py3.11) + `frontend` (typecheck + build, node 20) + `secret-scan` (gitleaks). `backend-node` is **not** in CI.
-- **Env:** `backend/.env.example` (DATABASE_URL, JWT_SECRET, REASONING_*, Clerk, OAuth); `frontend/.env.example` (Clerk + NEXT_PUBLIC_API_URL); `backend-node/.env.example` (Neon, Blob, NIM, Auth.js, Resend, Upstash, Inngest, OAuth).
+- **Env:** `backend/.env.example` (DATABASE_URL, JWT_SECRET, REASONING_*, Clerk — `CLERK_ISSUER`, `CLERK_JWKS_URL`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET` — OAuth); `frontend/.env.example` (Clerk + NEXT_PUBLIC_API_URL); `backend-node/.env.example` (Neon, Blob, NIM, Auth.js, Resend, Upstash, Inngest, OAuth).
+- **`CLERK_WEBHOOK_SECRET`** (Svix signing secret, `whsec_…`) gates `POST /webhooks/clerk`. On DigitalOcean it must be scoped **`RUN_TIME`**: a build-time-only scope is invisible to the running process and is indistinguishable from a missing secret — the receiver just fails closed with 503 and Clerk-dashboard deletions silently stop purging.
 
 > The `clarifyd.app` domain is not bound in the repo. The coherent live stack (compose + CI + DO specs) is
 > **Next 14 frontend + FastAPI backend**; confirm exact production wiring in the DO/Vercel dashboards.

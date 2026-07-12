@@ -27,7 +27,8 @@ backend/
 │   │                           exception handlers, core /analyze/* + /copilot + /health routes,
 │   │                           _build_provider_chain(), _ensure_runtime() (per-loop init)
 │   ├── config.py               Settings (pydantic-settings), get_settings() lru_cache,
-│   │                           all REASONING_*, Clerk, JWT, OAuth, rate-limit, retention config
+│   │                           all REASONING_*, Clerk (issuer, JWKS, secret key,
+│   │                           CLERK_WEBHOOK_SECRET), JWT, OAuth, rate-limit, retention config
 │   ├── errors.py               AppError + ErrorCode; {"error":{code,message,details,request_id}}
 │   ├── logging_config.py       request-id ContextVar, email-redacting log filter
 │   ├── rate_limit.py           per-endpoint limiters (login / analyze / public-post)
@@ -38,7 +39,8 @@ backend/
 │   │                           ingestion.py  (NOT HTTP routers — schemas only)
 │   ├── routes/                 feature routers: auth, oauth, reviews, analyses, reasoning,
 │   │                           exports, admin, compliance, simplify, negotiate, compare, search,
-│   │                           comments, workflow, webhooks, contact, feedback
+│   │                           comments, workflow, webhooks, contact, feedback, letterhead,
+│   │                           clerk_webhooks (POST /webhooks/clerk — Svix-verified user.deleted)
 │   ├── services/               business logic (no FastAPI imports):
 │   │   ├── contract_ingestion.py        upload validation (MIME magic-byte, size, sha256)
 │   │   ├── contract_text_extractor.py   PDF/DOCX/TXT → text
@@ -49,7 +51,10 @@ backend/
 │   │   ├── contract_reporter.py         whole-contract LLM report (cached, grounded)
 │   │   ├── loophole_sweep.py            missing/material loopholes (1 LLM call)
 │   │   ├── ambiguity_sweep.py           vague/undefined language (1 LLM call)
-│   │   ├── copilot_advisor.py           Clarifyd AI co-pilot chat + streaming
+│   │   ├── copilot_advisor.py           Clarifyd AI co-pilot chat + streaming; READY_TO_DRAFT
+│   │   │                                readiness protocol gates the Generate button
+│   │   ├── user_purge.py                purge_user_data() — every row a deleted account owns
+│   │   │                                (audit_event deliberately retained: hash chain)
 │   │   ├── audit.py                     sha256 hash-chained audit events + verify
 │   │   ├── export.py                    JSON/PDF export jobs (reportlab)
 │   │   ├── email.py                     Console (dev) / Resend (prod)

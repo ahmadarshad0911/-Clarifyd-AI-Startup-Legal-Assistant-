@@ -182,6 +182,7 @@ Prometheus counters: `clarifyd_reasoning_calls_total`, `clarifyd_reasoning_token
 - **Secret hygiene** — gitleaks scan in CI with allowlisted placeholders (PR #6); secrets rotated (DO token, Clerk sk_live, Neon password).
 - **Transport / headers** — TLS, HSTS in prod, X-Frame-Options DENY, nosniff, CSP allow-list.
 - **Retention** — files 12 months (configurable), soft-delete → delayed hard-delete; right-to-erasure endpoint (`DELETE /auth/account`) purges local DB + Clerk.
+- **Account deletion** — `DELETE /admin/users/{id}` (admin console) and `POST /webhooks/clerk` (Svix-verified `user.deleted`, for deletions made from the Clerk dashboard) both call `purge_user_data()`, which removes every row the account owns: drafts (cascading to findings, review actions, queue items, export jobs), letterhead, comments, feedback, contact messages, outbound webhooks, OAuth identities, pending OTP rows (matched **by email**, since they are keyed by address) and the user row. **`audit_event` is deliberately retained** — it is the tamper-evident hash chain above, and deleting links would break `/audit/verify`; it stores an actor id and an action, never document content. Defensible position for the viva: erasure of personal content, retention of an integrity ledger.
 - **Privacy** — the browser never persists raw contract text (`lib/analyses.ts` strips `extracted_text`).
 - **Deferred (out of scope, stated honestly):** SOC 2 / HIPAA / ISO 27001 certification, multi-region.
 
@@ -304,7 +305,7 @@ Deliberate (Decision D1): finish one workflow completely and lovably rather than
 ~124 backend tests including security (upload, SSRF, IDOR), reasoning (injection, retry, fallback, ranking), reporter guardrails (byte-stable, citation-grounded), and audit-tamper detection; plus a live LLM quality benchmark harness. CI gate = pytest + frontend typecheck.
 
 **Q: Data privacy?**
-Contracts private per workspace; browser never stores raw contract text; retention 12 months with soft/hard delete; right-to-erasure endpoint purges DB + Clerk; audit logs attribute every export.
+Contracts private per workspace; browser never stores raw contract text; browser localStorage is namespaced by **Clerk user id** (never email — emails are reusable, so an account recreated on a deleted user's address would otherwise inherit its data); retention 12 months with soft/hard delete; deleting an account — from the admin console or the Clerk dashboard, via the signed `user.deleted` webhook — purges every row it owns, retaining only the tamper-evident `audit_event` chain; audit logs attribute every export.
 
 ---
 
